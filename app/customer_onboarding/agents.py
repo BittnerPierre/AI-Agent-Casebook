@@ -1,8 +1,11 @@
 import abc
 import json
 import os
+import sqlite3
 from typing import Optional, List
 
+from langchain import hub
+from langchain.agents import create_structured_chat_agent, AgentExecutor
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -12,11 +15,14 @@ from langchain_core.messages import HumanMessage, BaseMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap
+from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from pydantic import BaseModel, HttpUrl
 
 from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
 from customer_onboarding.logger import logger
+
+_RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
 
 
 class FAQItem(BaseModel):
@@ -26,6 +32,17 @@ class FAQItem(BaseModel):
     subsub_cat: str
     question: str
     answer: str
+
+
+class ErrorItem(BaseModel):
+    code: str
+    category: str
+    subcategory: str
+    description: str
+    details: str
+    diagnostic_questions: List[str]
+    resolution: str
+    search_keys: List[str]
 
 
 class RunnableMixin:
@@ -75,8 +92,10 @@ class RAGAgent(AbstractAgent):
     # TODO add a in memory vectorstore...
     def __init__(self,
                  model_name: Optional[SupportedModel],
+                 collection_name: Optional[str],
                  persist_directory: str):
         super().__init__(model_name=model_name)
+        self._collection_name = collection_name or _RAG_AGENT_DEFAULT_COLLECTION_NAME
         self.persist_directory = persist_directory
         # RAG classic
         self.embeddings = self._initiate_embeddings()
@@ -100,6 +119,7 @@ class RAGAgent(AbstractAgent):
         vectorstore = Chroma.from_documents(
             documents=self.docs,
             embedding=self.embeddings,
+            collection_name=self._collection_name
             # persist_directory=self.persist_directory
         )
 
@@ -140,6 +160,11 @@ class RAGAgent(AbstractAgent):
             "question": lambda x: x["question"],
         }) | prompt | self.model | output_parser
 
+    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
+        if not chat_history:
+            chat_history = []
+        return self.chain.invoke({"input": message, "chat_history": chat_history})
+
 
 class FAQAgent(RAGAgent):
     def __init__(self,
@@ -149,7 +174,7 @@ class FAQAgent(RAGAgent):
                  ):
 
         self.faq_directory = faq_directory
-        super().__init__(model_name=model_name, persist_directory=persist_directory)
+        super().__init__(model_name=model_name, collection_name="faq", persist_directory=persist_directory)
 
     def _initiate_docs(self) -> list[Document]:
         try:
@@ -172,10 +197,6 @@ class FAQAgent(RAGAgent):
             logger.error(f"Error loading FAQs: {e}")
             return []
 
-    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-        if not chat_history:
-            chat_history = []
-        return self.chain.invoke({"question": message, "chat_history": chat_history})
 
 
 class EligibilityAgent(AbstractAgent):
@@ -238,20 +259,150 @@ class EligibilityAgent(AbstractAgent):
         return self.chain.invoke({"msgs": [message], "chat_history": chat_history})
 
 
-class ProblemSolverAgent(AbstractAgent):
-    def __init__(self, model_name: Optional[SupportedModel]):
-        super().__init__(model_name)
+@tool
+def search_errors_in_db(
+    code: Optional[str] = None,
+    category: Optional[str] = None,
+    subcategory: Optional[str] = None,
+    search_keys: Optional[str] = None,
+    limit: int = 20,
+) -> List[dict]:
+    """
+    Search for errors based on code, category, subcategory, or search keys.
+    Useful when you **DO** have error code to look up answer and no description of error.
 
-    def answer_question(self, message: HumanMessage, chat_history: List[BaseMessage]) -> str:
-        # Check if eligibility has been confirmed in the chat history
-        eligibility_confirmed = any(
-            "Final Answer. Je confirme l'éligibilité" in message.content for message in chat_history
-        )
+    Args:
+    - code (Optional[str]): The error code to search for.
+    - category (Optional[str]): The error category to search for.
+    - subcategory (Optional[str]): The error subcategory to search for.
+    - search_keys (Optional[str]): The search keys to search for.
+    - limit (int): The maximum number of results to return.
 
-        if not eligibility_confirmed:
-            return ("Final Answer: L'éligibilité n'a pas été confirmée. "
-                    "Veuillez compléter la vérification d'éligibilité avant de poser des questions sur l'ouverture de compte.")
+    Returns:
+    - List[dict]: A list of dictionaries representing the matching errors.
+    """
+    conn = sqlite3.connect('data/parsed/error_db.sqlite')
+    cursor = conn.cursor()
 
-        # Provide an answer only if the question relates to account opening problems after eligibility is confirmed
-        response = self.model.chat([HumanMessage(content="Répond au problème lié à l'ouverture de compte: " + message.content)])
-        return response.content
+    query = "SELECT * FROM errors WHERE 1 = 1"
+    params = []
+
+    if code:
+        query += " AND code = ?"
+        params.append(code)
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+    if subcategory:
+        query += " AND subcategory = ?"
+        params.append(subcategory)
+    if search_keys:
+        query += " AND search_keys LIKE ?"
+        params.append(f"%{search_keys}%")
+
+    query += " LIMIT ?"
+    params.append(limit)
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    column_names = [column[0] for column in cursor.description]
+    results = [dict(zip(column_names, row)) for row in rows]
+
+    cursor.close()
+    conn.close()
+
+    return results
+
+
+@tool
+def search_errors_in_vectordb(
+    problem: str
+) -> str:
+    """
+    Search for errors based on description, details, diagnostic questions, or resolution by semantic similarities.
+    Useful when you **DON'T** have error code to look up answer but have description of the problem.
+    """
+    model = initiate_model(SupportedModel.DEFAULT)
+
+    vectorstore = Chroma(
+        collection_name="errors"
+    )
+    retriever = vectorstore.as_retriever()
+
+    template = """Answer the question based only on the following context:
+            {context}
+
+            Question: 
+            {question}
+            """
+    prompt = ChatPromptTemplate.from_template(template)
+    output_parser = StrOutputParser()
+    chain = RunnableMap({
+        "context": lambda x: retriever.invoke(x["question"]),
+        "question": lambda x: x["question"],
+    }) | prompt | model | output_parser
+
+    return chain.invoke(problem)
+
+# HYBRID database like weaviate would be a nice solution.
+class ProblemSolverAgent(RAGAgent):
+
+    def __init__(self,
+                 model_name: Optional[SupportedModel],
+                 persist_directory: str,
+                 problem_directory: str,
+                 ):
+
+        self.problem_directory = problem_directory
+        super().__init__(model_name=model_name, collection_name="errors", persist_directory=persist_directory)
+
+    def _initiate_docs(self) -> Optional[List[Document]]:
+        try:
+            logger.debug("Initiating Docs")
+            # Ensure the JSON file path is correct
+            error_db_file_path = os.path.join(self.problem_directory, 'error_db.json')
+
+            # Load data from the JSON file
+            with open(error_db_file_path, 'r', encoding='utf-8') as file:
+                error_db = json.load(file)
+
+                error_items = [ErrorItem(**item) for item in error_db["errors"]]
+
+                # Extract and process each entry to create documents
+                return [
+                    Document(
+                        page_content=(
+                            f"Code: {entry.code}\n"
+                            f"Category: {entry.category}\n"
+                            f"Subcategory: {entry.subcategory}\n"
+                            f"Description: {entry.description}\n"
+                            f"Details: {entry.details}\n"
+                            f"Diagnostic Questions: {', '.join(entry.diagnostic_questions)}\n"
+                            f"Resolution: {entry.resolution}\n"
+                            f"Search Keys: {', '.join(entry.search_keys)}"
+                        ),
+                        metadata={
+                            "code": entry.code,
+                            "category": entry.category,
+                            "subcategory": entry.subcategory,
+                            #"search_keys": entry.search_keys
+                        }
+                    ) for entry in error_items
+                ]
+
+        except Exception as e:
+            # Log the error and return an empty list
+            logger.error(f"Error loading error database: {e}")
+            return []
+
+    def _initiate_agent_chain(self) -> RunnableSerializable:
+        lc_tools = [search_errors_in_db, search_errors_in_vectordb]
+
+        prompt = hub.pull("hwchase17/structured-chat-agent")
+
+        agent = create_structured_chat_agent(self.model, lc_tools, prompt)
+        # Create the agent executor
+        agent_executor = AgentExecutor(agent=agent, tools=lc_tools, verbose=True, handle_parsing_errors=True)
+
+        # Test the agent executor
+        return agent_executor
