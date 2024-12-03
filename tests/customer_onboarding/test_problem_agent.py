@@ -10,7 +10,7 @@ from langsmith.evaluation import LangChainStringEvaluator
 from customer_onboarding.agents import ProblemSolverAgent
 from customer_onboarding.commons import SupportedModel, initiate_model
 
-default_model = SupportedModel.GPT_4_O
+default_model = SupportedModel.DEFAULT
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -47,20 +47,20 @@ def test_problem_solver_agent():
     # assert "nouveau code" in ai_msg_1.lower()
 
 
-# def test_problem_solver_agent_langsmith():
-#
-#     agent = ProblemSolverAgent(model_name=default_model,
-#                      persist_directory=_persist_directory,
-#                      problem_directory=_problem_directory)
-#
-#     prompt = hub.pull("customer-onboarding-evaluator")
-#     eval_llm = initiate_model(model_name=default_model)
-#
-#     qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})
-#
-#     experiments_results = evaluate(
-#         agent.runnable_chain,
-#         data="FAQ-datasets-25-11-2024",
-#         evaluators=[qa_evaluator],
-#         experiment_prefix="test-faq-25-11-2024",
-#     )
+def test_problem_solver_agent_langsmith():
+
+    agent = ProblemSolverAgent(model_name=default_model,
+                     persist_directory=_persist_directory,
+                     problem_directory=_problem_directory)
+
+    prompt = hub.pull("customer-onboarding-evaluator")
+    eval_llm = initiate_model(model_name=default_model)
+
+    qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})
+
+    experiments_results = evaluate(
+        agent.runnable_chain,
+        data="PROBLEM-datasets-03-12-2024",
+        evaluators=[qa_evaluator],
+        experiment_prefix="test-problem",
+    )

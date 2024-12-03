@@ -10,7 +10,7 @@ from langsmith.evaluation import LangChainStringEvaluator
 from customer_onboarding.agents import FAQAgent
 from customer_onboarding.commons import SupportedModel, initiate_model
 
-default_model = SupportedModel.GPT_4_O
+default_model = SupportedModel.DEFAULT
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -58,5 +58,5 @@ def test_faq_agent_langsmith():
         agent.runnable_chain,
         data="FAQ-datasets-25-11-2024",
         evaluators=[qa_evaluator],
-        experiment_prefix="test-faq-25-11-2024",
+        experiment_prefix="test-faq",
     )

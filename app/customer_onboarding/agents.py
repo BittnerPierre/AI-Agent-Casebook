@@ -11,7 +11,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap
@@ -87,6 +87,10 @@ class AbstractAgent(abc.ABC, RunnableMixin):
         return self.chain.invoke(input_data) if self.chain else None
 
 
+def format_docs(docs):
+    return "\n\n".join([d.page_content for d in docs])
+
+
 class RAGAgent(AbstractAgent):
 
     # TODO add a in memory vectorstore...
@@ -122,26 +126,13 @@ class RAGAgent(AbstractAgent):
             collection_name=self._collection_name
             # persist_directory=self.persist_directory
         )
-
-        # try:
-        #     logger.debug("Checking existing VectorStore for persistence")
-        #     persistent_client = PersistentClient(path=self.persist_directory)
-        #     vectorstore = Chroma(client=persistent_client, collection_name="my_collection",
-        #                          embedding_function=self.embeddings)
-        #     logger.info("Loaded existing vectorstore")
-        # except Exception as e:
-        #     logger.debug("Existing VectorStore not found or initialization failed, creating a new one")
-        #     vectorstore = Chroma.from_documents(
-        #         documents=self.docs,
-        #         embedding=self.embeddings,
-        #         persist_directory=self.persist_directory
-        #     )
-        #    logger.info("Created and persisted new vectorstore")
         return vectorstore
 
     def _initiate_retriever(self) -> VectorStoreRetriever:
         logger.debug("Initiating Retriever")
-        retriever = self.vectorstore.as_retriever()
+        retriever = self.vectorstore.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"score_threshold": 0.5})
         return retriever
 
     def _initiate_agent_chain(self) -> RunnableSerializable:
@@ -155,15 +146,16 @@ class RAGAgent(AbstractAgent):
         """
         prompt = ChatPromptTemplate.from_template(template)
         output_parser = StrOutputParser()
+
         return RunnableMap({
-            "context": lambda x: self.retriever.invoke(x["question"]),
+            "context": lambda x: '\n\n'.join([doc.page_content for doc in self.retriever.invoke(x["question"])]),
             "question": lambda x: x["question"],
         }) | prompt | self.model | output_parser
 
     def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
         if not chat_history:
             chat_history = []
-        return self.chain.invoke({"input": message, "chat_history": chat_history})
+        return self.chain.invoke({"question": message, "chat_history": chat_history})
 
 
 class FAQAgent(RAGAgent):
@@ -196,7 +188,6 @@ class FAQAgent(RAGAgent):
             # TODO should not silently failed.
             logger.error(f"Error loading FAQs: {e}")
             return []
-
 
 
 class EligibilityAgent(AbstractAgent):
@@ -316,37 +307,56 @@ def search_errors_in_db(
 
 @tool
 def search_errors_in_vectordb(
-    problem: str
+    question: str
 ) -> str:
     """
     Search for errors based on description, details, diagnostic questions, or resolution by semantic similarities.
     Useful when you **DON'T** have error code to look up answer but have description of the problem.
     """
     model = initiate_model(SupportedModel.DEFAULT)
-
+    embeddings = initiate_embeddings(SupportedModel.DEFAULT)
     vectorstore = Chroma(
-        collection_name="errors"
+        collection_name="errors",
+        embedding_function=embeddings
     )
-    retriever = vectorstore.as_retriever()
+    retriever = vectorstore.as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={"score_threshold": 0.5})
 
-    template = """Answer the question based only on the following context:
+    template = """Answer the question based only on the following context.
+            
+            # Instructions
+            - Respond in the same language as the question.
+            - It is OK if context is not in the same language as the question.
+            - DO NOT use your knowledge to answer. ONLY the context.
+            - If context is empty, say you cannot answer but do not say your context is empty.
+            
+            # Context:
+            ####
             {context}
 
-            Question: 
+            # Question: 
+            ####
             {question}
             """
     prompt = ChatPromptTemplate.from_template(template)
     output_parser = StrOutputParser()
     chain = RunnableMap({
-        "context": lambda x: retriever.invoke(x["question"]),
+        "context": lambda x: '\n\n'.join([doc.page_content for doc in retriever.invoke(x["question"])]),
         "question": lambda x: x["question"],
     }) | prompt | model | output_parser
 
-    return chain.invoke(problem)
+    return chain.invoke({"question": question})
 
-# HYBRID database like weaviate would be a nice solution.
+
 class ProblemSolverAgent(RAGAgent):
-
+    """
+    Problem Solver Agent use function calling with SQLite for code error lookup within a SQLite DB
+    and retrieval search from vector db.
+    HYBRID database like weaviate would be a nice solution here but I wanted to showcase a SQL Query
+    We don't use a RAG chain but use function calling instead.
+    We are using the RAGAgent to load error_db.json and initiate the vector database that is use as tool.
+    """
     def __init__(self,
                  model_name: Optional[SupportedModel],
                  persist_directory: str,
@@ -385,7 +395,7 @@ class ProblemSolverAgent(RAGAgent):
                             "code": entry.code,
                             "category": entry.category,
                             "subcategory": entry.subcategory,
-                            #"search_keys": entry.search_keys
+                            # "search_keys": entry.search_keys
                         }
                     ) for entry in error_items
                 ]
@@ -406,3 +416,9 @@ class ProblemSolverAgent(RAGAgent):
 
         # Test the agent executor
         return agent_executor
+
+
+    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
+        if not chat_history:
+            chat_history = []
+        return self.chain.invoke({"input": message, "chat_history": chat_history})
