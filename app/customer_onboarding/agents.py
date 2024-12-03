@@ -138,11 +138,20 @@ class RAGAgent(AbstractAgent):
     def _initiate_agent_chain(self) -> RunnableSerializable:
         logger.debug("Initiating Assistant")
         # TODO revoir le prompt il utilise ses propres connaissances.
-        template = """Answer the question based only on the following context:
+        template = """Answer the question between triple single quotes based only on the following <Context/>.
+        
+        # Instructions
+        - Respond in the same language as the question.
+        - It is OK if context is not in the same language as the question.
+        - DO NOT use your knowledge to answer. ONLY the context.
+        - If context is empty, say you cannot answer but do not say your context is empty.
+        
+        <Context>
         {context}
-
-        Question: 
-        {question}
+        </Context>
+        
+        # Question: 
+        '''{question}'''
         """
         prompt = ChatPromptTemplate.from_template(template)
         output_parser = StrOutputParser()
@@ -323,7 +332,7 @@ def search_errors_in_vectordb(
         search_type="similarity_score_threshold",
         search_kwargs={"score_threshold": 0.5})
 
-    template = """Answer the question based only on the following context.
+    template = """Answer the question between triple single quotes based only on the following <Context/>.
             
             # Instructions
             - Respond in the same language as the question.
@@ -331,13 +340,12 @@ def search_errors_in_vectordb(
             - DO NOT use your knowledge to answer. ONLY the context.
             - If context is empty, say you cannot answer but do not say your context is empty.
             
-            # Context:
-            ####
+            <Context>
             {context}
-
+            </Context>
+            
             # Question: 
-            ####
-            {question}
+            '''{question}'''
             """
     prompt = ChatPromptTemplate.from_template(template)
     output_parser = StrOutputParser()

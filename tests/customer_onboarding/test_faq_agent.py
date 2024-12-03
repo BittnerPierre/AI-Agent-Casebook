@@ -19,6 +19,10 @@ _persist_directory = config.get('FAQAgent', 'persist_directory')
 
 
 def test_faq_agent():
+    """
+    This is to show that it is better to handle test with a dedicated framework...
+    Returns:
+    """
 
     agent = FAQAgent(model_name=default_model,
                      persist_directory=_persist_directory,
@@ -39,8 +43,7 @@ def test_faq_agent():
     ai_msg_1 = agent.answer_question(first_message, chat_history)
     print(ai_msg_1)
 
-    assert "désolé" in ai_msg_1.lower()
-    assert "me donner des conseils sur les destinations de voyage"
+    assert "je ne peux pas répondre à cette question." in ai_msg_1.lower()
 
 
 def test_faq_agent_langsmith():
