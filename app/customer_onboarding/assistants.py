@@ -1,6 +1,5 @@
 import configparser
 import logging
-import os
 import sys
 from typing import Optional, Annotated
 
@@ -14,7 +13,7 @@ from langchain_core.tools import tool
 
 from dotenv import load_dotenv, find_dotenv
 
-from customer_onboarding.agents import FAQAgent, EligibilityAgent
+from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
 from customer_onboarding.commons import initiate_model, SupportedModel
 from customer_onboarding.logger import setup_logger
 
@@ -23,10 +22,7 @@ logger = setup_logger(__name__, level=logging.INFO)
 
 
 # TODO currently there is an issue with mistral due to reaching limit while langchain batch embeddings
-# "mistral-large-latest"
 default_model = SupportedModel.GPT_4_O
-# vdb_dir = '../...data/chroma/'
-# faq_dir = "../../data/parsed"
 
 __structured_chat_agent__ = '''Respond to the human as helpfully and accurately as possible. 
     You have access to the following tools:
@@ -115,6 +111,7 @@ def get_message_history(session_id: str) -> BaseChatMessageHistory:
 
 def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
                                          faq_directory: str,
+                                         problem_directory: str,
                                          persist_directory: str
                                          ) -> RunnableSerializable:
     human = '''Input: {input}
@@ -135,12 +132,12 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
 
     llm = initiate_model(model_name)
 
-    faq_agent = FAQAgent(model_name=default_model, faq_directory= faq_directory, persist_directory=persist_directory)
+    faq_agent = FAQAgent(model_name=default_model, faq_directory=faq_directory, persist_directory=persist_directory)
 
     @tool
     def faq_answerer(
-            session_id: Annotated[str, "conversation session id of user"],
-            input: Annotated[str, "User input which could be a question or an answer."]
+        session_id: Annotated[str, "conversation session id of user"],
+        input: Annotated[str, "User input which could be a question or an answer."]
     ) -> str:
         """
         Useful IF you need to answer a general question on bank products and offers.
@@ -148,7 +145,7 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
         DO NOT USE MULTI-ARGUMENTS INPUT.
         """
         _chat_history = get_message_history(session_id)
-        return faq_agent.answer_question(HumanMessage(content=input), _chat_history.messages)
+        return faq_agent.answer_question(input, _chat_history.messages)
 
     eligibility_agent = EligibilityAgent(model_name=default_model)
 
@@ -167,21 +164,24 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
         return eligibility_agent.answer_question(input, _chat_history.messages)
 
     # TODO make a real problem solver agent
-#    problem_solver_agent = ProblemSolverAgent()
+    problem_solver_agent = ProblemSolverAgent(model_name=default_model,
+                                              problem_directory=problem_directory,
+                                              persist_directory=persist_directory)
 
-    # @tool
-    # def problem_solver(
-    #         session_id: Annotated[str, "conversation session id of user"],
-    #         input: Annotated[str, "User input which could be a question or an answer."]
-    # ) -> str:
-    #     """
-    #     Useful IF you need to solve a user problem while he is trying to open on bank account.
-    #     You must provide user session_id and user input.
-    #     ONLY USE if eligibility of user has been confirmed.
-    #     DO NOT USE MULTI-ARGUMENTS INPUT.
-    #     """
-    #     chat_history = get_message_history(session_id)
-    #     return problem_solver_agent.answer_question(HumanMessage(content=input), chat_history.messages)
+    @tool
+    def problem_solver(
+            session_id: Annotated[str, "conversation session id of user"],
+            input: Annotated[str, "User input which could be a question or an answer."]
+    ) -> str:
+        """
+        Useful IF you need to solve a user problem while he is trying to open on bank account
+            or subscribe to a product or service.
+        You must provide user session_id and user input.
+        ONLY USE if eligibility of user has been confirmed.
+        DO NOT USE MULTI-ARGUMENTS INPUT.
+        """
+        chat_history = get_message_history(session_id)
+        return problem_solver_agent.answer_question(input, chat_history.messages)
 
     # THIS IS NOT WORKING : TypeError: 'RunnableSequence' object is not callable
     # faq_answerer = faq_agent.runnable_chain().as_tool(
@@ -195,7 +195,7 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
     #     arg_types={ "session_id": str, "input": str }
     # )
 
-    lc_tools = [faq_answerer, eligibility_checker] # problem_solver
+    lc_tools = [faq_answerer, eligibility_checker, problem_solver]
 
     llm.bind_tools(lc_tools)
 
@@ -230,9 +230,11 @@ if __name__ == "__main__":
     config.read('config.ini')
     _faq_directory = config.get('FAQAgent', 'faq_directory')
     _persist_directory = config.get('FAQAgent', 'persist_directory')
+    _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
 
     assistant = create_customer_onboarding_assistant(model_name=SupportedModel.DEFAULT,
                                                      faq_directory=_faq_directory,
+                                                     problem_directory=_problem_directory,
                                                      persist_directory=_persist_directory)
 
     chat_history = [
