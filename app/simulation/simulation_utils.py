@@ -2,15 +2,18 @@ import functools
 from typing import Annotated, Any, Callable, Dict, List, Optional, Union
 
 from langchain_community.adapters.openai import convert_message_to_dict
-from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_core.runnables import chain as as_runnable
 from langchain_openai import ChatOpenAI
+from langgraph.pregel.io import AddableValuesDict
 from typing_extensions import TypedDict
 
 from langgraph.graph import END, StateGraph, START
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 def langchain_to_openai_messages(messages: List[BaseMessage]):
     """
@@ -153,13 +156,164 @@ def _invoke_simulated_user(state: SimulationState, simulated_user: Runnable):
     return runnable.invoke(inputs)
 
 
+# def _swap_roles(state: SimulationState):
+#     new_messages = []
+#     logging.debug(f"#### Swap Role Start ####")
+#     inputs = state.get("inputs", {})
+#     logging.debug(f"State Inputs: {inputs}")
+#     for m in state["messages"]:
+#         logging.debug(f"Message Type: {type(m)}, Message Content: {getattr(m, 'content', None)}")
+#         if isinstance(m, AIMessage):
+#             # tool call: [{'name': 'eligibility_checker', 'args': {'session_id': '20240423083528', 'user_input': "Il est étudiant de 17 ans et n'a pas de compte à son nom"}, 'id': '7OE3A88Lf', 'type': 'tool_call'}].
+#             if isinstance(m.content, list) and any(
+#                     isinstance(item, dict) and item.get("type") == "tool_call" for item in m.content
+#             ):
+#                 logging.debug("Ignored AIMessage with tool call type in content.")
+#                 continue
+#             new_messages.append(HumanMessage(content=m.content))
+#         elif isinstance(m, HumanMessage):
+#             new_messages.append(AIMessage(content=m.content))
+#         # If m is AddableValuesDict, handle nested messages as before.
+#         # Adjust import statement according to the real path for AddableValuesDict.
+#         elif isinstance(m, AddableValuesDict):
+#             logging.debug("Ignored AddableValuesDict type message.")
+#             # Simply skip any AddableValuesDict instance
+#             continue
+#             # for key, value in m.items():
+#             #     if isinstance(value, AIMessage):
+#             #         new_messages.append(HumanMessage(content=value.content))
+#             #     elif isinstance(value, HumanMessage):
+#             #         new_messages.append(AIMessage(content=value.content))
+#             #     elif isinstance(value, list):
+#             #         for item in value:
+#             #             if isinstance(item, AIMessage):
+#             #                 new_messages.append(HumanMessage(content=item.content))
+#             #             elif isinstance(item, HumanMessage):
+#             #                 new_messages.append(AIMessage(content=item.content))
+#             #             else:
+#             #                 logging.debug(f"Unexpected item type in list: {type(item)}, ignoring the item.")
+#             #     else:
+#             #         logging.debug(f"Unexpected message type in AddableValuesDict: {type(value)}, ignoring the value.")
+#         elif isinstance(m, ToolMessage):  # Assuming ToolMessage is your tool message type
+#             logging.debug("Preserved ToolMessage type message.")
+#             continue
+#             # new_messages.append(m)  # Preserve tool messages as-is
+#         else:
+#             # Log and skip messages that are not AIMessage or HumanMessage
+#             logging.debug(f"Ignored message type: {type(m)}")
+#
+#     logging.debug(f"Return messages: {new_messages}")
+#     logging.debug(f"#### Swap Role END ####")
+#     return {
+#         "inputs": state.get("inputs", {}),
+#         "messages": new_messages,
+#     }
+
+# def _swap_roles(state: SimulationState):
+#     new_messages = []
+#     logging.debug(f"#### Swap Role Start ####")
+#     inputs = state.get("inputs", {})
+#     logging.debug(f"State Inputs: {inputs}")
+#
+#     # Iterate over all messages
+#     for m in state["messages"]:
+#         logging.debug(f"Message Type: {type(m)}, Message Content: {getattr(m, 'content', None)}")
+#
+#         if isinstance(m, HumanMessage):
+#             # Directly adding HumanMessage to new messages
+#             # new_messages.append(AIMessage(content=m.content))
+#             continue
+#         elif isinstance(m, AIMessage):
+#             # Adding AIMessage if it does not contain a tool call
+#             continue
+#             # if not (isinstance(m.content, list) and any(isinstance(item, dict) and item.get("type") == "tool_call" for item in m.content)):
+#             #     new_messages.append(HumanMessage(content=m.content))
+#
+#         elif isinstance(m, AddableValuesDict):
+#             # Properly handling AddableValuesDict
+#             logging.debug("Processing AddableValuesDict type message.")
+#             for item in m.get("messages", []):
+#                 if isinstance(item, HumanMessage):
+#                     new_messages.append(AIMessage(content=item.content))
+#                 elif isinstance(item, AIMessage):
+#                     # if not any(
+#                     #     isinstance(call, dict) and call.get("type") == "tool_call"
+#                     #     for call in item.additional_kwargs.get("tool_calls", [])
+#                     # ):
+#                     #     new_messages.append(HumanMessage(content=item.content))
+#                     if isinstance(item.content, list) and any(
+#                             isinstance(item2, dict) and item.get("type") == "tool_call" for item2 in item.content
+#                     ):
+#                         logging.debug("Ignored AIMessage with tool call type in content.")
+#                         continue
+#                     new_messages.append(HumanMessage(content=item.content))
+#                 # Continue preserving logic for other possible messages, like ToolMessage
+#         elif isinstance(m, ToolMessage):
+#             logging.debug("Ignored ToolMessage type message.")
+#             continue
+#         else:
+#             logging.debug(f"Ignored message type: {type(m)}")
+#
+#     logging.debug(f"Return messages: {new_messages}")
+#     logging.debug(f"#### Swap Role END ####")
+#     return {
+#         "inputs": state.get("inputs", {}),
+#         "messages": new_messages,
+#     }
+
 def _swap_roles(state: SimulationState):
     new_messages = []
+    logging.debug("#### Swap Role Start ####")
+    inputs = state.get("inputs", {})
+    logging.debug(f"State Inputs: {inputs}")
+
     for m in state["messages"]:
-        if isinstance(m, AIMessage):
-            new_messages.append(HumanMessage(content=m.content))
+        logging.debug(f"Message Type: {type(m)}, Message Content: {getattr(m, 'content', None)}")
+
+        if isinstance(m, HumanMessage):
+            if m.content.strip():
+                new_messages.append(AIMessage(content=m.content))
+            else:
+                logging.debug("Ignored HumanMessage with empty content.")
+
+        elif isinstance(m, AIMessage):
+            # Check if it's a tool call and skip if it is
+            if hasattr(m, 'tool_calls') and m.tool_calls:
+                logging.debug("Ignored AIMessage that is a tool call.")
+                continue
+
+            if m.content.strip():
+                new_messages.append(HumanMessage(content=m.content))
+            else:
+                logging.debug("Ignored AIMessage with empty content.")
+
+        elif isinstance(m, ToolMessage):
+            if m.content.strip():
+                new_messages.append(HumanMessage(content=m.content))
+            else:
+                logging.debug("Ignored ToolMessage with empty content.")
+
+        elif isinstance(m, AddableValuesDict):
+            messages = m.get("messages", [])
+            if messages and messages[0].content == (new_messages[-1].content if new_messages else ""):
+                messages = messages[1:]
+            logging.debug(f"Processing AddableValuesDict type message. Messages: {messages}")
+            for item in messages:
+                if isinstance(item, HumanMessage) and item.content.strip():
+                    new_messages.append(AIMessage(content=item.content))
+                elif isinstance(item, AIMessage):
+                    if (not hasattr(item, 'tool_calls') or not item.tool_calls) and item.content.strip():
+                        new_messages.append(HumanMessage(content=item.content))
+                    else:
+                        logging.debug("Ignored AIMessage with tool call or empty content.")
+                elif isinstance(item, ToolMessage) and item.content.strip():
+                    new_messages.append(HumanMessage(content=item.content))
+
         else:
-            new_messages.append(AIMessage(content=m.content))
+            logging.debug(f"Ignored message type: {type(m)}")
+
+    logging.debug(f"Return messages: {new_messages}")
+    logging.debug("#### Swap Role END ####")
     return {
         "inputs": state.get("inputs", {}),
         "messages": new_messages,

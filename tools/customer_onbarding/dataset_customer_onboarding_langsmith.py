@@ -9,8 +9,9 @@ load_dotenv(find_dotenv())
 client = Client()
 
 # Define dataset name and description
-DATASET_NAME = "ELIGIBILITY-datasets-26-11-2024"
-DESCRIPTION = "Dataset for red teaming testing eligibility agent"
+FILE_NAME = "dataset_customer_onboarding_simple.json"
+DATASET_NAME = "CUSTOMER-ONBOARDING-SIMPLE-datasets-04-12-2024"
+DESCRIPTION = "Simple Dataset for testing customer onboarding assistant"
 
 # Check if the dataset already exists
 datasets = list(client.list_datasets(dataset_name=DATASET_NAME))
@@ -27,7 +28,7 @@ else:
     print(f"Dataset '{DATASET_NAME}' created.")
 
 # Load examples from the JSON file
-with open('dataset_eligibility_red_teaming.json', 'r', encoding='utf-8') as file:
+with open(FILE_NAME, 'r', encoding='utf-8') as file:
     examples = json.load(file)
 
 # Retrieve existing examples from the dataset

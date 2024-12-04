@@ -1,0 +1,25 @@
+[
+  {
+    "inputs": {
+      "input": "Bonjour, je voudrais ouvrir un compte bancaire. Pouvez-vous m’aider ?",
+      "instructions": "Vous êtes une personne physique Française majeure, résident en France et disposant déjà d'un compte bancaire à votre nom dans une banque mutualiste. Vous souhaitez souscrire à la carte de crédit Gold pour payer à l'international. Vous n'avez pas recu d'email ou de SMS avec le code pendant la création de compte sur application mobile iOS."
+    },
+    "outputs": {
+      "output": ""
+    }
+  },
+  {
+    "inputs": {
+      "input": "Quelle est la différence entre une carte de CREDIT et une carte de DEBIT ?",
+      "instructions": "Vous cherchez à avoir des informations sur les cartes de paiement disponible. Vous ne souhaitez pas souscrire d'offre."
+    },
+    "outputs": null
+  },
+  {
+    "inputs": {
+      "input": "Bonjour, je dois ouvrir un compte bancaire rapidement.",
+      "instructions": "Vous êtes un étudiant français de 17 ans en Belgique. Vous devez absolument ouvrir un compte bancaire mais vous n'avez pas de compte en banque à votre nom pour le moment."
+    },
+    "outputs": null
+  }
+]
