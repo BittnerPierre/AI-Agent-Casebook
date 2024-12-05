@@ -1,10 +1,8 @@
 import configparser
-import sys
-import uuid
 from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel.io import AddableValuesDict
 from langsmith import Client, evaluate, aevaluate
@@ -25,24 +23,10 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-# Replace 'some_external_package' with the actual package name(s)
-logging.getLogger('langchain_core').setLevel(logging.WARNING)
-logging.getLogger('langchain_openai').setLevel(logging.WARNING)
-logging.getLogger('langchain_mistralai').setLevel(logging.WARNING)
-logging.getLogger('langsmith').setLevel(logging.WARNING)
-logging.getLogger('httpcore').setLevel(logging.WARNING)
-logging.getLogger('pydantic').setLevel(logging.WARNING)
-logging.getLogger('dotenv').setLevel(logging.WARNING)
-logging.getLogger('httpx').setLevel(logging.WARNING)
-logging.getLogger('chromadb').setLevel(logging.WARNING)
-logging.getLogger('openai').setLevel(logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
-
-
 
 _ = load_dotenv(find_dotenv())
 
-dataset_name = "CUSTOMER-ONBOARDING-SIMPLE-datasets-04-12-2024"
+dataset_name = "CUSTOMER-ONBOARDING-datasets-03-12-2024"
 client = Client()
 
 _config = configparser.ConfigParser()
@@ -50,11 +34,6 @@ _config.read('config.ini')
 _faq_directory = _config.get('FAQAgent', 'faq_directory')
 _persist_directory = _config.get('FAQAgent', 'persist_directory')
 _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
-
-# app = create_customer_onboarding_assistant(model_name=SupportedModel.DEFAULT,
-#                                                   faq_directory=_faq_directory,
-#                                                   problem_directory=_problem_directory,
-#                                                   persist_directory=_persist_directory)
 
 app = create_customer_onboarding_assistant_as_chain(model_name=SupportedModel.DEFAULT,
                                                     faq_directory=_faq_directory,
@@ -192,9 +171,3 @@ def xp_customer_onboarding():
     # average_score = resp.feedback_stats["did_succeed"]["avg"]
     # assert average_score > 0.8, f"Average feedback score is {average_score}, which is below the threshold of 0.8"
 
-
-if __name__ == "__main__":
-    load_dotenv(find_dotenv())
-
-    print(sys.path)
-    xp_customer_onboarding()

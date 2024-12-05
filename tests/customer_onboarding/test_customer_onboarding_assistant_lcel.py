@@ -6,11 +6,11 @@ from customer_onboarding.assistants import create_customer_onboarding_assistant_
 
 default_model = SupportedModel.DEFAULT
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-_faq_directory = config.get('FAQAgent', 'faq_directory')
-_persist_directory = config.get('FAQAgent', 'persist_directory')
-_problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
+_config = configparser.ConfigParser()
+_config.read('config.ini')
+_faq_directory = _config.get('FAQAgent', 'faq_directory')
+_persist_directory = _config.get('FAQAgent', 'persist_directory')
+_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
 
 customer_onboarding_assistant = create_customer_onboarding_assistant_as_chain(model_name=default_model,
                                                                               faq_directory=_faq_directory,
