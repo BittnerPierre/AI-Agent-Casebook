@@ -27,7 +27,7 @@ def test_problem_solver_agent():
     print("Test Problem 1 - OK - Answer")
     chat_history = []
     first_message = "Je n'ai pas recu d'email pour confirmer l'ouverture de mon compte."
-    ai_msg_1 = agent.answer_question(first_message, chat_history)
+    ai_msg_1 = agent.invoke(input={"input": [first_message], "chat_history": chat_history})
     print(ai_msg_1)
     # TODO student exercice, FAQ agent prompt should be fixed to not answer when no context is provided.
     # assert "spam" in ai_msg_1.lower()
@@ -41,7 +41,7 @@ def test_problem_solver_agent():
     print("Test Problem 3 - OK - Answer")
     chat_history = []
     first_message = "J'ai le code d'erreur CONN-SMS-002."
-    ai_msg_1 = agent.answer_question(first_message, chat_history)
+    ai_msg_1 = agent.invoke(input={"input": [first_message], "chat_history": chat_history})
     print(ai_msg_1)
 
     # assert "nouveau code" in ai_msg_1.lower()

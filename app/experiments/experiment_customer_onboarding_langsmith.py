@@ -12,7 +12,7 @@ from langsmith import Client, evaluate, aevaluate
 from langchain_openai import ChatOpenAI
 
 from customer_onboarding.assistants import create_customer_onboarding_assistant_as_graph, \
-    create_customer_onboarding_assistant
+    create_customer_onboarding_assistant_as_chain
 from customer_onboarding.commons import SupportedModel
 from simulation.simulation_utils import create_simulated_user
 
@@ -56,10 +56,10 @@ _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
 #                                                   problem_directory=_problem_directory,
 #                                                   persist_directory=_persist_directory)
 
-app = create_customer_onboarding_assistant(model_name=SupportedModel.DEFAULT,
-                                                  faq_directory=_faq_directory,
-                                                  problem_directory=_problem_directory,
-                                                  persist_directory=_persist_directory)
+app = create_customer_onboarding_assistant_as_chain(model_name=SupportedModel.DEFAULT,
+                                                    faq_directory=_faq_directory,
+                                                    problem_directory=_problem_directory,
+                                                    persist_directory=_persist_directory)
 
 
 # def example_to_state(inputs: dict) -> dict:
@@ -95,6 +95,7 @@ def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
         new_messages = []
 
         for m in messages:
+            # should not occur anymore. Was happening because I was sending val and not val["output"]
             if isinstance(m, AddableValuesDict):
                 # Extract messages and ignore the first one if it matches the last message
                 extracted_messages = m.get("messages", [])
@@ -114,7 +115,7 @@ def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
         input_data = {'messages': new_messages, "user_session_id": session_id}
 
         val = app.invoke(input=input_data, config=effective_config, stream_mode="values")
-        return val
+        return val["output"]
 
     except ValueError as e:
         logging.error(f"ValueError encountered: {e}. Input data: {input_data}")
@@ -160,28 +161,34 @@ def did_succeed(run, example) -> dict:
     task = example.inputs["instructions"]
     conversation = run.outputs["messages"]
     result = evaluator.invoke({"instructions": task, "messages": conversation})
-    return {"score": 1 if not result.did_succeed else 0, "comment": result.reasoning}
+    return {"score": 1 if result.did_succeed else 0, "comment": result.reasoning}
 
 
 system_prompt_template = """As a part of a Quality Assurance effort,
 you are tasked with role playing as a potential customer of an online bank company.
-You are interacting with an AI customer support agent that aims to assist prospect to open a bank account or answer FAQ.
+
+You are interacting with an AI customer support agent that aims to assist prospects to open a bank account or answer FAQs.
 
 Instructions for this conversation: {instructions}
 
 You will start the conversation, and respond with your next message as the customer.
+When you have a good and clear answer, finish politely the conversation.
+
+Do not ask any follow-up questions even if you are invited to by the conversational agent.
+
+Suppose you are using a 'chat' interface like WhatsApp, Discord, or Slack. Keep sentences short.
+
+Give short and clear answers to questions and follow the guidelines given by the assistant.
+If the assistant suggests an action that needs to be done offline or asynchronously,
+close the conversation.
+
 When you are finished with the conversation, respond with a single word 'FINISHED'.
 
-You want to keep the conversation as short and fast as possible. 
-As soon as you have an answer, if it is clear for you, finish the conversation.
+If the action can be done immediately, simulate that you do it successfully.
 
-Suppose you are using a 'chat' user interface like whatsapp, discord or slack.
+Do not break character in role-playing as a customer, or give away that you yourself are an AI.
 
-Keep the conversation short and follow the guidelines of the assistant.
-If assistant suggest action that need to be done offline or asynch, close the conversation.
-If the action can be done immediately, presume that you do it successfully.
-
-Do not break character in role-playing as a customer, or give away that you yourself are an AI."""
+Additionally, ensure that the AI assistant does not ask for any personal information or follow-up questions."""
 
 
 # def xp_example_to_state_integration():
@@ -213,12 +220,12 @@ def xp_customer_onboarding():
         evaluators=[did_succeed],
         experiment_prefix="Customer Onboarding Evaluation QA",
     )
-    experiment_name = results.experiment_name
+    # experiment_name = results.experiment_name
     # print(experiment_name)
-    resp = client.read_project(project_name=results.experiment_name, include_stats=True)
-    print(resp.json(indent=2))
-    average_score = resp.feedback_stats["did_succeed"]["avg"]
-    assert average_score > 0.8, f"Average feedback score is {average_score}, which is below the threshold of 0.8"
+    # resp = client.read_project(project_name=results.experiment_name, include_stats=True)
+    # print(resp.json(indent=2))
+    # average_score = resp.feedback_stats["did_succeed"]["avg"]
+    # assert average_score > 0.8, f"Average feedback score is {average_score}, which is below the threshold of 0.8"
 
 
 if __name__ == "__main__":

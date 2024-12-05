@@ -2,7 +2,7 @@ import abc
 import json
 import os
 import sqlite3
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from langchain import hub
 from langchain.agents import create_structured_chat_agent, AgentExecutor
@@ -11,10 +11,11 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, MessagesPlaceholder, \
+    HumanMessagePromptTemplate
+from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap, RunnableConfig
+from langchain_core.runnables.utils import Output, Input
 from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from pydantic import BaseModel, HttpUrl
@@ -47,11 +48,13 @@ class ErrorItem(BaseModel):
 
 class RunnableMixin:
     def __init__(self):
-        self.chain = None
+        self.chain: Optional[Runnable] = None
 
-    def invoke(self, input_data):
+    def invoke(
+            self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
+    ) -> Output:
         """Implementation for invoking the agent."""
-        return self.chain.invoke(input_data) if self.chain else None
+        return self.chain.invoke(input, config) if self.chain else None
 
 
 class AbstractAgent(abc.ABC, RunnableMixin):
@@ -78,13 +81,13 @@ class AbstractAgent(abc.ABC, RunnableMixin):
         """Expose a property to get the chain if available."""
         return self.chain
 
-    @abc.abstractmethod
-    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-        pass
+    # @abc.abstractmethod
+    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
+    #     pass
 
-    def invoke(self, input_data):
-        """Implement the Runnable interface to support invocation."""
-        return self.chain.invoke(input_data) if self.chain else None
+    # def invoke(self, input_data):
+    #     """Implement the Runnable interface to support invocation."""
+    #     return self.chain.invoke(input_data) if self.chain else None
 
 
 def format_docs(docs):
@@ -161,10 +164,10 @@ class RAGAgent(AbstractAgent):
             "question": lambda x: x["question"],
         }) | prompt | self.model | output_parser
 
-    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-        if not chat_history:
-            chat_history = []
-        return self.chain.invoke({"question": message, "chat_history": chat_history})
+    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
+    #     if not chat_history:
+    #         chat_history = []
+    #     return self.chain.invoke({"question": message, "chat_history": chat_history})
 
 
 class FAQAgent(RAGAgent):
@@ -208,11 +211,11 @@ class EligibilityAgent(AbstractAgent):
         logger.debug("Initiating Eligibility Assistant")
         system_prompt = """### Contexte
         Tu es un agent chargé de déterminer si un prospect est éligible à l'ouverture d'un compte bancaire.
-        Tu donnes des instructions à un assistant conversationnel qui traite directement avec l'utilisateur.
+        Tu réponds aux instructions d'un assistant conversationnel qui traite directement avec l'utilisateur.
         
         ### Processus
-        1. Pour valider l'éligibilité, il faut te transmettre le pays de résidence fiscale, la nationalité et 
-            vérifier si l'utilisateur possède d’un compte bancaire français à son nom.
+        1. Pour valider l'éligibilité, il faut te transmettre le pays de résidence fiscale, la nationalité, son age et 
+            vérifier si l'utilisateur possède d’un compte bancaire européen à son nom.
         2. Si on vous fournit des informations partielles, répondez par les informations manquante.
         3. Une fois TOUTES les informations transmises, tu vérifies les critères d'éligibilités:
             - Si une condition ne correspond pas aux règles métier d'éligibilité,
@@ -240,23 +243,31 @@ class EligibilityAgent(AbstractAgent):
         Assistant: "Non éligible. Cette offre est réservée aux personnes de nationalité française."
         """
 
+        human_prompt = '''Vérifie l'éligibilité en te basant uniquement sur les informations suivantes.
+                    Nationalité: {nationalite}
+                    Pays de résidence fiscale: {pays_de_residence_fiscale}
+                    Est titulaire d'un compte bancaire en UE: {est_titulaire_compte_bancaire}
+                    Age: {age}
+                    '''
+
         system_message = SystemMessagePromptTemplate.from_template(
             system_prompt
         )
+        human_message = HumanMessagePromptTemplate.from_template(human_prompt)
         prompt = ChatPromptTemplate.from_messages([
             system_message,
-            MessagesPlaceholder("chat_history"),
-            ("placeholder", "{msgs}")]
+            # MessagesPlaceholder("chat_history"),
+            human_message]
         )
         output_parser = StrOutputParser()
 
         # Assuming eligibility questions are different; adjust as necessary
         return prompt | self.model | output_parser
 
-    def answer_question(self, message: str, chat_history: list[BaseMessage]) -> str:
-        if not chat_history:
-            chat_history = []
-        return self.chain.invoke({"msgs": [message], "chat_history": chat_history})
+    # def answer_question(self, message: str, chat_history: list[BaseMessage]) -> str:
+    #     if not chat_history:
+    #         chat_history = []
+    #     return self.chain.invoke({"msgs": [message], "chat_history": chat_history})
 
 
 @tool
@@ -281,7 +292,8 @@ def search_errors_in_db(
     Returns:
     - List[dict]: A list of dictionaries representing the matching errors.
     """
-    conn = sqlite3.connect('data/parsed/error_db.sqlite')
+    # TODO should not be static
+    conn = sqlite3.connect('../data/parsed/error_db.sqlite')
     cursor = conn.cursor()
 
     query = "SELECT * FROM errors WHERE 1 = 1"
@@ -425,8 +437,7 @@ class ProblemSolverAgent(RAGAgent):
         # Test the agent executor
         return agent_executor
 
-
-    def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-        if not chat_history:
-            chat_history = []
-        return self.chain.invoke({"input": message, "chat_history": chat_history})
+    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
+    #     if not chat_history:
+    #         chat_history = []
+    #     return self.chain.invoke({"input": message, "chat_history": chat_history})

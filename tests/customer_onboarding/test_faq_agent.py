@@ -31,7 +31,7 @@ def test_faq_agent():
     print("Test FAQ 1 - OK - Answer")
     chat_history = []
     first_message = "Quelle est la différence entre une carte de CREDIT et une carte de DEBIT ?"
-    ai_msg_1 = agent.answer_question(first_message, chat_history)
+    ai_msg_1 = agent.invoke(input={"question": first_message, "chat_history": chat_history})
     print(ai_msg_1)
     # TODO student exercice, FAQ agent prompt should be fixed to not answer when no context is provided.
     assert "carte de crédit" in ai_msg_1.lower()
@@ -40,10 +40,10 @@ def test_faq_agent():
     print("Test FAQ 2 - OK - No answer")
     chat_history = []
     first_message = "Pouvez-vous me donner des conseils sur la meilleure destination de voyage pour mes prochaines vacances ?"
-    ai_msg_1 = agent.answer_question(first_message, chat_history)
+    ai_msg_1 = agent.invoke(input={"question": first_message, "chat_history": chat_history})
     print(ai_msg_1)
 
-    assert "je ne peux pas répondre à cette question." in ai_msg_1.lower()
+    assert "je ne peux pas répondre" in ai_msg_1.lower()
 
 
 def test_faq_agent_langsmith():

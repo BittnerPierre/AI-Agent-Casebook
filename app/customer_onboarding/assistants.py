@@ -14,6 +14,7 @@ from langchain_core.tools import tool
 from dotenv import load_dotenv, find_dotenv
 from langgraph.graph.graph import CompiledGraph
 from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt.chat_agent_executor import AgentState
 
 from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
 from customer_onboarding.commons import initiate_model, SupportedModel
@@ -37,6 +38,7 @@ __structured_chat_agent__ = '''Respond to the human as helpfully and accurately 
     - Keep conversation as short as possible.
     - Use tools to retrieve relevant information.
     - Do NOT make any reference to tools to user.
+    - Ask question to user if information are missing.
     - Do NOT give session_id, action_name, tool_name, token or any internal informations used for processing conversation.
     - ALWAYS includes a valid json blob to give the next action. No exceptions.
     - If a tool asked for additional information from user, "action" is "Final Answer" and
@@ -54,12 +56,11 @@ __structured_chat_agent__ = '''Respond to the human as helpfully and accurately 
       "action_input": "Final response to human"
     }}
     
-    - For tools, always include both 'session_id' and 'input' when calling tools. 
+    - For tools, always include 'input' when calling tools. 
     
     Format the action_input as:
     ```
     {{
-      "session_id": "<SESSION_ID>",
       "input": "<USER_INPUT>"
     }}
     ```
@@ -93,6 +94,26 @@ __structured_chat_agent__ = '''Respond to the human as helpfully and accurately 
     ```
     '''
 
+__langgraph_chat_agent__ = '''Respond to the user as helpfully and accurately as possible. 
+
+    # DIRECTIVES
+    - Only use information provided in the context. NEVER respond directly to question.
+    - Keep conversation as short as possible.
+    - Use tools to retrieve relevant or missing information.
+    - Ask question to user if information are missing.
+    - Do NOT make any reference to tools to user.
+    - Never mention to user: session_id, thread_id, action_name, tool_name,
+        token or any internal informations used for processing conversation.
+    '''
+
+__human__ = '''
+        Input:
+        {messages}
+
+        Agent Scratchpad:
+        {agent_scratchpad}
+        '''
+
 
 # Dictionary to store chat histories per session ID
 session_histories = {}
@@ -113,26 +134,11 @@ def get_message_history(session_id: str) -> BaseChatMessageHistory:
     return session_histories[session_id]
 
 
-def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
-                                         faq_directory: str,
-                                         problem_directory: str,
-                                         persist_directory: str
-                                         ) -> RunnableSerializable:
-    human = '''Input: {input}
-    
-            Session_id: {user_session_id}
-
-            Agent Scratchpad:
-            {agent_scratchpad}
-            '''
-
-    prompt = (ChatPromptTemplate.from_messages(
-        [
-            ("system", __structured_chat_agent__),
-            MessagesPlaceholder("chat_history", optional=True),
-            ("human", human),
-        ]
-    ))
+def create_customer_onboarding_assistant_as_chain(model_name: Optional[SupportedModel],
+                                                  faq_directory: str,
+                                                  problem_directory: str,
+                                                  persist_directory: str
+                                                  ) -> RunnableSerializable:
 
     llm = initiate_model(model_name)
 
@@ -140,52 +146,60 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
 
     @tool
     def faq_answerer(
-        session_id: Annotated[str, "conversation session id of user"],
+        # session_id: Annotated[str, "conversation session id of user"],
         input: Annotated[str, "User input which could be a question or an answer."]
     ) -> str:
         """
         Useful IF you need to answer a general question on bank products and offers.
-        You must provide user session_id and user input.
+        You must provide user input.
         DO NOT USE MULTI-ARGUMENTS INPUT.
         """
-        _chat_history = get_message_history(session_id)
-        return faq_agent.answer_question(input, _chat_history.messages)
+        # TODO session_id and message handling should disappear
+        # _chat_history = get_message_history(session_id).messages
+        # faq_agent.answer_question(input, _chat_history.messages)
+        return faq_agent.invoke(input={"question": input}) # , "chat_history": _chat_history
 
     eligibility_agent = EligibilityAgent(model_name=default_model)
 
     @tool
     def eligibility_checker(
-            session_id: Annotated[str, "conversation session id of user"],
-            input: Annotated[str, "User input which could be a question or an answer."]
-        ) -> str:
+            # session_id: Annotated[str, "conversation session id of user"],
+            # input: Annotated[str, "User input which could be a question or an answer."]
+            nationality: Annotated[str, "Nationality"],
+            country_of_tax_residence: Annotated[str, "Country of Tax Residence"],
+            has_an_european_bank_account: Annotated[bool, "Has an European bank account"],
+            age: Annotated[int, "Age"],
+    ) -> str:
         """
-        Useful IF you need to determine whether a user is eligible to open a bank account.
-        You must provide user session_id and user input.
-        If eligibility cannot be confirmed, gracefully inform the user and suggest they contact support.
+        MUST be used if you need to check ELIGIBILITY of user.
+        You must provide 'nationality', 'country_of_tax_residence', 'est_titulaire_compte_bancaire'.
+        If eligibility cannot be confirmed, gracefully inform the user and suggest to contact support.
         """
-        #         Do not interrupt or intervene during this process—wait for the Eligibility Agent to return a result.
-        _chat_history = get_message_history(session_id)
-        return eligibility_agent.answer_question(input, _chat_history.messages)
+        return eligibility_agent.invoke(input={"nationalite": nationality,
+                                               "pays_de_residence_fiscale": country_of_tax_residence,
+                                               "est_titulaire_compte_bancaire": has_an_european_bank_account,
+                                               "age": age})
 
-    # TODO make a real problem solver agent
     problem_solver_agent = ProblemSolverAgent(model_name=default_model,
                                               problem_directory=problem_directory,
                                               persist_directory=persist_directory)
 
     @tool
     def problem_solver(
-            session_id: Annotated[str, "conversation session id of user"],
+            # session_id: Annotated[str, "conversation session id of user"],
             input: Annotated[str, "User input which could be a question or an answer."]
     ) -> str:
         """
         Useful IF you need to solve a user problem while he is trying to open on bank account
             or subscribe to a product or service.
-        You must provide user session_id and user input.
+        You must provide user input.
         ONLY USE if eligibility of user has been confirmed.
         DO NOT USE MULTI-ARGUMENTS INPUT.
         """
-        chat_history = get_message_history(session_id)
-        return problem_solver_agent.answer_question(input, chat_history.messages)
+        # TODO session_id and message handling should disappear
+        # _chat_history = get_message_history(session_id).messages
+        # problem_solver_agent.answer_question(input, chat_history.messages)
+        return problem_solver_agent.invoke(input={"input": [input]}) #, "chat_history": _chat_history
 
     # THIS IS NOT WORKING : TypeError: 'RunnableSequence' object is not callable
     # faq_answerer = faq_agent.runnable_chain().as_tool(
@@ -203,6 +217,16 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
 
     llm.bind_tools(lc_tools)
 
+
+
+    prompt = (ChatPromptTemplate.from_messages(
+        [
+            ("system", __structured_chat_agent__),
+            MessagesPlaceholder("chat_history", optional=True),
+            ("human", __human__),
+        ]
+    ))
+
     agent = create_structured_chat_agent(llm, lc_tools, prompt)
 
     agent_executor = AgentExecutor(
@@ -216,7 +240,7 @@ def create_customer_onboarding_assistant(model_name: Optional[SupportedModel],
     customer_onboarding_assistant = RunnableWithMessageHistory(
         agent_executor,
         get_message_history,
-        input_messages_key="input",
+        input_messages_key="messages", # CHANGED HERE INPUT TO MESSAGES FOR LANGGRAPH COMPATIBILITY
         history_messages_key="chat_history",
         output_messages_key="output",
     )
@@ -228,21 +252,19 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
                                          problem_directory: str,
                                          persist_directory: str
                                          ) -> CompiledGraph:
-    human = '''Input: {input}
-
-            Session_id: {user_session_id}
-
-            Agent Scratchpad:
-            {agent_scratchpad}
-            '''
-
-    prompt = (ChatPromptTemplate.from_messages(
-        [
-            ("system", __structured_chat_agent__),
-            MessagesPlaceholder("chat_history", optional=True),
-            ("human", human),
-        ]
-    ))
+    # human = '''Input: {input}
+    #
+    #         Agent Scratchpad:
+    #         {agent_scratchpad}
+    #         '''
+    #
+    # prompt = (ChatPromptTemplate.from_messages(
+    #     [
+    #         ("system", __structured_chat_agent__),
+    #         MessagesPlaceholder("chat_history", optional=True),
+    #         ("human", human),
+    #     ]
+    # ))
 
     llm = initiate_model(model_name)
 
@@ -250,32 +272,38 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
 
     @tool
     def faq_answerer(
-            session_id: Annotated[str, "conversation session id of user"],
-            user_input: Annotated[str, "User input which could be a question or an answer."]
+            # session_id: Annotated[str, "conversation session id of user"],
+            input: Annotated[str, "User input which could be a question or an answer."]
     ) -> str:
         """
         Useful IF you need to answer a general question on bank products, offers and services.
-        You must provide 'session_id' and 'user_input'.
+        You must provide 'input'.
         DO NOT USE MULTI-ARGUMENTS INPUT.
         """
-        _chat_history = get_message_history(session_id)
-        return faq_agent.answer_question(user_input, _chat_history.messages)
+        # _chat_history = get_message_history(session_id).messages
+        return faq_agent.invoke(input={"question": input})
+                                      #, "chat_history": _chat_history})
 
     eligibility_agent = EligibilityAgent(model_name=default_model)
 
     @tool
     def eligibility_checker(
-            session_id: Annotated[str, "conversation session id of user"],
-            user_input: Annotated[str, "User input which could be a question or an answer."]
+            # session_id: Annotated[str, "conversation session id of user"],
+            # input: Annotated[str, "User input which could be a question or an answer."]
+            nationality: Annotated[str, "Nationality"],
+            country_of_tax_residence: Annotated[str, "Country of Tax Residence"],
+            has_an_european_bank_account: Annotated[bool, "Has an European bank account"],
+            age: Annotated[int, "Age"],
     ) -> str:
         """
         MUST be used if you need to check ELIGIBILITY of user.
-        You must provide 'session_id' and 'user_input'.
+        You must provide 'nationality', 'country_of_tax_residence', 'est_titulaire_compte_bancaire'.
         If eligibility cannot be confirmed, gracefully inform the user and suggest to contact support.
         """
-        #         Do not interrupt or intervene during this process—wait for the Eligibility Agent to return a result.
-        _chat_history = get_message_history(session_id)
-        return eligibility_agent.answer_question(user_input, _chat_history.messages)
+        return eligibility_agent.invoke(input={"nationalite": nationality,
+                                               "pays_de_residence_fiscale": country_of_tax_residence,
+                                               "est_titulaire_compte_bancaire": has_an_european_bank_account,
+                                               "age": age})
 
     # TODO make a real problem solver agent
     problem_solver_agent = ProblemSolverAgent(model_name=default_model,
@@ -284,18 +312,18 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
 
     @tool
     def problem_solver(
-            session_id: Annotated[str, "conversation session id of user"],
-            user_input: Annotated[str, "User input which could be a question or an answer."]
+            # session_id: Annotated[str, "conversation session id of user"],
+            input: Annotated[str, "User input which could be a question or an answer."]
     ) -> str:
         """
         Useful IF you need to solve a user problem while he is trying to open a bank account
             or subscribe to a product or service.
-        You must provide user 'session_id' and 'user_input'.
+        You must provide 'input'.
         ONLY USE if eligibility of user has been confirmed.
         DO NOT USE MULTI-ARGUMENTS INPUT.
         """
-        chat_history = get_message_history(session_id)
-        return problem_solver_agent.answer_question(user_input, chat_history.messages)
+        # _chat_history = get_message_history(session_id).messages
+        return problem_solver_agent.invoke(input={"input": input})
 
     lc_tools = [faq_answerer, eligibility_checker, problem_solver]
 
@@ -303,7 +331,16 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
 
     memory = MemorySaver()
 
-    agent = create_react_agent(model=llm, tools=lc_tools, checkpointer=memory)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", __langgraph_chat_agent__),
+        MessagesPlaceholder("messages", optional=True),
+    ])
+
+    def format_for_model(state: AgentState):
+        # You can do more complex modifications here
+        return prompt.invoke({"messages": state["messages"]})
+
+    agent = create_react_agent(model=llm, tools=lc_tools, checkpointer=memory, state_modifier=format_for_model)
 
     return agent
 
