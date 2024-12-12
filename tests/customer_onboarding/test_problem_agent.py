@@ -17,10 +17,11 @@ config.read('config.ini')
 _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
 _persist_directory = config.get('ProblemSolverAgent', 'persist_directory')
 
+model = initiate_model(default_model)
 
 def test_problem_solver_agent():
 
-    agent = ProblemSolverAgent(model_name=default_model,
+    agent = ProblemSolverAgent(model=model,
                                problem_directory=_problem_directory,
                                persist_directory=_persist_directory)
 
@@ -49,7 +50,7 @@ def test_problem_solver_agent():
 
 def test_problem_solver_agent_langsmith():
 
-    agent = ProblemSolverAgent(model_name=default_model,
+    agent = ProblemSolverAgent(model=model,
                      persist_directory=_persist_directory,
                      problem_directory=_problem_directory)
 
@@ -59,7 +60,7 @@ def test_problem_solver_agent_langsmith():
     qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})
 
     experiments_results = evaluate(
-        agent.runnable_chain,
+        agent.runnable,
         data="PROBLEM-datasets-03-12-2024",
         evaluators=[qa_evaluator],
         experiment_prefix="test-problem",

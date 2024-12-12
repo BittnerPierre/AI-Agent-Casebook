@@ -2,7 +2,7 @@ import abc
 import json
 import os
 import sqlite3
-from typing import Optional, List, Any
+from typing import Optional, List, Any, TypedDict, Annotated
 
 from langchain import hub
 from langchain.agents import create_structured_chat_agent, AgentExecutor
@@ -19,6 +19,7 @@ from langchain_core.runnables.utils import Output, Input
 from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from pydantic import BaseModel, HttpUrl
+from langgraph.graph.message import AnyMessage, add_messages
 
 from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
 from customer_onboarding.logger import logger
@@ -48,38 +49,61 @@ class ErrorItem(BaseModel):
 
 class RunnableMixin:
     def __init__(self):
-        self.chain: Optional[Runnable] = None
+        self.runnable: Optional[Runnable] = None
 
     def invoke(
             self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
     ) -> Output:
         """Implementation for invoking the agent."""
-        return self.chain.invoke(input, config) if self.chain else None
+        return self.runnable.invoke(input, config) if self.runnable else None
+
+
+class State(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
 
 
 class AbstractAgent(abc.ABC, RunnableMixin):
 
-    def __init__(self, model_name: Optional[SupportedModel] = None):
+    def __init__(self, model: BaseChatModel): #, model_name: Optional[SupportedModel] = None
         """
         Initialize the AbstractAgent.
 
         :param model_name: Type of the language model to use.
         """
         super().__init__()
-        self.model_name = model_name
-        self.model = self._initiate_model()
+        # self.model_name = model_name
+        self.model = model  # self._initiate_model()
 
-    def _initiate_model(self) -> Optional[BaseChatModel]:
-        return initiate_model(self.model_name)
+    # def _initiate_model(self) -> Optional[BaseChatModel]:
+    #     return initiate_model(self.model_name)
 
     @abc.abstractmethod
     def _initiate_agent_chain(self) -> RunnableSerializable:
         pass
 
     @property
-    def runnable_chain(self) -> Optional[Runnable]:
+    def _runnable(self) -> Optional[Runnable]:
         """Expose a property to get the chain if available."""
-        return self.chain
+        return self.runnable
+
+    def __call__(self, state: State, config: RunnableConfig):
+        while True:
+            configuration = config.get("configurable", {})
+            passenger_id = configuration.get("passenger_id", None)
+            state = {**state, "user_info": passenger_id}
+            result = self.runnable.invoke(state)
+            # If the LLM happens to return an empty response, we will re-prompt it
+            # for an actual response.
+            if not result.tool_calls and (
+                not result.content
+                or isinstance(result.content, list)
+                and not result.content[0].get("text")
+            ):
+                messages = state["messages"] + [("user", "Respond with a real output.")]
+                state = {**state, "messages": messages}
+            else:
+                break
+        return {"messages": result}
 
     # @abc.abstractmethod
     # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
@@ -98,21 +122,22 @@ class RAGAgent(AbstractAgent):
 
     # TODO add a in memory vectorstore...
     def __init__(self,
-                 model_name: Optional[SupportedModel],
+                 model: BaseChatModel,  # model_name: Optional[SupportedModel],
+                 embeddings: Embeddings,
                  collection_name: Optional[str],
                  persist_directory: str):
-        super().__init__(model_name=model_name)
+        super().__init__(model=model)  # #model_name=model_name
         self._collection_name = collection_name or _RAG_AGENT_DEFAULT_COLLECTION_NAME
         self.persist_directory = persist_directory
         # RAG classic
-        self.embeddings = self._initiate_embeddings()
+        self.embeddings = embeddings  # self._initiate_embeddings()
         self.docs = self._initiate_docs()
         self.vectorstore = self._initiate_vectorstore()
         self.retriever = self._initiate_retriever()
-        self.chain = self._initiate_agent_chain()
+        self.runnable = self._initiate_agent_chain()
 
-    def _initiate_embeddings(self) -> Optional[Embeddings]:
-        return initiate_embeddings(self.model_name)
+    # def _initiate_embeddings(self) -> Optional[Embeddings]:
+    #     return initiate_embeddings(self.model_name)
 
     @abc.abstractmethod
     def _initiate_docs(self) -> Optional[List[Document]]:
@@ -172,13 +197,15 @@ class RAGAgent(AbstractAgent):
 
 class FAQAgent(RAGAgent):
     def __init__(self,
-                 model_name: Optional[SupportedModel],
+                 model: BaseChatModel,
+                 embeddings: Embeddings,
+                 # model_name: Optional[SupportedModel],
                  persist_directory: str,
                  faq_directory: str,
                  ):
 
         self.faq_directory = faq_directory
-        super().__init__(model_name=model_name, collection_name="faq", persist_directory=persist_directory)
+        super().__init__(model=model, embeddings=embeddings, collection_name="faq", persist_directory=persist_directory)
 
     def _initiate_docs(self) -> list[Document]:
         try:
@@ -203,9 +230,9 @@ class FAQAgent(RAGAgent):
 
 
 class EligibilityAgent(AbstractAgent):
-    def __init__(self, model_name: Optional[SupportedModel] = None):
-        super().__init__(model_name=model_name)
-        self.chain = self._initiate_agent_chain()
+    def __init__(self, model: BaseChatModel):
+        super().__init__(model=model)
+        self.runnable = self._initiate_agent_chain()
 
     def _initiate_agent_chain(self) -> RunnableSerializable:
         logger.debug("Initiating Eligibility Assistant")
@@ -378,13 +405,14 @@ class ProblemSolverAgent(RAGAgent):
     We are using the RAGAgent to load error_db.json and initiate the vector database that is use as tool.
     """
     def __init__(self,
-                 model_name: Optional[SupportedModel],
+                 model: BaseChatModel,
+                 embeddings: Embeddings,
                  persist_directory: str,
                  problem_directory: str,
                  ):
 
         self.problem_directory = problem_directory
-        super().__init__(model_name=model_name, collection_name="errors", persist_directory=persist_directory)
+        super().__init__(model=model, embeddings=embeddings, collection_name="errors", persist_directory=persist_directory)
 
     def _initiate_docs(self) -> Optional[List[Document]]:
         try:

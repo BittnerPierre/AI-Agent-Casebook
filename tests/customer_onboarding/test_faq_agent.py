@@ -17,6 +17,7 @@ config.read('config.ini')
 _faq_directory = config.get('FAQAgent', 'faq_directory')
 _persist_directory = config.get('FAQAgent', 'persist_directory')
 
+model = initiate_model(default_model)
 
 def test_faq_agent():
     """
@@ -24,7 +25,7 @@ def test_faq_agent():
     Returns:
     """
 
-    agent = FAQAgent(model_name=default_model,
+    agent = FAQAgent(model=model,
                      persist_directory=_persist_directory,
                      faq_directory=_faq_directory)
 
@@ -48,7 +49,7 @@ def test_faq_agent():
 
 def test_faq_agent_langsmith():
 
-    agent = FAQAgent(model_name=default_model,
+    agent = FAQAgent(model=model,
                      persist_directory=_persist_directory,
                      faq_directory=_faq_directory)
 
@@ -58,7 +59,7 @@ def test_faq_agent_langsmith():
     qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})
 
     experiments_results = evaluate(
-        agent.runnable_chain,
+        agent.runnable,
         data="FAQ-datasets-25-11-2024",
         evaluators=[qa_evaluator],
         experiment_prefix="test-faq",

@@ -4,7 +4,7 @@ from dotenv import load_dotenv, find_dotenv
 from langsmith import Client, evaluate
 
 from customer_onboarding.agents import EligibilityAgent
-from customer_onboarding.assistants import (create_customer_onboarding_assistant_as_graph,
+from customer_onboarding.assistants import (create_customer_onboarding_assistant_as_react_graph,
                                             create_customer_onboarding_assistant_as_chain)
 
 from langchain_openai import ChatOpenAI
@@ -31,10 +31,7 @@ _faq_directory = config.get('FAQAgent', 'faq_directory')
 _persist_directory = config.get('FAQAgent', 'persist_directory')
 _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
 
-customer_onboarding_assistant = create_customer_onboarding_assistant_as_chain(model_name=default_model,
-                                                                              faq_directory=_faq_directory,
-                                                                              problem_directory=_problem_directory,
-                                                                              persist_directory=_persist_directory)
+customer_onboarding_assistant = create_customer_onboarding_assistant_as_chain(model_name=default_model)
 
 
 def assistant(messages: list) -> str:

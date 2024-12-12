@@ -1,4 +1,5 @@
 import configparser
+import uuid
 from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
@@ -9,7 +10,7 @@ from langsmith import Client, evaluate, aevaluate
 
 from langchain_openai import ChatOpenAI
 
-from customer_onboarding.assistants import create_customer_onboarding_assistant_as_graph, \
+from customer_onboarding.assistants import create_customer_onboarding_assistant_as_react_graph, \
     create_customer_onboarding_assistant_as_chain
 from customer_onboarding.commons import SupportedModel
 from simulation.simulation_utils import create_simulated_user
@@ -26,19 +27,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 _ = load_dotenv(find_dotenv())
 
-dataset_name = "CUSTOMER-ONBOARDING-datasets-03-12-2024"
+dataset_name = "CUSTOMER-ONBOARDING-SIMPLE-datasets-04-12-2024" # "CUSTOMER-ONBOARDING-datasets-03-12-2024"
 client = Client()
 
-_config = configparser.ConfigParser()
-_config.read('config.ini')
-_faq_directory = _config.get('FAQAgent', 'faq_directory')
-_persist_directory = _config.get('FAQAgent', 'persist_directory')
-_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
-
-app = create_customer_onboarding_assistant_as_graph(model_name=SupportedModel.DEFAULT,
-                                                    faq_directory=_faq_directory,
-                                                    problem_directory=_problem_directory,
-                                                    persist_directory=_persist_directory)
+app = create_customer_onboarding_assistant_as_react_graph(model_name=SupportedModel.DEFAULT)
 
 
 def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
@@ -66,7 +58,7 @@ def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
         input_data = {'messages': new_messages, "user_session_id": session_id}
 
         val = app.invoke(input=input_data, config=effective_config, stream_mode="values")
-        return val["output"]
+        return val["messages"][-1] # "output"
 
     except ValueError as e:
         logging.error(f"ValueError encountered: {e}. Input data: {input_data}")
@@ -142,7 +134,7 @@ Do not break character in role-playing as a customer, or give away that you your
 Additionally, ensure that the AI assistant does not ask for any personal information or follow-up questions."""
 
 
-def xp_customer_onboarding():
+def test_customer_onboarding():
     customer_llm = ChatOpenAI(model="gpt-4o-mini")
     simulated_user = create_simulated_user(system_prompt_template, llm=customer_llm)
 

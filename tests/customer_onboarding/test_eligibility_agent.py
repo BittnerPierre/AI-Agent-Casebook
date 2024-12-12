@@ -1,15 +1,16 @@
 from langchain_core.messages import HumanMessage, AIMessage
 
 from customer_onboarding.agents import EligibilityAgent
-from customer_onboarding.commons import SupportedModel
+from customer_onboarding.commons import SupportedModel, initiate_model
 
 default_model = SupportedModel.DEFAULT
 
+model = initiate_model(default_model)
 
 def test_eligibility_agent():
     # TEST 1 SHOULD BE KO
     print("Test 1 - KO")
-    agent = EligibilityAgent(model_name=default_model)
+    agent = EligibilityAgent(model=model)
     # chat_history = [
     #     HumanMessage(content="Je souhaite ouvrir un compte."),
     #     AIMessage(content="Question: Où résidez-vous actuellement ?"),

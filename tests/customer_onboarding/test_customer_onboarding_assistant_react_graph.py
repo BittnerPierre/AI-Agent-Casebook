@@ -6,7 +6,13 @@ from customer_onboarding.assistants import create_customer_onboarding_assistant_
 
 default_model = SupportedModel.DEFAULT
 
-customer_onboarding_assistant = create_customer_onboarding_assistant_as_chain(model_name=default_model)
+_config = configparser.ConfigParser()
+_config.read('config.ini')
+_faq_directory = _config.get('FAQAgent', 'faq_directory')
+_persist_directory = _config.get('FAQAgent', 'persist_directory')
+_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
+
+customer_onboarding_assistant = create_customer_onboarding_assistant_as_react_graph(model_name=default_model)
 
 
 # TODO should assert returned value
@@ -34,6 +40,7 @@ def test_customer_onboarding_assistant_eligibility():
     ai_msg_4 = customer_onboarding_assistant.invoke(input={'messages': human_msg4},
                                                     config={'configurable': {'session_id': session_id, 'thread_id': session_id}})
     print(ai_msg_4)
+
 
 
 def test_customer_onboarding_assistant_faq():
