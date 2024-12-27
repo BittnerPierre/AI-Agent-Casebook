@@ -11,7 +11,10 @@ class SupportedModel(Enum):
     GPT_4_O = "gpt-4o"
     # GPT_4_O_mini = "gpt-4o-mini" TODO Does not work
     MISTRAL_LARGE = "mistral-large-latest"
-    DEFAULT = "mistral-large-latest" # "mistral-large-latest"
+    MINISTRAL_8B = "ministral-8b-latest"
+    MISTRAL_NEMO = "open-mistral-nemo"
+    MISTRAL_SMALL = "mistral-small-latest"
+    DEFAULT = GPT_4_O
 
 
 def initiate_model(model_name: Optional[SupportedModel] = None,
@@ -27,23 +30,27 @@ def initiate_model(model_name: Optional[SupportedModel] = None,
     # self.model = model or SupportedModel.MISTRAL_LARGE  # Set a default if I need to
     if _model_name.startswith("gpt"):
         return ChatOpenAI(model=_model_name, temperature=temperature)
-    elif _model_name.startswith("mistral"):
+    elif (_model_name.startswith("mistral")
+          or _model_name.startswith("ministral")
+          or _model_name.startswith("open-mistral")):
         return ChatMistralAI(model=_model_name, temperature=temperature) #, api_key=mistral_api_key)
     print(f"Invalid or unsupported model type: {_model_name}")
     return None
 
 
-def initiate_embeddings(model: Optional[SupportedModel] = None) -> Optional[Embeddings]:
+def initiate_embeddings(model_name: Optional[SupportedModel] = None) -> Optional[Embeddings]:
     """
     Initialize the embeddings model based on the model type.
 
-    :param model: The name of the model.
+    :param model_name: The name of the model.
     :return: An instance of Embeddings or None if the model type is unsupported.
     """
-    model_name = model.value or None
-    if model_name.startswith("gpt"):
+    _model_name = model_name.value or None
+    if _model_name.startswith("gpt"):
         return OpenAIEmbeddings()
-    elif model_name.startswith("mistral"):
+    elif (_model_name.startswith("mistral")
+          or _model_name.startswith("ministral")
+          or _model_name.startswith("open-mistral")):
         return MistralAIEmbeddings()
     print(f"Invalid or unsupported model type for embeddings: {model_name}")
     return None

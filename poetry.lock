@@ -656,13 +656,13 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "fastapi"
-version = "0.115.5"
+version = "0.115.6"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.115.5-py3-none-any.whl", hash = "sha256:596b95adbe1474da47049e802f9a65ab2ffa9c2b07e7efee70eb8a66c9f2f796"},
-    {file = "fastapi-0.115.5.tar.gz", hash = "sha256:0e7a4d0dc0d01c68df21887cce0945e72d3c48b9f4f79dfe7a7d53aa08fbb289"},
+    {file = "fastapi-0.115.6-py3-none-any.whl", hash = "sha256:e9240b29e36fa8f4bb7290316988e90c381e5092e0cbe84e7818cc3713bcf305"},
+    {file = "fastapi-0.115.6.tar.gz", hash = "sha256:9ec46f7addc14ea472958a96aae5b5de65f39721a46aaf5705c480d9a8b76654"},
 ]
 
 [package.dependencies]
@@ -1516,6 +1516,21 @@ pydantic = [
 PyYAML = ">=5.3"
 tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<10.0.0"
 typing-extensions = ">=4.7"
+
+[[package]]
+name = "langchain-experimental"
+version = "0.3.3"
+description = "Building applications with LLMs through composability"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "langchain_experimental-0.3.3-py3-none-any.whl", hash = "sha256:da01aafc162631475f306ca368ecae74d5becd93b8039bddb6315e755e274580"},
+    {file = "langchain_experimental-0.3.3.tar.gz", hash = "sha256:6bbcdcd084581432ef4b5d732294a59d75a858ede1714b50a5b79bcfe31fa306"},
+]
+
+[package.dependencies]
+langchain-community = ">=0.3.0,<0.4.0"
+langchain-core = ">=0.3.15,<0.4.0"
 
 [[package]]
 name = "langchain-mistralai"
@@ -3937,4 +3952,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "e5bb16408dcb7a06abe9d44639775aeafd071bf9a81819774b4704cbf428ba89"
+content-hash = "77b24b533d479de97c045e578834cd99ac4e073000d6487a0986b72f251df13b"

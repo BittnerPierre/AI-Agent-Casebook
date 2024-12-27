@@ -64,7 +64,7 @@ class State(TypedDict):
 
 class AbstractAgent(abc.ABC, RunnableMixin):
 
-    def __init__(self, model: BaseChatModel): #, model_name: Optional[SupportedModel] = None
+    def __init__(self, model: BaseChatModel):
         """
         Initialize the AbstractAgent.
 
@@ -122,7 +122,7 @@ class RAGAgent(AbstractAgent):
 
     # TODO add a in memory vectorstore...
     def __init__(self,
-                 model: BaseChatModel,  # model_name: Optional[SupportedModel],
+                 model: BaseChatModel,
                  embeddings: Embeddings,
                  collection_name: Optional[str],
                  persist_directory: str):
@@ -199,7 +199,6 @@ class FAQAgent(RAGAgent):
     def __init__(self,
                  model: BaseChatModel,
                  embeddings: Embeddings,
-                 # model_name: Optional[SupportedModel],
                  persist_directory: str,
                  faq_directory: str,
                  ):
@@ -465,7 +464,3 @@ class ProblemSolverAgent(RAGAgent):
         # Test the agent executor
         return agent_executor
 
-    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-    #     if not chat_history:
-    #         chat_history = []
-    #     return self.chain.invoke({"input": message, "chat_history": chat_history})

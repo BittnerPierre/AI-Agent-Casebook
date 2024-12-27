@@ -19,11 +19,12 @@ class ToolInvocation(BaseModel):
     result: Any
 
 
-class   ClientMessage(BaseModel):
+class ClientMessage(BaseModel):
     role: str
     content: str
     experimental_attachments: Optional[List[ClientAttachment]] = None
     toolInvocations: Optional[List[ToolInvocation]] = None
+
 
 def convert_to_openai_messages(messages: List[ClientMessage]) -> List[ChatCompletionMessageParam]:
     openai_messages = []
