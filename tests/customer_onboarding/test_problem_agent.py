@@ -8,22 +8,27 @@ from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
 from customer_onboarding.agents import ProblemSolverAgent
-from customer_onboarding.commons import SupportedModel, initiate_model
+from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
 
 default_model = SupportedModel.DEFAULT
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-_problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
-_persist_directory = config.get('ProblemSolverAgent', 'persist_directory')
+_config = configparser.ConfigParser()
+_config.read('config.ini')
+_chroma_persist_directory = _config.get('Retrieval', 'persist_directory')
+_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
+_problem_file = _config.get('ProblemSolverAgent', 'problem_file')
+_problem_database = _config.get('ProblemSolverAgent', 'problem_database')
 
 model = initiate_model(default_model)
+embeddings = initiate_embeddings(default_model)
 
 def test_problem_solver_agent():
 
     agent = ProblemSolverAgent(model=model,
+                               embeddings=embeddings,
                                problem_directory=_problem_directory,
-                               persist_directory=_persist_directory)
+                               persist_directory=_chroma_persist_directory,
+                               problem_file=_problem_file)
 
     print("Test Problem 1 - OK - Answer")
     chat_history = []
@@ -51,8 +56,10 @@ def test_problem_solver_agent():
 def test_problem_solver_agent_langsmith():
 
     agent = ProblemSolverAgent(model=model,
-                     persist_directory=_persist_directory,
-                     problem_directory=_problem_directory)
+                               embeddings=embeddings,
+                               persist_directory=_chroma_persist_directory,
+                               problem_directory=_problem_directory,
+                               problem_file=_problem_file)
 
     prompt = hub.pull("customer-onboarding-evaluator")
     eval_llm = initiate_model(model_name=default_model)

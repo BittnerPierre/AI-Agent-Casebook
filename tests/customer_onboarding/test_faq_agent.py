@@ -8,16 +8,18 @@ from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
 from customer_onboarding.agents import FAQAgent
-from customer_onboarding.commons import SupportedModel, initiate_model
+from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
 
 default_model = SupportedModel.DEFAULT
 
 config = configparser.ConfigParser()
 config.read('config.ini')
+_persist_directory = config.get('Retrieval', 'persist_directory')
 _faq_directory = config.get('FAQAgent', 'faq_directory')
-_persist_directory = config.get('FAQAgent', 'persist_directory')
+_faq_file = config.get('FAQAgent', 'faq_file')
 
 model = initiate_model(default_model)
+embeddings = initiate_embeddings(default_model)
 
 def test_faq_agent():
     """
@@ -26,8 +28,10 @@ def test_faq_agent():
     """
 
     agent = FAQAgent(model=model,
+                     embeddings=embeddings,
                      persist_directory=_persist_directory,
-                     faq_directory=_faq_directory)
+                     faq_directory=_faq_directory,
+                     faq_file=_faq_file)
 
     print("Test FAQ 1 - OK - Answer")
     chat_history = []
@@ -50,8 +54,10 @@ def test_faq_agent():
 def test_faq_agent_langsmith():
 
     agent = FAQAgent(model=model,
+                     embeddings=embeddings,
                      persist_directory=_persist_directory,
-                     faq_directory=_faq_directory)
+                     faq_directory=_faq_directory,
+                     faq_file=_faq_file)
 
     prompt = hub.pull("customer-onboarding-evaluator")
     eval_llm = initiate_model(model_name=default_model)

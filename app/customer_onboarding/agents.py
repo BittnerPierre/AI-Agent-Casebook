@@ -1,4 +1,5 @@
 import abc
+import configparser
 import json
 import os
 import sqlite3
@@ -25,6 +26,13 @@ from customer_onboarding.commons import SupportedModel, initiate_model, initiate
 from customer_onboarding.logger import logger
 
 _RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
+
+
+_config = configparser.ConfigParser()
+_config.read('config.ini')
+_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
+_problem_database = _config.get('ProblemSolverAgent', 'problem_database')
+_problem_db_path = os.path.join(_problem_directory, _problem_database)
 
 
 class FAQItem(BaseModel):
@@ -201,16 +209,18 @@ class FAQAgent(RAGAgent):
                  embeddings: Embeddings,
                  persist_directory: str,
                  faq_directory: str,
+                 faq_file: str = 'faq.json',
                  ):
 
         self.faq_directory = faq_directory
+        self.faq_file = faq_file
         super().__init__(model=model, embeddings=embeddings, collection_name="faq", persist_directory=persist_directory)
 
     def _initiate_docs(self) -> list[Document]:
         try:
             logger.debug("Initiating Docs")
             # Ensure the JSON file path is correct
-            faq_file_path = os.path.join(self.faq_directory, 'faq.json')
+            faq_file_path = os.path.join(self.faq_directory, self.faq_file)
 
             # Load FAQ data from JSON file
             with open(faq_file_path, 'r', encoding='utf-8') as file:
@@ -318,8 +328,8 @@ def search_errors_in_db(
     Returns:
     - List[dict]: A list of dictionaries representing the matching errors.
     """
-    # TODO should not be static
-    conn = sqlite3.connect('../data/parsed/error_db.sqlite')
+
+    conn = sqlite3.connect(_problem_db_path)
     cursor = conn.cursor()
 
     query = "SELECT * FROM errors WHERE 1 = 1"
@@ -408,19 +418,21 @@ class ProblemSolverAgent(RAGAgent):
                  embeddings: Embeddings,
                  persist_directory: str,
                  problem_directory: str,
+                 problem_file: str = 'error_db.json',
                  ):
 
         self.problem_directory = problem_directory
+        self.problem_file = problem_file
         super().__init__(model=model, embeddings=embeddings, collection_name="errors", persist_directory=persist_directory)
 
     def _initiate_docs(self) -> Optional[List[Document]]:
         try:
             logger.debug("Initiating Docs")
             # Ensure the JSON file path is correct
-            error_db_file_path = os.path.join(self.problem_directory, 'error_db.json')
+            problem_file_path = os.path.join(self.problem_directory, self.problem_file)
 
             # Load data from the JSON file
-            with open(error_db_file_path, 'r', encoding='utf-8') as file:
+            with open(problem_file_path, 'r', encoding='utf-8') as file:
                 error_db = json.load(file)
 
                 error_items = [ErrorItem(**item) for item in error_db["errors"]]
@@ -459,7 +471,11 @@ class ProblemSolverAgent(RAGAgent):
 
         agent = create_structured_chat_agent(self.model, lc_tools, prompt)
         # Create the agent executor
-        agent_executor = AgentExecutor(agent=agent, tools=lc_tools, verbose=True, handle_parsing_errors=True)
+        agent_executor = AgentExecutor(agent=agent,
+                                       tools=lc_tools,
+                                       max_iterations=4,
+                                       verbose=False,
+                                       handle_parsing_errors=True)
 
         # Test the agent executor
         return agent_executor

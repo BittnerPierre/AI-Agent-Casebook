@@ -35,10 +35,15 @@ logger = setup_logger(__name__, level=logging.INFO)
 
 _config = configparser.ConfigParser()
 _config.read('config.ini')
+# RETRIEVAL SETUP
+_chroma_persist_directory = _config.get('Retrieval', 'persist_directory')
+# FAQ SETUP
 _faq_directory = _config.get('FAQAgent', 'faq_directory')
-_persist_directory = _config.get('FAQAgent', 'persist_directory')
+_faq_file = _config.get('FAQAgent', 'faq_file')
+# PROBLEM SETUP
 _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
-
+_problem_file = _config.get('ProblemSolverAgent', 'problem_file')
+_problem_database = _config.get('ProblemSolverAgent', 'problem_database')
 
 # TODO currently there is an issue with mistral due to reaching limit while langchain batch embeddings
 default_model = SupportedModel.DEFAULT
@@ -168,8 +173,11 @@ def get_message_history(session_id: str) -> BaseChatMessageHistory:
 model = initiate_model(default_model)
 embeddings = initiate_embeddings(default_model)
 
-faq_agent = FAQAgent(model=model, embeddings=embeddings, faq_directory=_faq_directory, persist_directory=_persist_directory)
-
+faq_agent = FAQAgent(model=model,
+                     embeddings=embeddings,
+                     faq_directory=_faq_directory,
+                     persist_directory=_chroma_persist_directory,
+                     faq_file=_faq_file)
 
 @tool
 def faq_answerer(
@@ -208,7 +216,8 @@ def eligibility_checker(
 problem_solver_agent = ProblemSolverAgent(model=model,
                                           embeddings=embeddings,
                                           problem_directory=_problem_directory,
-                                          persist_directory=_persist_directory)
+                                          persist_directory=_chroma_persist_directory,
+                                          problem_file=_problem_file)
 
 @tool
 def problem_solver(
