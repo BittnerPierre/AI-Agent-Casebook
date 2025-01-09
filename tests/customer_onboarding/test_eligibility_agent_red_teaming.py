@@ -4,12 +4,11 @@ from dotenv import load_dotenv, find_dotenv
 from langsmith import Client, evaluate
 
 from customer_onboarding.agents import EligibilityAgent
-from customer_onboarding.assistants import (create_customer_onboarding_assistant_as_react_graph,
-                                            create_customer_onboarding_assistant_as_chain)
+from customer_onboarding.assistants import (create_customer_onboarding_assistant_as_chain)
 
 from langchain_openai import ChatOpenAI
 from simulation.simulation_utils import create_simulated_user
-from customer_onboarding.commons import SupportedModel
+from core.commons import SupportedModel
 from simulation.simulation_utils import create_chat_simulator
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder

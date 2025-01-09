@@ -13,8 +13,7 @@ from langchain_core.embeddings import Embeddings
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, MessagesPlaceholder, \
-    HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap, RunnableConfig
 from langchain_core.runnables.utils import Output, Input
 from langchain_core.tools import tool
@@ -22,7 +21,7 @@ from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from pydantic import BaseModel, HttpUrl
 from langgraph.graph.message import AnyMessage, add_messages
 
-from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
+from core.commons import SupportedModel, initiate_model, initiate_embeddings
 from customer_onboarding.logger import logger
 
 _RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"

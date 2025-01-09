@@ -1,8 +1,7 @@
 import configparser
 
-from customer_onboarding.commons import SupportedModel
-from customer_onboarding.assistants import create_customer_onboarding_assistant_as_chain, \
-    create_customer_onboarding_assistant_as_react_graph
+from core.commons import SupportedModel
+from customer_onboarding.assistants import create_customer_onboarding_assistant_as_react_graph
 
 default_model = SupportedModel.DEFAULT
 

@@ -4,16 +4,14 @@ import uuid
 from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel.io import AddableValuesDict
-from langsmith import Client, evaluate, aevaluate
+from langsmith import Client, evaluate
 
 from langchain_openai import ChatOpenAI
 
-from customer_onboarding.assistants import create_customer_onboarding_assistant_as_react_graph, \
-    create_customer_onboarding_assistant_as_chain
-from customer_onboarding.commons import SupportedModel
+from customer_onboarding.assistants import create_customer_onboarding_assistant_as_chain
+from core.commons import SupportedModel
 from simulation.simulation_utils import create_simulated_user
 
 from simulation.simulation_utils import create_chat_simulator

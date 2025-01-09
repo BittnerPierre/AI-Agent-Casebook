@@ -1,14 +1,11 @@
 import configparser
 
-from langchain_core.messages import HumanMessage
-
-from langchain_openai import ChatOpenAI
 from langchain import hub
 from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
 from customer_onboarding.agents import FAQAgent
-from customer_onboarding.commons import SupportedModel, initiate_model, initiate_embeddings
+from core.commons import SupportedModel, initiate_model, initiate_embeddings
 
 default_model = SupportedModel.DEFAULT
 

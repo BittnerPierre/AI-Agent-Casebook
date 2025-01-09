@@ -2,11 +2,11 @@ import configparser
 import logging
 import sys
 from dataclasses import dataclass
-from typing import Optional, Annotated, TypedDict, Literal
+from typing import Optional, Annotated, TypedDict
 
 from langchain.agents import create_structured_chat_agent, AgentExecutor
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from langchain_core.runnables import RunnableSerializable, RunnableWithMessageHistory, RunnableLambda
@@ -16,13 +16,12 @@ from dotenv import load_dotenv, find_dotenv
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.graph import CompiledGraph
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent, ToolNode
+from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 
 
-from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent, search_errors_in_db, \
-    search_errors_in_vectordb
-from customer_onboarding.commons import initiate_model, SupportedModel, initiate_embeddings
+from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
+from core.commons import initiate_model, SupportedModel, initiate_embeddings
 from customer_onboarding.logger import setup_logger
 from langgraph.checkpoint.memory import MemorySaver
 

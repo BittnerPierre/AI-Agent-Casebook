@@ -1,7 +1,5 @@
-from langchain_core.messages import HumanMessage, AIMessage
-
 from customer_onboarding.agents import EligibilityAgent
-from customer_onboarding.commons import SupportedModel, initiate_model
+from core.commons import SupportedModel, initiate_model
 
 default_model = SupportedModel.DEFAULT
 
