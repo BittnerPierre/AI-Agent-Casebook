@@ -8,7 +8,8 @@ from customer_onboarding.assistants import (create_customer_onboarding_assistant
 
 from langchain_openai import ChatOpenAI
 from simulation.simulation_utils import create_simulated_user
-from core.commons import SupportedModel
+from core.commons import initiate_model
+from core.base import SupportedModel
 from simulation.simulation_utils import create_chat_simulator
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -20,14 +21,18 @@ _ = load_dotenv(find_dotenv())
 dataset_name = "ELIGIBILITY-datasets-26-11-2024"
 client = Client()
 
-eligibility_agent = EligibilityAgent()
-
 default_model = SupportedModel.DEFAULT
+
+llm = initiate_model(default_model)
+
+eligibility_agent = EligibilityAgent(model=llm)
+
+
 
 config = configparser.ConfigParser()
 config.read('config.ini')
 _faq_directory = config.get('FAQAgent', 'faq_directory')
-_persist_directory = config.get('FAQAgent', 'persist_directory')
+_persist_directory = config.get('Retrieval', 'persist_directory')
 _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
 
 customer_onboarding_assistant = create_customer_onboarding_assistant_as_chain(model_name=default_model)

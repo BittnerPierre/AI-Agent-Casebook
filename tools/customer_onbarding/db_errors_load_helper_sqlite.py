@@ -15,7 +15,7 @@ class ErrorItem(BaseModel):
     search_keys: List[str]
 
 # Ensure the JSON file path is correct
-error_db_file_path = '/Users/pierrebittner/Documents/GitHub/customer-onboarding-assistant/data/parsed/error_db.json'
+error_db_file_path = '//data/parsed/error_db.json'
 
 # Load data from the JSON file
 with open(error_db_file_path, 'r', encoding='utf-8') as file:

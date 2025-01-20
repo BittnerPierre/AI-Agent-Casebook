@@ -5,7 +5,8 @@ from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
 from customer_onboarding.agents import FAQAgent
-from core.commons import SupportedModel, initiate_model, initiate_embeddings
+from core.commons import initiate_model, initiate_embeddings
+from core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 

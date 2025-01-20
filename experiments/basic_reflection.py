@@ -4,6 +4,9 @@ from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
 from typing_extensions import TypedDict
 
+# Generate
+"""For our example, we will create a "5 paragraph essay" generator. First, create the generator:"""
+
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_mistralai import ChatMistralAI
@@ -24,7 +27,7 @@ llm = ChatMistralAI(
 )
 generate = prompt | llm
 
-
+# Reflect
 reflection_prompt = ChatPromptTemplate.from_messages(
     [
         (

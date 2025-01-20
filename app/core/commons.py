@@ -1,11 +1,13 @@
 import os
-from enum import Enum
 from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+from core.base import SupportedModel
 
 _ = load_dotenv(find_dotenv())
 
@@ -13,20 +15,9 @@ def _set_env(var: str, value: str):
     if not os.environ.get(var):
         os.environ[var] = value
 
+
 # don't know why I must do this in debug mode
 _set_env("OPENAI_API_TYPE", "openai")
-
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-
-class SupportedModel(Enum):
-    GPT_4_O = "gpt-4o"
-    GPT_4_O_MINI = "gpt-4o-mini"
-    # GPT_4_O_mini = "gpt-4o-mini" TODO Does not work
-    MISTRAL_LARGE = "mistral-large-latest"
-    MINISTRAL_8B = "ministral-8b-latest"
-    MISTRAL_NEMO = "open-mistral-nemo"
-    MISTRAL_SMALL = "mistral-small-latest"
-    DEFAULT = GPT_4_O
 
 
 def initiate_model(model_name: Optional[SupportedModel] = None,

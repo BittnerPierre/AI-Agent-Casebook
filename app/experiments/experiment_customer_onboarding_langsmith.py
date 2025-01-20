@@ -11,7 +11,7 @@ from langsmith import Client, evaluate
 from langchain_openai import ChatOpenAI
 
 from customer_onboarding.assistants import create_customer_onboarding_assistant_as_chain
-from core.commons import SupportedModel
+from core.base import SupportedModel
 from simulation.simulation_utils import create_simulated_user
 
 from simulation.simulation_utils import create_chat_simulator

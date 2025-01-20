@@ -1,5 +1,6 @@
 from customer_onboarding.agents import EligibilityAgent
-from core.commons import SupportedModel, initiate_model
+from core.commons import initiate_model
+from core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 

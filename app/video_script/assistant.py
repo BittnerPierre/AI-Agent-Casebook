@@ -16,7 +16,8 @@ from langgraph.graph.message import add_messages
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from core.commons import initiate_model, SupportedModel
+from core.commons import initiate_model
+from core.base import SupportedModel
 
 from langgraph.managed.is_last_step import RemainingSteps
 
@@ -33,7 +34,7 @@ def load_guidelines():
 
 script_guidelines = load_guidelines()
 
-llm = initiate_model(SupportedModel.GPT_4_O_MINI)
+llm = initiate_model(SupportedModel.MISTRAL_SMALL)
 
 team = "small video editing team for Youtube channels"
 

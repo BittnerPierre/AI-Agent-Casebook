@@ -167,3 +167,5 @@ app/customer_onboarding/mistral-large-latest/chroma.sqlite3
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/vcs.xml
 /experiments/video_script/
+.idea/AI-Agent-Casebook.iml
+/.idea

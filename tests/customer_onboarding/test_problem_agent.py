@@ -5,21 +5,22 @@ from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
 from customer_onboarding.agents import ProblemSolverAgent
-from core.commons import SupportedModel, initiate_model, initiate_embeddings
+from core.commons import initiate_model, initiate_embeddings
+from core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 
-_config = configparser.ConfigParser()
-_config.read('config.ini')
-_chroma_persist_directory = _config.get('Retrieval', 'persist_directory')
-_problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
-_problem_file = _config.get('ProblemSolverAgent', 'problem_file')
-_problem_database = _config.get('ProblemSolverAgent', 'problem_database')
 
 model = initiate_model(default_model)
 embeddings = initiate_embeddings(default_model)
 
-def test_problem_solver_agent():
+def test_problem_solver_agent(config):
+
+    _chroma_persist_directory = config.get('Retrieval', 'persist_directory')
+    _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
+    _problem_file = config.get('ProblemSolverAgent', 'problem_file')
+    _problem_database = config.get('ProblemSolverAgent', 'problem_database')
+
 
     agent = ProblemSolverAgent(model=model,
                                embeddings=embeddings,
@@ -50,7 +51,11 @@ def test_problem_solver_agent():
     # assert "nouveau code" in ai_msg_1.lower()
 
 
-def test_problem_solver_agent_langsmith():
+def test_problem_solver_agent_langsmith(config):
+
+    _chroma_persist_directory = config.get('Retrieval', 'persist_directory')
+    _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
+    _problem_file = config.get('ProblemSolverAgent', 'problem_file')
 
     agent = ProblemSolverAgent(model=model,
                                embeddings=embeddings,

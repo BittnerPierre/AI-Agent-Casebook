@@ -1,4 +1,4 @@
-from core.commons import SupportedModel
+from core.base import SupportedModel
 from customer_onboarding.assistants import create_customer_onboarding_assistant_as_graph
 
 default_model = SupportedModel.DEFAULT

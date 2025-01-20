@@ -1,9 +1,8 @@
-import abc
-import configparser
 import json
 import os
 import sqlite3
-from typing import Optional, List, Any, TypedDict, Annotated
+from pathlib import Path
+from typing import Optional, List, Union, Dict
 
 from langchain import hub
 from langchain.agents import create_structured_chat_agent, AgentExecutor
@@ -14,21 +13,18 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from langchain_core.runnables import RunnableSerializable, Runnable, RunnableMap, RunnableConfig
-from langchain_core.runnables.utils import Output, Input
+from langchain_core.runnables import RunnableSerializable, RunnableMap
 from langchain_core.tools import tool
-from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from pydantic import BaseModel, HttpUrl
-from langgraph.graph.message import AnyMessage, add_messages
 
-from core.commons import SupportedModel, initiate_model, initiate_embeddings
-from customer_onboarding.logger import logger
+from core.commons import initiate_model, initiate_embeddings
+from core.base import SupportedModel
+from agents import AbstractAgent, SimpleRAGAgent
+from core.config_loader import load_config
+from core.logger import logger
 
-_RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
 
-
-_config = configparser.ConfigParser()
-_config.read('config.ini')
+_config = load_config()
 _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
 _problem_database = _config.get('ProblemSolverAgent', 'problem_database')
 _problem_db_path = os.path.join(_problem_directory, _problem_database)
@@ -54,187 +50,52 @@ class ErrorItem(BaseModel):
     search_keys: List[str]
 
 
-class RunnableMixin:
-    def __init__(self):
-        self.runnable: Optional[Runnable] = None
-
-    def invoke(
-            self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
-    ) -> Output:
-        """Implementation for invoking the agent."""
-        return self.runnable.invoke(input, config) if self.runnable else None
-
-
-class State(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-
-
-class AbstractAgent(abc.ABC, RunnableMixin):
-
-    def __init__(self, model: BaseChatModel):
-        """
-        Initialize the AbstractAgent.
-
-        :param model_name: Type of the language model to use.
-        """
-        super().__init__()
-        # self.model_name = model_name
-        self.model = model  # self._initiate_model()
-
-    # def _initiate_model(self) -> Optional[BaseChatModel]:
-    #     return initiate_model(self.model_name)
-
-    @abc.abstractmethod
-    def _initiate_agent_chain(self) -> RunnableSerializable:
-        pass
-
-    @property
-    def _runnable(self) -> Optional[Runnable]:
-        """Expose a property to get the chain if available."""
-        return self.runnable
-
-    def __call__(self, state: State, config: RunnableConfig):
-        while True:
-            configuration = config.get("configurable", {})
-            passenger_id = configuration.get("passenger_id", None)
-            state = {**state, "user_info": passenger_id}
-            result = self.runnable.invoke(state)
-            # If the LLM happens to return an empty response, we will re-prompt it
-            # for an actual response.
-            if not result.tool_calls and (
-                not result.content
-                or isinstance(result.content, list)
-                and not result.content[0].get("text")
-            ):
-                messages = state["messages"] + [("user", "Respond with a real output.")]
-                state = {**state, "messages": messages}
-            else:
-                break
-        return {"messages": result}
-
-    # @abc.abstractmethod
-    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-    #     pass
-
-    # def invoke(self, input_data):
-    #     """Implement the Runnable interface to support invocation."""
-    #     return self.chain.invoke(input_data) if self.chain else None
-
-
 def format_docs(docs):
     return "\n\n".join([d.page_content for d in docs])
 
 
-class RAGAgent(AbstractAgent):
-
-    # TODO add a in memory vectorstore...
+class FAQAgent(SimpleRAGAgent):
     def __init__(self,
                  model: BaseChatModel,
                  embeddings: Embeddings,
-                 collection_name: Optional[str],
-                 persist_directory: str):
-        super().__init__(model=model)  # #model_name=model_name
-        self._collection_name = collection_name or _RAG_AGENT_DEFAULT_COLLECTION_NAME
-        self.persist_directory = persist_directory
-        # RAG classic
-        self.embeddings = embeddings  # self._initiate_embeddings()
-        self.docs = self._initiate_docs()
-        self.vectorstore = self._initiate_vectorstore()
-        self.retriever = self._initiate_retriever()
-        self.runnable = self._initiate_agent_chain()
-
-    # def _initiate_embeddings(self) -> Optional[Embeddings]:
-    #     return initiate_embeddings(self.model_name)
-
-    @abc.abstractmethod
-    def _initiate_docs(self) -> Optional[List[Document]]:
-        pass
-
-    def _initiate_vectorstore(self) -> VectorStore:
-        logger.debug("Initiating VectorStore")
-        # TODO check consistency with embedding, model and vectorstore
-        # TODO memory only one
-        # TODO check existing file to avoir reload (code above does not work an create an empty vectore store
-        vectorstore = Chroma.from_documents(
-            documents=self.docs,
-            embedding=self.embeddings,
-            collection_name=self._collection_name
-            # persist_directory=self.persist_directory
-        )
-        return vectorstore
-
-    def _initiate_retriever(self) -> VectorStoreRetriever:
-        logger.debug("Initiating Retriever")
-        retriever = self.vectorstore.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={"score_threshold": 0.5})
-        return retriever
-
-    def _initiate_agent_chain(self) -> RunnableSerializable:
-        logger.debug("Initiating Assistant")
-        # TODO revoir le prompt il utilise ses propres connaissances.
-        template = """Answer the question between triple single quotes based only on the following <Context/>.
-        
-        # Instructions
-        - Respond in the same language as the question.
-        - It is OK if context is not in the same language as the question.
-        - DO NOT use your knowledge to answer. ONLY the context.
-        - If context is empty, say you cannot answer but do not say your context is empty.
-        
-        <Context>
-        {context}
-        </Context>
-        
-        # Question: 
-        '''{question}'''
-        """
-        prompt = ChatPromptTemplate.from_template(template)
-        output_parser = StrOutputParser()
-
-        return RunnableMap({
-            "context": lambda x: '\n\n'.join([doc.page_content for doc in self.retriever.invoke(x["question"])]),
-            "question": lambda x: x["question"],
-        }) | prompt | self.model | output_parser
-
-    # def answer_question(self, message: str, chat_history: List[BaseMessage]) -> str:
-    #     if not chat_history:
-    #         chat_history = []
-    #     return self.chain.invoke({"question": message, "chat_history": chat_history})
-
-
-class FAQAgent(RAGAgent):
-    def __init__(self,
-                 model: BaseChatModel,
-                 embeddings: Embeddings,
-                 persist_directory: str,
-                 faq_directory: str,
-                 faq_file: str = 'faq.json',
+                 source_paths: Path,
+                 # persist_directory: str,
+                 # faq_directory: str,
+                 # faq_file: str = 'faq.json',
                  ):
 
-        self.faq_directory = faq_directory
-        self.faq_file = faq_file
-        super().__init__(model=model, embeddings=embeddings, collection_name="faq", persist_directory=persist_directory)
+        #self.faq_directory = faq_directory
+        # self.faq_file = faq_file
+        super().__init__(model=model, embeddings=embeddings, source_paths=source_paths, collection_name="faq")
 
-    def _initiate_docs(self) -> list[Document]:
+    def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
+        source_to_docs = {}
         try:
             logger.debug("Initiating Docs")
-            # Ensure the JSON file path is correct
-            faq_file_path = os.path.join(self.faq_directory, self.faq_file)
-
             # Load FAQ data from JSON file
-            with open(faq_file_path, 'r', encoding='utf-8') as file:
+            with open(source_paths, 'r', encoding='utf-8') as file:
                 faq_dict = json.load(file)
-
             faq_items = [FAQItem(**item) for item in faq_dict.values()]
-
             # Extract text from each FAQ entry to create documents
-            return [Document(page_content=f"Question: {item.question}\nAnswer: {item.answer}",
-                             metadata={"url": str(item.url), "cat": item.cat, "sub_cat": item.sub_cat,
-                                       "subsub_cat": item.subsub_cat}) for item in faq_items]
+            documents = [
+                Document(
+                    page_content=f"Question: {item.question}\nAnswer: {item.answer}",
+                    metadata={
+                        "url": str(item.url),
+                        "cat": item.cat,
+                        "sub_cat": item.sub_cat,
+                        "subsub_cat": item.subsub_cat
+                    }
+                )
+                for item in faq_items
+            ]
+            source_to_docs[source_paths] = documents
         except Exception as e:
-            # TODO should not silently failed.
+            # TODO should not silently fail.
             logger.error(f"Error loading FAQs: {e}")
-            return []
+            source_to_docs[source_paths] = []
+
+        return source_to_docs
 
 
 class EligibilityAgent(AbstractAgent):
@@ -404,7 +265,7 @@ def search_errors_in_vectordb(
     return chain.invoke({"question": question})
 
 
-class ProblemSolverAgent(RAGAgent):
+class ProblemSolverAgent(SimpleRAGAgent):
     """
     Problem Solver Agent use function calling with SQLite for code error lookup within a SQLite DB
     and retrieval search from vector db.
@@ -420,11 +281,14 @@ class ProblemSolverAgent(RAGAgent):
                  problem_file: str = 'error_db.json',
                  ):
 
-        self.problem_directory = problem_directory
-        self.problem_file = problem_file
-        super().__init__(model=model, embeddings=embeddings, collection_name="errors", persist_directory=persist_directory)
+        self.problem_directory = Path(problem_directory)
+        self.problem_file = Path(problem_file)
+        self.source_paths = self.problem_directory / self.problem_file
+        super().__init__(model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name="errors")
 
-    def _initiate_docs(self) -> Optional[List[Document]]:
+
+    def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
+        source_to_docs = {}
         try:
             logger.debug("Initiating Docs")
             # Ensure the JSON file path is correct
@@ -437,7 +301,7 @@ class ProblemSolverAgent(RAGAgent):
                 error_items = [ErrorItem(**item) for item in error_db["errors"]]
 
                 # Extract and process each entry to create documents
-                return [
+                documents = [
                     Document(
                         page_content=(
                             f"Code: {entry.code}\n"
@@ -457,11 +321,13 @@ class ProblemSolverAgent(RAGAgent):
                         }
                     ) for entry in error_items
                 ]
-
+                source_to_docs[source_paths] = documents
         except Exception as e:
             # Log the error and return an empty list
             logger.error(f"Error loading error database: {e}")
-            return []
+            source_to_docs[source_paths] = []
+
+        return source_to_docs
 
     def _initiate_agent_chain(self) -> RunnableSerializable:
         lc_tools = [search_errors_in_db, search_errors_in_vectordb]

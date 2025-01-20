@@ -8,7 +8,7 @@ from fastapi import FastAPI, APIRouter, Query
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 
-from core.commons import SupportedModel
+from core.base import SupportedModel
 
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from pydantic import BaseModel

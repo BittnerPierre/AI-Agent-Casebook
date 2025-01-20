@@ -1,7 +1,7 @@
-import configparser
 import logging
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Annotated, TypedDict
 
 from langchain.agents import create_structured_chat_agent, AgentExecutor
@@ -19,10 +19,11 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 
-
+from core.config_loader import load_config
 from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
-from core.commons import initiate_model, SupportedModel, initiate_embeddings
-from customer_onboarding.logger import setup_logger
+from core.commons import initiate_model, initiate_embeddings
+from core.base import SupportedModel
+from core.logger import setup_logger
 from langgraph.checkpoint.memory import MemorySaver
 
 from langgraph.graph.message import add_messages, MessagesState
@@ -32,13 +33,13 @@ _ = load_dotenv(find_dotenv())
 
 logger = setup_logger(__name__, level=logging.INFO)
 
-_config = configparser.ConfigParser()
-_config.read('config.ini')
+
+_config = load_config()
 # RETRIEVAL SETUP
 _chroma_persist_directory = _config.get('Retrieval', 'persist_directory')
 # FAQ SETUP
-_faq_directory = _config.get('FAQAgent', 'faq_directory')
-_faq_file = _config.get('FAQAgent', 'faq_file')
+#_faq_directory = _config.get('FAQAgent', 'faq_directory')
+_faq_file = Path(_config.get('FAQAgent', 'faq_file'))
 # PROBLEM SETUP
 _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
 _problem_file = _config.get('ProblemSolverAgent', 'problem_file')
@@ -174,9 +175,11 @@ embeddings = initiate_embeddings(default_model)
 
 faq_agent = FAQAgent(model=model,
                      embeddings=embeddings,
-                     faq_directory=_faq_directory,
-                     persist_directory=_chroma_persist_directory,
-                     faq_file=_faq_file)
+                     source_paths=_faq_file
+                     #faq_directory=_faq_directory,
+                     # persist_directory=_chroma_persist_directory,
+                     #faq_file=_faq_file
+                     )
 
 @tool
 def faq_answerer(
