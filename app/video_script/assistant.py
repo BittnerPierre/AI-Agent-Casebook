@@ -1,7 +1,10 @@
 import asyncio
+from pathlib import Path
 from typing import List, Tuple, Union, Literal, Annotated
 
 from dotenv import load_dotenv, find_dotenv
+from llama_index.core import Settings
+from llama_index.embeddings.mistralai import MistralAIEmbedding
 from typing_extensions import TypedDict
 
 from langgraph.graph import (
@@ -16,7 +19,8 @@ from langgraph.graph.message import add_messages
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from core.commons import initiate_model
+from agents import RAGAgentFactory, RAGAgentType
+from core.commons import initiate_model, initiate_embeddings
 from core.base import SupportedModel
 
 from langgraph.managed.is_last_step import RemainingSteps
@@ -413,7 +417,7 @@ workflow = StateGraph(VideoScriptState)
 
 # NODES
 workflow.add_node("planning", planning_node)
-workflow.add_node("research", research_node)
+workflow.add_node("research", research_node) # research_node2
 workflow.add_node("writer", writer_node)
 workflow.add_node("review", review_node)
 

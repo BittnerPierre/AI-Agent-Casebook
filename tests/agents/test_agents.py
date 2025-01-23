@@ -22,6 +22,7 @@ embeddings = initiate_embeddings(SupportedModel.DEFAULT)
 
 Settings.embed_model=MistralAIEmbedding()
 
+
 def test_simple_rag_agent():
     # Example of loading documents for llamaindex
 

@@ -12,9 +12,9 @@ from langchain_openai import ChatOpenAI
 
 from customer_onboarding.assistants import create_customer_onboarding_assistant_as_chain
 from core.base import SupportedModel
-from simulation.simulation_utils import create_simulated_user
+from simulation_utils import create_simulated_user
 
-from simulation.simulation_utils import create_chat_simulator
+from simulation_utils import create_chat_simulator
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import BaseModel, Field

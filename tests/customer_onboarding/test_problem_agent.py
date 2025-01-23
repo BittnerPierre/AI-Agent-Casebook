@@ -1,5 +1,3 @@
-import configparser
-
 from langchain import hub
 from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
@@ -10,9 +8,9 @@ from core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 
-
 model = initiate_model(default_model)
 embeddings = initiate_embeddings(default_model)
+
 
 def test_problem_solver_agent(config):
 
@@ -20,7 +18,6 @@ def test_problem_solver_agent(config):
     _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
     _problem_file = config.get('ProblemSolverAgent', 'problem_file')
     _problem_database = config.get('ProblemSolverAgent', 'problem_database')
-
 
     agent = ProblemSolverAgent(model=model,
                                embeddings=embeddings,
@@ -68,8 +65,8 @@ def test_problem_solver_agent_langsmith(config):
 
     qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})
 
-    experiments_results = evaluate(
-        agent.runnable,
+    evaluate(
+        agent.get_runnable,
         data="PROBLEM-datasets-03-12-2024",
         evaluators=[qa_evaluator],
         experiment_prefix="test-problem",

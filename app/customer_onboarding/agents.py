@@ -59,14 +59,9 @@ class FAQAgent(SimpleRAGAgent):
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  source_paths: Path,
-                 # persist_directory: str,
-                 # faq_directory: str,
-                 # faq_file: str = 'faq.json',
                  ):
-
-        #self.faq_directory = faq_directory
-        # self.faq_file = faq_file
         super().__init__(model=model, embeddings=embeddings, source_paths=source_paths, collection_name="faq")
+        # super().set_runnable(self._initiate_runnable())
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
         source_to_docs = {}
@@ -101,9 +96,9 @@ class FAQAgent(SimpleRAGAgent):
 class EligibilityAgent(AbstractAgent):
     def __init__(self, model: BaseChatModel):
         super().__init__(model=model)
-        self.runnable = self._initiate_agent_chain()
+        super().set_runnable(self._initiate_runnable())
 
-    def _initiate_agent_chain(self) -> RunnableSerializable:
+    def _initiate_runnable(self) -> RunnableSerializable:
         logger.debug("Initiating Eligibility Assistant")
         system_prompt = """### Contexte
         Tu es un agent chargé de déterminer si un prospect est éligible à l'ouverture d'un compte bancaire.
@@ -286,7 +281,6 @@ class ProblemSolverAgent(SimpleRAGAgent):
         self.source_paths = self.problem_directory / self.problem_file
         super().__init__(model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name="errors")
 
-
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
         source_to_docs = {}
         try:
@@ -329,7 +323,7 @@ class ProblemSolverAgent(SimpleRAGAgent):
 
         return source_to_docs
 
-    def _initiate_agent_chain(self) -> RunnableSerializable:
+    def _initiate_runnable(self) -> RunnableSerializable:
         lc_tools = [search_errors_in_db, search_errors_in_vectordb]
 
         prompt = hub.pull("hwchase17/structured-chat-agent")

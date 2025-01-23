@@ -16,13 +16,18 @@ from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langgraph.prebuilt import create_react_agent
-from llama_index.core import Document as LlamaDocument, SimpleDirectoryReader, VectorStoreIndex
+from llama_index.core import Document as LlamaDocument, SimpleDirectoryReader, VectorStoreIndex, Settings
+from llama_index.core.agent import FunctionCallingAgentWorker, AgentRunner
+from llama_index.core.agent.runner.base import BaseAgentRunner
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.objects import ObjectIndex
 from llama_index.core.schema import BaseNode
+from llama_index.embeddings.mistralai import MistralAIEmbedding
+from llama_index.llms.mistralai import MistralAI
 
-from agents.base import AbstractAgent
+from agents.base import AbstractAgent, Input, Output
 from agents.utils import get_doc_tools
+from core.base import SupportedModel
 from core.logger import logger
 
 _RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
@@ -35,7 +40,7 @@ class AbstractRAGAgent(AbstractAgent):
                  embeddings: Embeddings,
                  source_paths: Union[Path, List[Path]]):
         super().__init__(model=model)
-        self.embeddings = embeddings  # self._initiate_embeddings()
+        self.embeddings = embeddings
         self.source_paths = source_paths
         print(f"Source path: '{self.source_paths}'")
         self.docs = self._initiate_docs(source_paths=self.source_paths)
@@ -55,16 +60,14 @@ class SimpleRAGAgent(AbstractRAGAgent):
                  embeddings: Embeddings,
                  source_paths: Path,
                  collection_name: Optional[str] = _RAG_AGENT_DEFAULT_COLLECTION_NAME,
-                 # persist_directory: str,
                  ):
         super().__init__(model=model, embeddings=embeddings, source_paths=source_paths)
         self._collection_name = collection_name or _RAG_AGENT_DEFAULT_COLLECTION_NAME
-        # self.persist_directory = persist_directory
 
         # RAG classic
         self.vectorstore = self._initiate_vectorstore()
         self.retriever = self._initiate_retriever()
-        self.runnable = self._initiate_agent_chain()
+        super().set_runnable(self._initiate_runnable())
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
         """Load and split documents for langchain."""
@@ -108,10 +111,12 @@ class SimpleRAGAgent(AbstractRAGAgent):
             search_kwargs={"score_threshold": 0.5})
         return retriever
 
-    def _initiate_agent_chain(self) -> RunnableSerializable:
+    def _initiate_runnable(self) -> RunnableSerializable:
         logger.debug("Initiating Assistant")
         # TODO revoir le prompt il utilise ses propres connaissances.
-        template = """Answer the question between triple single quotes based only on the following <Context/>.
+        template = """Answer the question between the XML <Question> tag based only on the content
+         within the following <Context/> XML tag.
+        Ignore any other input outside the tags.
         
         # Instructions
         - Respond in the same language as the question.
@@ -123,8 +128,9 @@ class SimpleRAGAgent(AbstractRAGAgent):
         {context}
         </Context>
         
-        # Question: 
-        '''{question}'''
+        <Question> 
+        {question}
+        </Question>
         """
         prompt = ChatPromptTemplate.from_template(template)
         output_parser = StrOutputParser()
@@ -136,6 +142,8 @@ class SimpleRAGAgent(AbstractRAGAgent):
 
 
 class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
+    Settings.embed_model = MistralAIEmbedding()
+    Settings.llm = MistralAI(model=SupportedModel.MISTRAL_LARGE.value)
 
     def __init__(self,
                  model: BaseChatModel,
@@ -143,8 +151,9 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
                  source_paths: Union[Path, List[Path]]):
         super().__init__(model=model, embeddings=embeddings, source_paths=source_paths)
 
+        self._agent_runner = self._initiate_agent()
         # RAG classic
-        self.runnable = self._initiate_agent_chain()
+        # self.runnable = self._initiate_agent_chain()
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[BaseNode]]:
         """Load and split documents for llama-index."""
@@ -162,7 +171,7 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
 
         return source_to_nodes
 
-    def _initiate_agent_chain(self) -> RunnableSerializable:
+    def _initiate_agent(self) -> BaseAgentRunner:
         paper_to_tools_dict = {}
         for source, nodes in self.docs.items():
             vector_tool, summary_tool = get_doc_tools(self.embeddings, nodes, source.stem)
@@ -177,26 +186,41 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
 
         obj_retriever = obj_index.as_retriever(similarity_top_k=3)
 
-        @tool
-        def retriever(question: str) -> list[Any]:
-            """Useful IF you need to answer a general question or need to have a holistic summary on knowledge.
-            DO NOT use if you have specific question.
-            DO NOT USE MULTI-ARGUMENTS INPUT."""
-            return obj_retriever.retrieve(question)
+        agent_worker = FunctionCallingAgentWorker.from_tools(
+            tool_retriever=obj_retriever,
+            system_prompt=""" \
+        You are an agent designed to answer queries over a set of given papers.
+        Please always use the tools provided to answer a question. Do not rely on prior knowledge.\
 
-        lc_tools = [retriever]
+        """,
+            verbose=True
+        )
+        agent = AgentRunner(agent_worker)
 
-        llm_with_tools = self.model.bind_tools(lc_tools)
-
-        # memory = MemorySaver()
-
-        modifier = SystemMessage("You are an agent designed to answer queries over a set of given papers. "
-                                 "Please always use the tools provided to answer a question. "
-                                 "Do not rely on prior knowledge.")
-
-        agent = create_react_agent(model=llm_with_tools, tools=lc_tools, state_modifier=modifier)
+        # @tool
+        # def retriever(question: str) -> list[Any]:
+        #     """Useful IF you need to answer a general question or need to have a holistic summary on knowledge.
+        #     DO NOT use if you have specific question.
+        #     DO NOT USE MULTI-ARGUMENTS INPUT."""
+        #     return obj_retriever.retrieve(question)
+        #
+        # lc_tools = [retriever]
+        #
+        # llm_with_tools = self.model.bind_tools(lc_tools)
+        #
+        # # memory = MemorySaver()
+        #
+        # modifier = SystemMessage("You are an agent designed to answer queries over a set of given papers. "
+        #                          "Please always use the tools provided to answer a question. "
+        #                          "Do not rely on prior knowledge.")
+        #
+        # agent = create_react_agent(model=llm_with_tools, tools=lc_tools, state_modifier=modifier)
 
         return agent
+
+    def invoke(self, input: Input, **kwargs: Any) -> Output:
+        response = self._agent_runner.query(input)
+        return response
 
 
 class RAGAgentType(Enum):
