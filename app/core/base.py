@@ -9,4 +9,4 @@ class SupportedModel(Enum):
     MINISTRAL_8B = "ministral-8b-latest"
     MISTRAL_NEMO = "open-mistral-nemo"
     MISTRAL_SMALL = "mistral-small-latest"
-    DEFAULT = MISTRAL_LARGE
+    DEFAULT = MISTRAL_SMALL

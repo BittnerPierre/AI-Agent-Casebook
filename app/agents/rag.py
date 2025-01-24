@@ -1,22 +1,22 @@
 import abc
+import os
 from abc import ABC
 from enum import Enum
 from pathlib import Path
 from typing import Optional, List, Any, Union, Dict
 
+from dotenv import load_dotenv, find_dotenv
 from langchain_chroma import Chroma
+
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable, RunnableMap
-from langchain_core.tools import tool
 from langchain_core.vectorstores import VectorStore, VectorStoreRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langgraph.prebuilt import create_react_agent
-from llama_index.core import Document as LlamaDocument, SimpleDirectoryReader, VectorStoreIndex, Settings
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings
 from llama_index.core.agent import FunctionCallingAgentWorker, AgentRunner
 from llama_index.core.agent.runner.base import BaseAgentRunner
 from llama_index.core.node_parser import SentenceSplitter
@@ -31,6 +31,24 @@ from core.base import SupportedModel
 from core.logger import logger
 
 _RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
+
+##########
+# START FOR LLAMA-INDEX
+##########
+_ = load_dotenv(find_dotenv())
+
+
+def _set_env(var: str, value: str):
+    if not os.environ.get(var):
+        os.environ[var] = value
+
+
+# don't know why I must do this in debug mode
+_set_env("OPENAI_API_TYPE", "openai")
+
+##########
+# END FOR LLAMA-INDEX
+##########
 
 
 class AbstractRAGAgent(AbstractAgent):
@@ -142,8 +160,9 @@ class SimpleRAGAgent(AbstractRAGAgent):
 
 
 class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
+    # TODO UGLY TO FIX THIS BUT LLAMA INDEX Settings is awsfull
     Settings.embed_model = MistralAIEmbedding()
-    Settings.llm = MistralAI(model=SupportedModel.MISTRAL_LARGE.value)
+    Settings.llm = MistralAI(model=SupportedModel.DEFAULT.value)
 
     def __init__(self,
                  model: BaseChatModel,
@@ -184,14 +203,13 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
             index_cls=VectorStoreIndex,
         )
 
-        obj_retriever = obj_index.as_retriever(similarity_top_k=3)
+        obj_retriever = obj_index.as_retriever(similarity_top_k=10)
 
         agent_worker = FunctionCallingAgentWorker.from_tools(
             tool_retriever=obj_retriever,
             system_prompt=""" \
         You are an agent designed to answer queries over a set of given papers.
         Please always use the tools provided to answer a question. Do not rely on prior knowledge.\
-
         """,
             verbose=True
         )

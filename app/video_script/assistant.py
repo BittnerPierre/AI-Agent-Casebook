@@ -18,6 +18,7 @@ from langgraph.graph.message import add_messages
 
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain import hub
 
 from agents import RAGAgentFactory, RAGAgentType
 from core.commons import initiate_model, initiate_embeddings
@@ -26,7 +27,8 @@ from core.base import SupportedModel
 from langgraph.managed.is_last_step import RemainingSteps
 
 MIN_REMAINING_STEP = 3
-MAX_REVISION = 1
+MAX_REVISION = 2
+
 
 def load_guidelines():
     try:
@@ -38,7 +40,7 @@ def load_guidelines():
 
 script_guidelines = load_guidelines()
 
-llm = initiate_model(SupportedModel.MISTRAL_SMALL)
+llm = initiate_model(SupportedModel.DEFAULT)
 
 team = "small video editing team for Youtube channels"
 
@@ -56,46 +58,18 @@ team = "small video editing team for Youtube channels"
 # PRODUCER   #
 ##############
 
+
 class Chapter(TypedDict):
     title: str
     covered_topics: List[str]
+
 
 class Planning(TypedDict):
     topic: str
     plan: List[Chapter]
 
-role = "Host/Producer"
 
-producer_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            f"You are the {role} of a {team}.\n\n"
-            "Your responsibilities:\n"
-            "- Plan the video agenda: \n"
-            "Define for each section:"
-            " - Title [words count]\n"
-            " - covered topics (max 3)\n"
-            "- Provide the final approval of the script.\n\n"
-            "The video must follow this template :\n"
-            "- Section 1: Video hook and intro\n"
-            "- Section 2: Body, main content (prefer 3 chapters if not specify otherwise) \n"
-            "- Section 3: CTA (call to action) and Conclusion\n"
-            "\n\n"
-            # "Here’s a simple, four-step formula for structuring the body of your script:\n"
-            # "Step 1: Think about the main idea, the audience and message you wand to deliver.\n"
-            # "Step 2: Select key messages and write down video hook and introduction that presents the principal ideas, "
-            # "that you want to develop in an engaging way so you don’t overwhelm your audience."
-            # "Step 3: Elaborate chapter individually on each ideas using examples from the context."
-            # "Step 4. Include your call to action. Tell your audience what to do next. "
-            "\n\n"
-            "You DO NOT write script.\n"
-            "You DO NOT make research."
-            "You DO NOT review.\n"
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-)
+producer_prompt = hub.pull("video-script-producer-prompt")
 
 plan_video = producer_prompt | llm.with_structured_output(Planning)
 
@@ -117,33 +91,7 @@ class ResearchChapter(TypedDict):
     comment: str
 
 
-role = "Researcher"
-
-researcher_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            f"You are the {role} of a {team}.\n\n"
-            "Your responsibilities:\n"
-            "- Provide exhaustive, insightful, structured and factual info, context, "
-            " references, case studies or examples to the writer to cover all the topics on the agenda.\n"
-            "- Incorporate feedback by revising and improving your previous research.\n"
-            "You DO NOT write the full script.\n"
-            "You just gather relevant data in a structure and concise way to support writer task."
-            """### Output Format
-            1. Place the **content* in the `research` key in a well organized manner. Quote source whenever you can.
-            2. Place research notes, responses to feedback in the `comment` key.
-            ### Key Instructions
-            - Organize the 'research' section into a clear, structured text format with numbered sections,
-             subsections, bullets, and hyphens for readability, avoiding JSON, XML, or code-like formats.
-            - Avoid structured formatting (like JSON or XML) in the `comment` section. Use plain text.
-            - If additional context or information are missing to cover a topic in the agenda,
-             explicitly state that you couldn't find any relevant data in `comment` section.
-            """
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-)
+researcher_prompt = hub.pull("video-script-researcher-prompt")
 
 research = researcher_prompt | llm.with_structured_output(ResearchChapter)
 
@@ -157,35 +105,7 @@ class DraftChapter(TypedDict):
     comment: str
 
 
-role = "Writer"
-
-writer_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-           "system",
-           f"You are the {role} of a {team}.\n\n"
-           """Your responsibilities include:
-            - Drafting or refining a video script based on the agenda and research provided.
-            - Incorporating feedback by revising and improving your previous attempts.
-            - You DO NOT make research. Use only information provided in the context.
-            
-            ### Output Format
-            1. Place the **full script** in the `chapter` key. Provide the text as plain, unformatted prose.
-            2. Place revision notes, responses to feedback, or additional suggestions in the `comment` key.
-            Write these in plain text with no structured formatting (e.g., no JSON or list formatting).
-            
-            ### Key Instructions
-            - Avoid structured formatting (like JSON or XML) in the `comment` section. Use conversational plain text.
-            - If additional context or information is required, explicitly state the need for further research in the `comment` section.
-            - Ensure the `chapter` text is clear, coherent, and complete without relying on formatting to convey meaning.
-            """
-           "\n"
-           "\n"
-           f"Writing Guidelines:\n\n{script_guidelines}"
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-)
+writer_prompt = hub.pull("video-script-writer-prompt")
 
 write = writer_prompt | llm.with_structured_output(DraftChapter)
 
@@ -202,40 +122,7 @@ class ReviewFeedback(TypedDict):
     NextNode: Literal['research', 'writer', 'approved']
 
 
-role = "Script Reviewer"
-
-review_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            f"You are the {role} of a {team}.\n\n"
-            """Based solely on the proposed key topics from the agenda and writing guidelines,
-            Your task is to evaluate the script draft and provide concise and structured feedback in four parts:
-
-            1. **GoodPoints**: List the positive aspects that should be retained.
-            2. **MissingOrNeedsResearch**: Specify missing information or areas that require more research.
-            3. **SuperfluousContent**: Identify anything unnecessary or off-topic in the chapter.
-            4. **StyleRefinement**: Major issues with writing guidelines.
-            5. **NextNode**: Indicate the next action by choosing one of:
-               - 'approved': If no major revisions or research are necessary.
-               - 'writer': If Superfluous Content or Style Refinement BUT NO NEW CONTENT.
-               - 'research': If Missing Or Needs Research to address gaps or improve accuracy from the agenda.
-               
-            ---
-            
-            ### **Decision-Making Guidance for NextNode**:
-            1. Choose **'approved'** (default) if issues are minor or stylistic.
-            2. Choose **'writer'** if structural or stylistic improvements are required AND NO NEW content is required.
-            3. Choose **'research'** if missing content.
-            **IMPORTANT**: 'writer' cannot do his own research. Go to 'research' any time new content is necessary.
-            In case of ambiguity or perplexity, choose 'research'.
-            ---
-            """
-            f"\n\nWriting Guidelines:\n\n{script_guidelines}\n\n"
-        ),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
-)
+review_prompt = hub.pull("video-script-reviewer-prompt")
 
 review = review_prompt | llm.with_structured_output(ReviewFeedback)
 
@@ -290,7 +177,7 @@ async def planning_node(state: VideoScriptState) -> VideoScriptState:
     # If not already done, let's define chapters in the conversation or from user input
     # Example simulation: The user wants a 3-chapter video, so we store that:
     if not state.get("chapters"):
-        res = await plan_video.ainvoke(state["messages"])
+        res = await plan_video.ainvoke(input={"messages": state["messages"], "team": team})
         chapters = _parse_chapters_from_response(res['plan'])
         state["chapters"] = chapters
         state["current_chapter"] = 0
@@ -299,8 +186,9 @@ async def planning_node(state: VideoScriptState) -> VideoScriptState:
         state["feedbacks"] = [""] * len(chapters)
         state["revisions"] = [0] * len(chapters)
         formatted_chapters = _format_chapters(chapters)
-        producer_message = (f"Great! Here's a suggested agenda for your {len(chapters)}-chapter video on {res['topic']}.\n\n"
-                            f"{formatted_chapters}")
+        producer_message = (f"Great!"
+                            f" Here's a suggested agenda for your {len(chapters)}-chapter video on {res['topic']}."
+                            f"\n\n{formatted_chapters}")
         host_message = AIMessage(content=producer_message, name="host-producer")
         state["messages"].append(host_message)
     return state
@@ -313,7 +201,7 @@ async def research_node(state: VideoScriptState) -> VideoScriptState:
     """
     chapter = state["chapters"][state["current_chapter"]]
     state["messages"].append(HumanMessage(content=f"Provide research for '{chapter[0]}'", name="user"))
-    res = await research.ainvoke(state["messages"])
+    res = await research.ainvoke(input={"messages": state["messages"], "team": team})
     content = f"# Research for {chapter[0]}\n\n{res['research']}\n\n-----\n\n# Researcher Comment\n\n{res['comment']}"
     state["messages"].append(AIMessage(content=content, name="researcher"))
     return state
@@ -326,7 +214,10 @@ async def writer_node(state: VideoScriptState) -> VideoScriptState:
     chapter = state["chapters"][state["current_chapter"]]
     state["messages"].append(HumanMessage(content=f"Draft the script for chapter '{chapter[0]}'", name="user"))
     # text = f"Writer: Here is a draft for {chapter}, integrating research bullet points..."
-    res = await write.ainvoke(state["messages"])
+    res = await write.ainvoke(input={"messages": state["messages"],
+                                     "team": team,
+                                     "script_guidelines": script_guidelines
+                                     })
     content = f"# Draft for {chapter[0]}\n\n{res['chapter']}\n\n-----\n\n# Writer Comment\n\n{res['comment']}"
     state["messages"].append(AIMessage(content=content, name="writer"))
     state["chapter_versions"][state["current_chapter"]] = res['chapter']
@@ -350,7 +241,10 @@ async def review_node(state: VideoScriptState) -> VideoScriptState:
     revision = state["revisions"][state["current_chapter"]] + 1
     state["messages"].append(HumanMessage(content=f"Review the draft for chapter '{chapter[0]}'", name="user"))
 
-    res = await review.ainvoke(state["messages"])
+    res = await review.ainvoke(input={"messages": state["messages"],
+                                      "team": team,
+                                      "script_guidelines": script_guidelines
+                                      })
     # review_feedback = res.content
     feedback_message = (
         f"# Feedback for {chapter[0]}\n\n"
@@ -398,7 +292,7 @@ async def should_next_chapter(state: VideoScriptState) -> Literal["research", "w
 
         state["messages"].append(HumanMessage(content="Do you approve the draft for the last chapter?", name="user"))
         try:
-            res = await approve_video.ainvoke(state["messages"])
+            res = await approve_video.ainvoke(input={"messages": state["messages"], "team": team})
         except Exception as e:
             # Handle the exception appropriately
             print(f"Error invoking approve_video: {e}")
@@ -417,7 +311,7 @@ workflow = StateGraph(VideoScriptState)
 
 # NODES
 workflow.add_node("planning", planning_node)
-workflow.add_node("research", research_node) # research_node2
+workflow.add_node("research", research_node)
 workflow.add_node("writer", writer_node)
 workflow.add_node("review", review_node)
 
@@ -440,8 +334,9 @@ video_script_app = workflow.compile(checkpointer=memory)
 # In real usage, you'd pass user messages or stored conversation. For now, we just pass empty messages to start.
 #
 example_input = {
-    "messages": [HumanMessage(content="I'd like a 3-chapter video of 3 minutes of 300 words on 'AI Won't Take Your Jobs."
-                                      " Those Who Use AI Will!', please!")],
+    "messages": [HumanMessage(
+        content="I'd like a 3-chapter video of 3 minutes of 300 words on 'AI Won't Take Your Jobs."
+                " Those Who Use AI Will!', please!")],
     "chapters": [],         # or we let the planning node define them
     "current_chapter": 0,   # start at chapter 0
     "final_script": ""      # empty at the start
