@@ -1,0 +1,9 @@
+[
+  {
+    "inputs": {
+      "input": "I'd like a 2-chapter video of 3 minutes of 450 words on 'AI Won't Take Your Jobs. Those Who Use AI Will!', please!",
+      "instructions": "Evaluate if the script follows the request: check if the proposed structure (chapitrage), story perspective (angle), length, and duration align with expectations. Ensure coherence, engagement, and relevance for a YouTube audience on AI. No off-topic content."
+    },
+    "outputs": null
+  }
+]

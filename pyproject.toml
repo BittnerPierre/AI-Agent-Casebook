@@ -31,6 +31,10 @@ uvicorn = "^0.34.0"
 langchain-experimental = "^0.3.4"
 protobuf = ">=4.21.12, <5.0.0"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.3"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -39,3 +43,9 @@ build-backend = "poetry.core.masonry.api"
 version = "1.26.4"
 allow-prereleases = true
 extras = ["all"]
+
+[tool.poetry.dev-dependencies]
+pytest-asyncio = ">=0.25.3"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

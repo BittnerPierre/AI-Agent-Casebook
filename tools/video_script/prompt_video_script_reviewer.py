@@ -11,7 +11,7 @@ review_prompt = ChatPromptTemplate.from_messages(
         (
             "system",
             "You are the `Reviewer` of a {team}.\n\n"
-            """Based solely on the proposed key topics from the agenda and writing guidelines,
+            """Based solely on the proposed key topics and brief from the agenda and writing guidelines,
             Your task is to evaluate the script draft and provide concise and structured feedback in four parts:
 
             1. **GoodPoints**: List the positive aspects that should be retained.
