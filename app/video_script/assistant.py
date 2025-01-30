@@ -193,35 +193,13 @@ async def planning_node(state: VideoScriptState) -> VideoScriptState:
     # If not already done, let's define chapters in the conversation or from user input
     # Example simulation: The user wants a 3-chapter video, so we store that:
     if not state.get("chapters"):
-        message_content = (
-            "Elaborate the plan of the video script. \n"
-            "Define for each chapter:\n"
-            " - Title (words count for chapter in format 'X words')\n"
-            " - covered topics (max 3 per chapter).\n"
-            " - Brief for the chapter.\n"
-            "\n\n"
-            "The video plan must follow this template :\n"
-            "- Opening Section: Video hook and introduction for [Video Subject].\n"
-            "- Main Section: 'Body' of the script where you develop the X chapters.\n"
-            "- Closing Section: CTA (call to action) and short conclusion for [Video Subject].\n"
-            "\n\n"
-            "Opening and Closing section does not count as user 'chapter'. "
-            "If user ask for 3 chapters, you must plan for 5 (1: Hook+Introduction, 2,3,4: user chapters, 5: CTA+Conclusion)"
-            "\n\n"
-            "Here’s a simple, four-step formula for structuring the body of your script:\n"
-            "- Step 1: Think about the main idea, the audience and the message you wand to deliver.\n"
-            "- Step 2: Select key messages and write down video hook and introduction that presents the principal ideas, "
-            "that you want to develop in an engaging way so you don’t overwhelm your audience.\n"
-            "- Step 3: Elaborate chapter individually on each ideas using examples from the context.\n"
-            "- Step 4. Include the final call to action. Tell your audience what to do next.\n"
-            "\n\n"
-            "When done define an engaging 'video title' that will set the expectation for the video and create a curiosity gap."
-            "The 'plan' and 'video title' must be in the same language as the script."
-            f"{storytelling_guidebook}")
 
-        human_message = HumanMessage(content=message_content, name="user")
-        messages = state["messages"] + [human_message]
-        res = await plan_video.ainvoke(input={"messages": messages, "team": team})
+        planner_prompt = hub.pull("video-script-planner-prompt")
+        message_content = planner_prompt.format(storytelling_guidebook= storytelling_guidebook)
+        messages = state["messages"] + [HumanMessage(content=message_content, name="user")]
+        res = await plan_video.ainvoke(input={"messages": messages, "team": team,
+                                              "storytelling_guidebook": storytelling_guidebook,
+                                              "prompt": planner_prompt})
         chapters = res['plan']
         state["video_title"] = res['video_title']
         state["chapters"] = chapters
@@ -341,7 +319,8 @@ def finalize_script(final_script, state):
     """
     Helper function to finalize the script and prepare the completion message.
     """
-    final_script += f"## CHAPTER {state['current_chapter_index']}\n\n" + state["current_chapter_content"] + "\n\n"
+    chapter_title = state["chapters"][state["current_chapter_index"]]['title']
+    final_script += f"## CHAPTER {state['current_chapter_index']} - {chapter_title}\n\n" + state["current_chapter_content"] + "\n\n"
     message = (f"Here is the final script.\n\n########\n\n"
                f"\n\n# {state['video_title']}\n\n"
                f"{final_script}")
@@ -358,6 +337,8 @@ def finalize_script(final_script, state):
 async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, END]]:
     current_chapter = state["current_chapter_index"]
     revision_count = state["current_chapter_revision"]
+    chapter_title = state["chapters"][current_chapter]['title']
+
     messages = state["messages"]
     chapters_length = len(state["chapters"])
     logger.debug(f"Start approval chapter='{current_chapter}/{chapters_length}', revision='{revision_count}/{MAX_REVISION}', members='{members}")
@@ -387,7 +368,7 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
     # Check if maximum revisions have been reached
     if revision_count >= MAX_REVISION:
         goto = "researcher"
-        logger.info(f"Maximum revisions reached for this chapter. chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
+        logger.info(f"Maximum revisions reached for chapter {chapter_title}. chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
 
         current_chapter += 1  # Move to next chapter
         revision_count = 0
@@ -396,8 +377,8 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
             logger.info("Ending as all chapters are completed")
             return finalize_script(final_script, state)
 
-        message = "Maximum revisions reached for this chapter. Moving to next chapter or ending workflow."
-        final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
+        message = f"Maximum revisions reached for chapter {chapter_title}. Moving to next chapter or ending workflow."
+        final_script += f"## CHAPTER {current_chapter} - {chapter_title}\n\n" + chapter_content + "\n\n"
 
     else:
         if revision_count == 0:
@@ -421,7 +402,7 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
                     if current_chapter >= chapters_length:
                         logger.info("Ending as all chapters are completed")
                         return finalize_script(final_script, state)
-                    final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
+                    final_script += f"## CHAPTER {current_chapter} - {chapter_title}\n\n" + chapter_content + "\n\n"
                     current_chapter += 1  # Move to next chapter
                     revision_count = 0
                 logger.debug(f"Approbation step {res['status']} chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")

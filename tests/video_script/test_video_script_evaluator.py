@@ -7,27 +7,27 @@ from langchain_openai import OpenAI
 from langsmith import evaluate, wrappers
 from langsmith.evaluation import LangChainStringEvaluator
 
-from core.logger import logger
 from core.commons import initiate_model
 from core.base import SupportedModel
 from video_script.assistant import create_video_script_agent
 
 default_model = SupportedModel.DEFAULT
 
+TESTING = False
+
 agent = create_video_script_agent()
 
 # FOR TESTING THE TEST :)
 TEST_SCRIPT_FILENAME = "tests/video_script/test_script.txt"
 
-def load_test_script():
+
+def load_test_script(logger):
     try:
         with open(TEST_SCRIPT_FILENAME, "r", encoding="utf-8") as file:
             return file.read()
     except FileNotFoundError:
         logger.warning(f"No guidelines available {TEST_SCRIPT_FILENAME}.")
         return "No script guidelines available."
-
-test_script = load_test_script()
 
 
 class ScriptEvaluatorFeedback(TypedDict):
@@ -49,35 +49,37 @@ def valid_script(input: str, output: str) -> ScriptEvaluatorFeedback:
   return res
 
 
-async def test_video_script_evaluator(config):
+async def test_video_script_evaluator(config, logger):
+    logger.info(f"test_video_script_evaluator START (test_mode={TESTING})")
 
     input = ("Je voudrais une vidéo en deux chapitres d'une durée de 2 minutes et contenant 450 mots sur le sujet "
              "`L'IA ne prendra pas votre travail. Ceux qui utilisent l'IA, oui !`, s'il vous plaît !")
 
-    session_id = config.configurable.get("session_id") if config and hasattr(config, 'configurable') else str(
-        uuid.uuid4())
-    thread_id = config.configurable.get("thread_id") if config and hasattr(config, 'configurable') else str(
-        uuid.uuid4())
+    if TESTING:
+        output = load_test_script(logger)
+    else:
 
-    effective_config = {"configurable": {"session_id": session_id, "thread_id": thread_id}, "recursion_limit": 99}
+        session_id = config.configurable.get("session_id") if config and hasattr(config, 'configurable') else str(
+            uuid.uuid4())
+        thread_id = config.configurable.get("thread_id") if config and hasattr(config, 'configurable') else str(
+            uuid.uuid4())
 
-    input_data = {'messages': [HumanMessage(content=input)],}
+        effective_config = {"configurable": {"session_id": session_id, "thread_id": thread_id}, "recursion_limit": 99}
 
-    steps = [step async for step in agent.astream(input=input_data, config=effective_config, stream_mode="values")]
+        input_data = {'messages': [HumanMessage(content=input)],}
 
-    # Access the last step
-    last_step = steps[-1]
+        steps = [step async for step in agent.astream(input=input_data, config=effective_config, stream_mode="values")]
 
-    # Print the last message of the last step
-    last_message = last_step["messages"][-1]
-    output = last_message.pretty_repr()
-    print(output)
+        # Access the last step
+        last_step = steps[-1]
 
-    # FOR TESTING THE TEST
-    # output = load_test_script()
+        # Print the last message of the last step
+        last_message = last_step["messages"][-1]
+        output = last_message.pretty_repr()
 
     res = valid_script(input, output)
-    print(res)
+
+    logger.info(f"test_video_script_evaluator END {res} (test_mode={TESTING})")
     assert res["Grade"], "Acceptable"
 
     # qa_evaluator = LangChainStringEvaluator("qa", config={"llm": eval_llm, "prompt": prompt})

@@ -15,7 +15,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 _ = load_dotenv(find_dotenv())
 
-
 from app.core.config_loader import load_config
 
 @pytest.fixture
@@ -25,6 +24,32 @@ def config():
     return load_config(config_path=test_config_path)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_logging():
-    setup_dual_logger('AI-Agent-Casebook', './logs/test.log', stream_level=logging.INFO, file_level=logging.DEBUG)
+def pytest_configure():
+    # Set global logging level
+    # root_logger = logging.getLogger()
+
+    # if not root_logger.hasHandlers():  # Prevent duplicate handlers
+    #     logging.basicConfig(
+    #         level=logging.INFO,
+    #         format="%(asctime)s [%(levelname)s] %(message)s",
+    #         datefmt="%Y-%m-%d %H:%M:%S",
+    #     )
+
+    # Suppress logging from third-party libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # Example for HTTPX
+    logging.getLogger("urllib3").setLevel(logging.WARNING)  # Example for requests
+    logging.getLogger("mistral.ai").setLevel(logging.WARNING)  # Adjust this if needed
+
+
+@pytest.fixture
+def logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    if not logger.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
