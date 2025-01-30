@@ -33,6 +33,7 @@ def load_test_script(logger):
 class ScriptEvaluatorFeedback(TypedDict):
     Grade: Literal['ACCEPTABLE', 'UNACCEPTABLE']
     Score: int
+    Comment: str
 
 
 eval_llm = initiate_model(default_model)

@@ -49,6 +49,22 @@ class RunnableMixin:
             raise NotImplementedError("No valid invoke method found")
 
 
+    def ainvoke(
+            self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
+    ) -> Output:
+        """Implementation for invoking the agent."""
+        runnable = self.get_runnable
+        if runnable:
+            if isinstance(runnable, (Runnable, RunnableSequence)):
+                return runnable.ainvoke(input, config, **kwargs)
+            elif callable(runnable):
+                return runnable(input, config, **kwargs)
+            else:
+                raise NotImplementedError("No valid invoke method found")
+        else:
+            raise NotImplementedError("No valid invoke method found")
+
+
 
 
 class State(TypedDict):

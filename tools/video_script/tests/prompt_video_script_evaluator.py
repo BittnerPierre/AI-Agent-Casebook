@@ -44,6 +44,7 @@ The script is **ACCEPTABLE** if the score is above 6. It is **UNACCEPTABLE** if 
 **Answer format:**  
 Grade: <ACCEPTABLE or UNACCEPTABLE>  
 Score: <grade from 0 to 10>"**  
+Comment: <Brief justification for the score, highlighting any gaps or misalignment>  
 """
                                           )
 
