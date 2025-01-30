@@ -51,7 +51,7 @@ def valid_script(input: str, output: str) -> ScriptEvaluatorFeedback:
 
 async def test_video_script_evaluator(config):
 
-    input = ("Je voudrais une vidéo en trois chapitres d'une durée de trois minutes et contenant 450 mots sur le sujet "
+    input = ("Je voudrais une vidéo en deux chapitres d'une durée de 2 minutes et contenant 450 mots sur le sujet "
              "`L'IA ne prendra pas votre travail. Ceux qui utilisent l'IA, oui !`, s'il vous plaît !")
 
     session_id = config.configurable.get("session_id") if config and hasattr(config, 'configurable') else str(

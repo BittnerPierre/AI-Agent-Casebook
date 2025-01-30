@@ -143,7 +143,7 @@ review = review_prompt | worker_llm.with_structured_output(ReviewFeedback)
 ####################
 
 # We'll store the conversation state in "messages" to pass from node to node.
-# Additional fields: "chapters", "current_chapter", "final_script", etc.
+# Additional fields: "chapters", "current_chapter_XXX", "final_script", etc.
 
 #
 # 1. Define the state of the graph
@@ -337,11 +337,29 @@ async def reviewer_node(state: VideoScriptState) -> Command[Literal["supervisor"
 members = ["researcher", "writer"]
 
 
+def finalize_script(final_script, state):
+    """
+    Helper function to finalize the script and prepare the completion message.
+    """
+    final_script += f"## CHAPTER {state['current_chapter_index']}\n\n" + state["current_chapter_content"] + "\n\n"
+    message = (f"Here is the final script.\n\n########\n\n"
+               f"\n\n# {state['video_title']}\n\n"
+               f"{final_script}")
+    return Command(
+        goto=END,
+        update={
+            "final_script": "",
+            "current_chapter_content": "",
+            "messages": [AIMessage(content=message, name="host-producer")],
+        }
+    )
+
+
 async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, END]]:
     current_chapter = state["current_chapter_index"]
     revision_count = state["current_chapter_revision"]
     messages = state["messages"]
-    chapters_length = len(state["chapters"]) - 1
+    chapters_length = len(state["chapters"])
     logger.debug(f"Start approval chapter='{current_chapter}/{chapters_length}', revision='{revision_count}/{MAX_REVISION}', members='{members}")
 
     final_script = state["final_script"]
@@ -357,34 +375,36 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
                    f"\n\n# {state["video_title"]}\n\n"
                    f"{final_script}\n")
         return Command(goto=END,
-                       update={# "final_script": final_script,
+                       update={"final_script": "",
+                               "current_chapter_content": "",
                                "messages": AIMessage(content=message, name="host-producer")})
 
     # Check if the current chapter index is greater than or equal to available chapters
-    if current_chapter > chapters_length:
+    if current_chapter >= chapters_length:
         logger.info(f"Ending as all chapters are completed")
-        # final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
-        message = (f"Here is the final script.\n\n########\n\n"
-                   f"\n\n# {state["video_title"]}\n\n"
-                   f"{final_script}")
-        return Command(goto=END,
-                       update={# "final_script": final_script,
-                               "messages": AIMessage(content=message, name="host-producer"),})
+        return finalize_script(final_script, state)
 
     # Check if maximum revisions have been reached
     if revision_count >= MAX_REVISION:
-        message = "Maximum revisions reached for this chapter. Moving to next chapter or ending workflow."
         goto = "researcher"
+        logger.info(f"Maximum revisions reached for this chapter. chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
+
         current_chapter += 1  # Move to next chapter
         revision_count = 0
+
+        if current_chapter >= chapters_length:
+            logger.info("Ending as all chapters are completed")
+            return finalize_script(final_script, state)
+
+        message = "Maximum revisions reached for this chapter. Moving to next chapter or ending workflow."
         final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
-        logger.info(f"Maximum revisions reached for this chapter. chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
+
     else:
         if revision_count == 0:
             goto = "researcher"
+            logger.debug(f"First revision chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
             message = "Let's make it, Team!"
             revision_count += 1  # Increment the revision count
-            logger.debug(f"First revision chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
         else:
             messages += [HumanMessage(content="Do you approve the draft for the last chapter?"
                                               "\nFormat: status: ['approved', 'revised']", name="host-producer")]
@@ -398,9 +418,12 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
                 else:
                     message = "Chapter approved. Moving to next."
                     goto = "researcher"
+                    if current_chapter >= chapters_length:
+                        logger.info("Ending as all chapters are completed")
+                        return finalize_script(final_script, state)
+                    final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
                     current_chapter += 1  # Move to next chapter
                     revision_count = 0
-                    final_script += f"## CHAPTER {current_chapter}\n\n" + chapter_content + "\n\n"
                 logger.debug(f"Approbation step {res['status']} chapter='{current_chapter}', revision='{revision_count}', goto='{goto}'")
             except Exception as e:
                 logger.error(f"Error invoking approve_video: {e}", e)
