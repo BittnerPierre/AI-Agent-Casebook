@@ -2,7 +2,7 @@ from typing import Any, TypedDict, Annotated, TypeVar, Union
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AnyMessage
-from langchain_core.runnables import Runnable, RunnableConfig, RunnableSerializable, RunnableSequence
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableSequence
 from langgraph.graph import add_messages
 
 import abc

@@ -10,7 +10,7 @@ writer_prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are the `Writer` of a {team}."
+            "You are the `Scriptwriter` of a {team}."
             "\n\n"
             """Your responsibilities include:
              - Drafting or refining a video script based on the agenda and research provided.
@@ -24,6 +24,8 @@ writer_prompt = ChatPromptTemplate.from_messages(
  
              ### Key Instructions
              - Video script MUST uses the same language as the user request if it is not specify.
+             - Each chapter MUST follow word count directive provided in the title '[X words]'
+             - Chapters are part of the same video so ensure coherence and avoid repetition from previous chapter. 
              - Avoid structured formatting (like JSON or XML) in the `comment` section. Use conversational plain text.
              - If additional context or information is required, explicitly state the need for further research in the `comment` section.
              - Ensure the `chapter` text is clear, coherent, and complete without relying on formatting to convey meaning.

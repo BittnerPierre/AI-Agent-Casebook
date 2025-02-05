@@ -1,8 +1,7 @@
-import json
+
 from typing import List, Literal, Annotated, Optional
 
 from langchain import hub
-from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, BaseMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import (
@@ -19,9 +18,10 @@ from typing_extensions import TypedDict
 from core.base import SupportedModel
 from core.commons import initiate_model
 from core.logger import logger
+from video_script.agents import Planner, Supervisor, Chapter, Researcher, Writer, Reviewer
 
-worker_llm = initiate_model(SupportedModel.MISTRAL_LARGE)
-producer_llm = initiate_model(SupportedModel.MISTRAL_LARGE)
+worker_llm = initiate_model(SupportedModel.MISTRAL_SMALL)
+producer_llm = initiate_model(SupportedModel.MISTRAL_SMALL)
 
 MIN_REMAINING_STEP = 2
 MAX_REVISION = 1
@@ -68,74 +68,27 @@ team = "small video editing team for Youtube channels"
 # PRODUCER   #
 ##############
 
+planner = Planner(model=producer_llm)
 
-class Chapter(TypedDict):
-    title: str
-    covered_topics: List[str]
-    chapter_brief: str
-
-
-class Planning(TypedDict):
-    video_title: str
-    plan: List[Chapter]
-
-
-producer_prompt = hub.pull("video-script-producer-prompt")
-
-plan_video = producer_prompt | producer_llm.with_structured_output(Planning)
-
-
-class Approval(TypedDict):
-    status: Literal['approved', 'revised']
-
-
-approve_video = producer_prompt | producer_llm.with_structured_output(Approval)
-
+supervisor = Supervisor(model=producer_llm)
 
 ##############
 # RESEARCHER #
 ##############
 
-
-class ResearchChapter(TypedDict):
-    research: str
-    comment: str
-
-
-researcher_prompt = hub.pull("video-script-researcher-prompt")
-
-researcher = researcher_prompt | worker_llm.with_structured_output(ResearchChapter)
+researcher = Researcher(model=worker_llm)
 
 ##############
 # WRITER     #
 ##############
 
-
-class DraftChapter(TypedDict):
-    chapter: str
-    comment: str
-
-
-writer_prompt = hub.pull("video-script-writer-prompt")
-
-write = writer_prompt | worker_llm.with_structured_output(DraftChapter)
-
+writer = Writer(model=worker_llm)
 
 ##############
 # REVIEWER   #
 ##############
 
-class ReviewFeedback(TypedDict):
-    GoodPoints: str
-    MissingOrNeedsResearch: str
-    SuperfluousContent: str
-    StyleRefinement: str
-    NextNode: Literal['researcher', 'writer', 'approved']
-
-
-review_prompt = hub.pull("video-script-reviewer-prompt")
-
-review = review_prompt | worker_llm.with_structured_output(ReviewFeedback)
+reviewer = Reviewer(model=worker_llm)
 
 
 ####################
@@ -197,7 +150,7 @@ async def planning_node(state: VideoScriptState) -> VideoScriptState:
         planner_prompt = hub.pull("video-script-planner-prompt")
         message_content = planner_prompt.format(storytelling_guidebook= storytelling_guidebook)
         messages = state["messages"] + [HumanMessage(content=message_content, name="user")]
-        res = await plan_video.ainvoke(input={"messages": messages, "team": team,
+        res = await planner.ainvoke(input={"messages": messages, "team": team,
                                               "storytelling_guidebook": storytelling_guidebook,
                                               "prompt": planner_prompt})
         chapters = res['plan']
@@ -225,7 +178,9 @@ async def researcher_node(state: VideoScriptState) -> Command[Literal["writer"]]
     message_content = f"Provide research for the chapter '{chapter_title}' covering the key topics."
     human_message = HumanMessage(content=message_content, name="user")
     messages = state["messages"] + [human_message]
+
     res = await researcher.ainvoke(input={"messages": messages, "team": team})
+
     research_response_comment = res.get('comment', 'No comment provided.')
     research_chapter_content = res['research']
     research_message_content = (f"# Research for {chapter_title}"
@@ -251,11 +206,12 @@ async def writer_node(state: VideoScriptState) -> Command[Literal["reviewer"]]:
     human_message = HumanMessage(content=message_content, name="user")
     messages = state["messages"] + [human_message]
 
-    res = await write.ainvoke(input={"messages": messages,
+    res = await writer.ainvoke(input={"messages": messages,
                                      "team": team,
                                      "script_guidelines": script_guidelines,
                                      "storytelling_guidebook": storytelling_guidebook
                                      })
+
     # Check if 'comment' is in the response
     writer_chapter_content = res['chapter']
     writer_response_comment = res.get('comment', 'No comment provided.')
@@ -286,10 +242,11 @@ async def reviewer_node(state: VideoScriptState) -> Command[Literal["supervisor"
     human_message = HumanMessage(content=f"Review the draft for chapter '{chapter_title}'", name="user")
     messages = state["messages"] + [human_message]
 
-    res = await review.ainvoke(input={"messages": messages,
+    res = await reviewer.ainvoke(input={"messages": messages,
                                       "team": team,
                                       "script_guidelines": script_guidelines
-                                      })
+                                        })
+
     reviewer_message_content = (
         f"# Feedback for {chapter_title}\n\n"
         f"Good Points:\n {res['GoodPoints']}\n\n"
@@ -319,9 +276,10 @@ def finalize_script(final_script, state):
     """
     Helper function to finalize the script and prepare the completion message.
     """
-    chapter_title = state["chapters"][state["current_chapter_index"]]['title']
-    final_script += f"## CHAPTER {state['current_chapter_index']} - {chapter_title}\n\n" + state["current_chapter_content"] + "\n\n"
-    message = (f"Here is the final script.\n\n########\n\n"
+    current_chapter_index = state["current_chapter_index"]
+    chapter_title = state["chapters"][current_chapter_index]['title']
+    final_script += f"## CHAPTER {current_chapter_index + 1} - {chapter_title}\n\n" + state["current_chapter_content"] + "\n\n"
+    message = (f"Here is your final script.\n\n########\n\n"
                f"\n\n# {state['video_title']}\n\n"
                f"{final_script}")
     return Command(
@@ -390,7 +348,8 @@ async def supervisor_node(state: VideoScriptState) -> Command[Literal[*members, 
             messages += [HumanMessage(content="Do you approve the draft for the last chapter?"
                                               "\nFormat: status: ['approved', 'revised']", name="host-producer")]
             try:
-                res = await approve_video.ainvoke(input={"messages": messages, "team": team})
+
+                res = await supervisor.ainvoke(input={"messages": messages, "team": team})
 
                 if res['status'] != 'approved':
                     goto = state["next_node"]
@@ -433,9 +392,9 @@ def create_video_script_agent() -> CompiledStateGraph:
     # NODES
     workflow.add_node("planning", planning_node)
     workflow.add_node("supervisor", supervisor_node)  # script_writing_supervisor_node
-    workflow.add_node("researcher", researcher_node, retry=RetryPolicy(retry_on=KeyError, max_attempts=3))
-    workflow.add_node("writer", writer_node, retry=RetryPolicy(retry_on=KeyError, max_attempts=3))
-    workflow.add_node("reviewer", reviewer_node, retry=RetryPolicy(retry_on=KeyError, max_attempts=3))
+    workflow.add_node("researcher", researcher_node, retry=RetryPolicy(retry_on=[KeyError, AttributeError], max_attempts=3))
+    workflow.add_node("writer", writer_node, retry=RetryPolicy(retry_on=[KeyError, AttributeError], max_attempts=3))
+    workflow.add_node("reviewer", reviewer_node, retry=RetryPolicy(retry_on=[KeyError, AttributeError], max_attempts=3))
 
     # EDGES
     workflow.add_edge(START, "planning")

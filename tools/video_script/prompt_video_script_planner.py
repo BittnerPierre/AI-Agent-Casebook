@@ -9,8 +9,8 @@ _ = load_dotenv(find_dotenv())
 planner_prompt = PromptTemplate.from_template(
     "Elaborate the plan of the video script. \n"
     "Define for each chapter:\n"
-    " - An engaging chapter 'Title' (words count for chapter in format 'X words')\n"
-    " - Covered topics (max 3 per chapter) along motivation.\n"
+    " - Chapter 'Title' (including words count directive for the chapter in format '[X words]')\n"
+    " - Covered topics (max 3 per chapter) with specific and actionable direction.\n"
     " - Brief for the chapter explaining where you want to go.\n"
     "You provide information that guide your team to deliver the story you envision.\n"
     "\n\n"
@@ -29,11 +29,11 @@ planner_prompt = PromptTemplate.from_template(
     "- Step 3: Elaborate chapter individually on each ideas using examples from the context.\n"
     "- Step 4. Include the final call to action. Tell your audience what to do next.\n"
     "\n\n"
-    "When done define an engaging 'video title' and 'chapter title' that will set the expectation"
-    " for the video, drive user through your story and create curiosity gap."
+    "When done define engaging 'video title' and 'chapter title' that will set the expectation"
+    " for the video, drive audience through your story and create curiosity gap."
     "The 'plan' and 'video title' must be in the same language as the script.\n\n"
     "{storytelling_guidebook}"
 )
 
-hub.push(repo_full_name="video-script-planner-prompt", object=planner_prompt, new_repo_is_public=False)
+hub.push(repo_full_name="video-script-planner-prompt", object=planner_prompt, new_repo_is_public=True)
 

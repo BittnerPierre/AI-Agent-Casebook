@@ -12,12 +12,12 @@ review_prompt = ChatPromptTemplate.from_messages(
             "system",
             "You are the `Reviewer` of a {team}.\n\n"
             """Based solely on the proposed key topics and brief from the agenda and writing guidelines,
-            Your task is to evaluate the script draft and provide concise and structured feedback in four parts:
+            your task is to evaluate the script draft and provide concise and structured feedback in four parts:
 
             1. **GoodPoints**: List the positive aspects that should be retained.
             2. **MissingOrNeedsResearch**: Specify missing information or areas that require more research.
             3. **SuperfluousContent**: Identify anything unnecessary or off-topic in the chapter.
-            4. **StyleRefinement**: Major issues with writing guidelines.
+            4. **StyleRefinement**: Major issues with writing guidelines such as word counts per chapter or repetition.
             5. **NextNode**: Indicate the next action by choosing one of:
                - 'approved': If no major revisions or research are necessary.
                - 'writer': If Superfluous Content or Style Refinement BUT NO NEW CONTENT.

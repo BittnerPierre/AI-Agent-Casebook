@@ -1,17 +1,12 @@
-import uuid
 from typing import TypedDict, Literal
 
 import pytest
 from langchain import hub
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_openai import OpenAI
-from langsmith import evaluate, wrappers
-from langsmith.evaluation import LangChainStringEvaluator
 
 from core.commons import initiate_model
 from core.base import SupportedModel
 from video_script.agents import Researcher
-from video_script.assistant import create_video_script_agent
 
 default_model = SupportedModel.DEFAULT
 
