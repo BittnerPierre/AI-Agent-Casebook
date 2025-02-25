@@ -8,7 +8,7 @@ from langsmith import Client, evaluate
 
 from langchain_openai import ChatOpenAI
 
-from customer_onboarding.assistants import create_customer_onboarding_assistant_as_react_graph
+from customer_onboarding.assistants import customer_onboarding
 from core.base import SupportedModel
 from simulation_utils import create_simulated_user
 
@@ -27,7 +27,6 @@ _ = load_dotenv(find_dotenv())
 dataset_name = "CUSTOMER-ONBOARDING-SIMPLE-datasets-04-12-2024" # "CUSTOMER-ONBOARDING-datasets-03-12-2024"
 client = Client()
 
-app = create_customer_onboarding_assistant_as_react_graph(model_name=SupportedModel.DEFAULT)
 
 
 def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
@@ -54,7 +53,7 @@ def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
         effective_config = {"configurable": {"session_id": session_id, "thread_id": thread_id}}
         input_data = {'messages': new_messages, "user_session_id": session_id}
 
-        val = app.invoke(input=input_data, config=effective_config, stream_mode="values")
+        val = customer_onboarding.invoke(input=input_data, config=effective_config, stream_mode="values")
         return val["messages"][-1] # "output"
 
     except ValueError as e:

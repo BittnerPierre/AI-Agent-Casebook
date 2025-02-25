@@ -1,15 +1,8 @@
-import logging
-import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Annotated, TypedDict
+from typing import Optional, Annotated
 
-from langchain.agents import create_structured_chat_agent, AgentExecutor
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from langchain_core.runnables import RunnableSerializable, RunnableWithMessageHistory, RunnableLambda
 from langchain_core.tools import tool
 
 from dotenv import load_dotenv, find_dotenv
@@ -21,20 +14,25 @@ from langgraph.prebuilt.chat_agent_executor import AgentState
 
 from core.config_loader import load_config
 from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
+from customer_onboarding.state import State
 from core.commons import initiate_model, initiate_embeddings
 from core.base import SupportedModel
-from core.logger import setup_logger
+from core.logger import get_logger
 from langgraph.checkpoint.memory import MemorySaver
 
-from langgraph.graph.message import add_messages, MessagesState
+from langgraph.graph.message import MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
+
+
 
 _ = load_dotenv(find_dotenv())
 
-logger = setup_logger(__name__, level=logging.INFO)
+logger = get_logger()
 
 
 _config = load_config()
+
+
 # RETRIEVAL SETUP
 _chroma_persist_directory = _config.get('Retrieval', 'persist_directory')
 # FAQ SETUP
@@ -45,77 +43,14 @@ _problem_directory = _config.get('ProblemSolverAgent', 'problem_directory')
 _problem_file = _config.get('ProblemSolverAgent', 'problem_file')
 _problem_database = _config.get('ProblemSolverAgent', 'problem_database')
 
+# Model
+_default_model = _config.get('CustomerOnboarding', 'model', fallback="MISTRAL_SMALL")
+
 # TODO currently there is an issue with mistral due to reaching limit while langchain batch embeddings
-default_model = SupportedModel.DEFAULT
+default_model = SupportedModel[_default_model]
 
 model = initiate_model(default_model)
 embeddings = initiate_embeddings(default_model)
-
-__structured_chat_agent__ = '''Respond to the human as helpfully and accurately as possible. 
-    You have access to the following tools:
-
-    {tools}
-
-    # DIRECTIVES
-    - Only use information provided in the context. Do not respond directly to question.
-    - Keep conversation as short as possible.
-    - Use tools to retrieve relevant information.
-    - Do NOT make any reference to tools to user.
-    - Ask question to user if information are missing.
-    - Do NOT give session_id, action_name, tool_name, token or any internal informations used for processing conversation.
-    - ALWAYS includes a valid json blob to give the next action. No exceptions.
-    - If a tool asked for additional information from user, "action" is "Final Answer" and
-     "action_input" is the information needed by the tool that you have to ask to user.
-    - Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-
-    Format is Action:```$JSON_BLOB``` then Observation
-    
-    - ALWAYS return a valid JSON blob, even when providing the final answer to the user.
-    
-    - For final answers, the JSON blob must include:
-    ```
-    {{
-      "action": "Final Answer",
-      "action_input": "Final response to human"
-    }}
-    
-    - For tools, always include 'input' when calling tools. 
-    
-    Format the action_input as:
-    ```
-    {{
-      "input": "<USER_INPUT>"
-    }}
-    ```
-    
-    Valid "action" values: "Final Answer" or {tool_names}
-
-    Provide only ONE action per $JSON_BLOB, as shown:
-    ```
-    {{
-      "action": $TOOL_NAME,
-      "action_input": $INPUT
-    }}
-    ```
-
-    # EXAMPLE
-    Question: input question to answer
-    Thought: consider previous and subsequent steps
-    Action:
-    ```
-    $JSON_BLOB
-    ```
-    Observation: action result
-    ... (repeat Thought/Action/Observation N times)
-    Thought: I know what to respond
-    Action:
-    ```
-    {{
-      "action": "Final Answer",
-      "action_input": "Final response to human"
-    }}
-    ```
-    '''
 
 __langgraph_chat_agent__ = '''You are an customer onboarding AI chatbot for an online bank.
     Your goal is to answer questions on products and services offered by the company AND to solve issues with 
@@ -143,36 +78,6 @@ __langgraph_chat_agent__ = '''You are an customer onboarding AI chatbot for an o
     # STYLE
     You respond in a short, conversational friendly tone.
     '''
-
-
-__human__ = '''
-        Input:
-        {messages}
-
-        Agent Scratchpad:
-        {agent_scratchpad}
-        '''
-
-
-# Dictionary to store chat histories per session ID
-session_histories = {}
-
-
-def get_message_history(session_id: str) -> BaseChatMessageHistory:
-    # return SQLChatMessageHistory(session_id, "sqlite:///memory.db")
-    if session_id not in session_histories:
-        session_histories[session_id] = InMemoryChatMessageHistory()
-
-        # Clean up unwanted messages from chat history
-    clean_messages = [
-        message for message in session_histories[session_id].messages
-        if not (isinstance(message,
-                           AIMessage) and "Agent stopped due to iteration limit or time limit." in message.content)
-    ]
-    session_histories[session_id].messages = clean_messages
-    return session_histories[session_id]
-
-
 
 faq_agent = FAQAgent(model=model,
                      embeddings=embeddings,
@@ -243,39 +148,6 @@ def problem_solver(
     # )
 
 
-def create_customer_onboarding_assistant_as_chain(model_name: Optional[SupportedModel],
-                                                  ) -> RunnableSerializable:
-
-    llm = initiate_model(model_name)
-    lc_tools = [faq_answerer, eligibility_checker, problem_solver]
-    llm_with_tools = llm.bind_tools(lc_tools)
-
-    prompt = (ChatPromptTemplate.from_messages(
-        [
-            ("system", __structured_chat_agent__),
-            MessagesPlaceholder(variable_name="chat_history", optional=True),
-            ("human", __human__),
-        ]
-    ))
-
-    agent = create_structured_chat_agent(llm_with_tools, lc_tools, prompt)
-    agent_executor = AgentExecutor(
-        agent=agent,
-        tools=lc_tools,
-        handle_parsing_errors=
-        "Check your output and make sure it includes an action that conforms to the expected format (json blob)!"
-        " Do not output an action and a final answer at the same time."
-    )
-    customer_onboarding_assistant = RunnableWithMessageHistory(
-        agent_executor,
-        get_message_history,
-        input_messages_key="messages",  # CHANGED HERE INPUT TO MESSAGES FOR LANGGRAPH COMPATIBILITY
-        history_messages_key="chat_history",
-        output_messages_key="output",
-    )
-    return customer_onboarding_assistant
-
-
 def create_customer_onboarding_assistant_as_react_graph(model_name: Optional[SupportedModel]
                                                         ) -> CompiledGraph:
 
@@ -303,29 +175,24 @@ def create_customer_onboarding_assistant_as_react_graph(model_name: Optional[Sup
     return agent
 
 
-
-class State(TypedDict):
-    messages: Annotated[list, add_messages]
-
-
-def handle_tool_error(state) -> dict:
-    error = state.get("error")
-    tool_calls = state["messages"][-1].tool_calls
-    return {
-        "messages": [
-            ToolMessage(
-                content=f"Error: {repr(error)}\n please fix your mistakes.",
-                tool_call_id=tc["id"],
-            )
-            for tc in tool_calls
-        ]
-    }
+# def handle_tool_error(state) -> dict:
+#     error = state.get("error")
+#     tool_calls = state["messages"][-1].tool_calls
+#     return {
+#         "messages": [
+#             ToolMessage(
+#                 content=f"Error: {repr(error)}\n please fix your mistakes.",
+#                 tool_call_id=tc["id"],
+#             )
+#             for tc in tool_calls
+#         ]
+#     }
 
 
-def create_tool_node_with_fallback(tools: list) -> dict:
-    return ToolNode(tools).with_fallbacks(
-        [RunnableLambda(handle_tool_error)], exception_key="error"
-    )
+# def create_tool_node_with_fallback(tools: list) -> dict:
+#     return ToolNode(tools).with_fallbacks(
+#         [RunnableLambda(handle_tool_error)], exception_key="error"
+#     )
 
 
 def create_customer_onboarding_assistant_as_graph(model_name: Optional[SupportedModel],
@@ -372,24 +239,7 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
     return graph
 
 
-customer_onboarding = create_customer_onboarding_assistant_as_graph(SupportedModel.DEFAULT)
+customer_onboarding = create_customer_onboarding_assistant_as_graph(default_model)
+customer_onboarding.name = "customer-onboarding"  # This defines the custom name in LangSmith
 
-
-DEFAULT_ASSISTANT = "customer-onboarding"
-
-@dataclass
-class Assistant:
-    description: str
-    graph: CompiledStateGraph
-
-
-assistants: dict[str, Assistant] = {
-    "customer-onboarding": Assistant(description="A customer onboarding assistant.", graph=customer_onboarding),
-}
-
-
-def get_assistant(assistant_id: str) -> CompiledStateGraph:
-    return assistants[assistant_id].graph
-
-
-
+__all__ = ["customer_onboarding"]

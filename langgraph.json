@@ -1,0 +1,10 @@
+{
+    "dockerfile_lines": [],
+    "graphs": {
+        "customer_onboarding": "./app/customer_onboarding/assistant.py:customer_onboarding",
+        "video_script": "./app/video_script/assistant.py:video_script"
+    },
+    "env": ".env",
+    "python_version": "3.12",
+    "dependencies": ["."]
+}

@@ -193,7 +193,7 @@ if EXECUTE_PART_2:
     # TEST MISTRAL LARGE
     #####
 
-    model = "mistral-large-latest"
+    model = "mistral-small-latest"
 
     response = client.chat.complete(
         model=model,
@@ -210,7 +210,7 @@ if EXECUTE_PART_2:
     # TEST MISTRAL SMALL
     #####
 
-    model = "mistral-small-latest"
+    model = "mistral-small-2402"
 
     response = client.chat.complete(
         model=model,

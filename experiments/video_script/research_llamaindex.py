@@ -11,7 +11,8 @@ from llama_index.embeddings.mistralai import MistralAIEmbedding
 from agents import RAGAgentFactory, RAGAgentType
 from core.base import SupportedModel
 from core.commons import initiate_model, initiate_embeddings
-from video_script.assistant import VideoScriptState, _format_chapters
+from video_script.assistant import _format_chapters
+from video_script.state import VideoScriptState
 
 model = initiate_model(SupportedModel.DEFAULT)
 embeddings = initiate_embeddings(SupportedModel.DEFAULT)

@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
 # C extensions
 *.so
 
@@ -170,3 +169,4 @@ app/customer_onboarding/mistral-large-latest/chroma.sqlite3
 .idea/AI-Agent-Casebook.iml
 /.idea
 /experiments/private_test/
+/.langgraph_api

@@ -6,7 +6,7 @@ import os
 from configparser import ConfigParser
 import pytest
 
-from app.core.logger import setup_dual_logger
+from app.core.logger import setup_logger
 
 from dotenv import load_dotenv, find_dotenv
 

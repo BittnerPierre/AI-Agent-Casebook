@@ -1,24 +1,22 @@
 
-from typing import List, Literal, Annotated, Optional
+from typing import Literal, Optional
 
 from langchain import hub
-from langchain_core.messages import HumanMessage, BaseMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import (
     StateGraph,
     START,
     END
 )
-from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.managed.is_last_step import RemainingSteps
 from langgraph.types import Command, RetryPolicy
-from typing_extensions import TypedDict
 
 from core.base import SupportedModel
 from core.commons import initiate_model
 from core.logger import logger
-from video_script.agents import Planner, Supervisor, Chapter, Researcher, Writer, Reviewer
+from video_script.agents import Planner, Supervisor, Researcher, Writer, Reviewer
+from video_script.state import VideoScriptState
 
 worker_llm = initiate_model(SupportedModel.MISTRAL_SMALL)
 producer_llm = initiate_model(SupportedModel.MISTRAL_SMALL)
@@ -101,16 +99,6 @@ reviewer = Reviewer(model=worker_llm)
 #
 # 1. Define the state of the graph
 #
-class VideoScriptState(TypedDict):
-    messages: Annotated[List[BaseMessage], add_messages]
-    video_title: str
-    chapters: List[Chapter]
-    current_chapter_index: int
-    current_chapter_content: str
-    current_chapter_revision: int
-    final_script: str
-    next_node: Literal['researcher', 'writer', 'approved']
-    remaining_steps: RemainingSteps
 
 
 #####################
@@ -404,4 +392,10 @@ def create_video_script_agent() -> CompiledStateGraph:
     memory = MemorySaver()
     video_script_app = workflow.compile(checkpointer=memory)
     return video_script_app
+
+
+video_script = create_video_script_agent()
+video_script.name = "video-script"  # This defines the custom name in LangSmith
+
+__all__ = ["video_script"]
 

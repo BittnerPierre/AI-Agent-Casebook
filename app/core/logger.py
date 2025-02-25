@@ -20,10 +20,19 @@ root_logger.setLevel(logging.WARNING)  # Set your desired level (INFO, DEBUG, et
 # logging.getLogger('chromadb').setLevel(logging.WARNING)
 # logging.getLogger('openai').setLevel(logging.WARNING)
 
-def setup_dual_logger(name: str, filepath: str, stream_level: int = logging.INFO,
-                      file_level: int = logging.DEBUG) -> logging.Logger:
-    logger = logging.getLogger(name)
-    if not logger.hasHandlers():
+
+def get_logger() -> logging.Logger:
+    """
+    Factory method to retrieve the default logger.
+    This ensures that loggers are initialized with the same handlers and formatters.
+    """
+    return logging.getLogger(__name__)
+
+
+def setup_logger(name: str, filepath: str, stream_level: int = logging.INFO,
+                 file_level: int = logging.DEBUG) -> logging.Logger:
+    __logger = logging.getLogger(name)
+    if not __logger.hasHandlers():
         stream_handler = logging.StreamHandler()
         stream_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         stream_handler.setFormatter(stream_formatter)
@@ -34,10 +43,10 @@ def setup_dual_logger(name: str, filepath: str, stream_level: int = logging.INFO
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(file_level)
 
-        logger.addHandler(stream_handler)
-        logger.addHandler(file_handler)
-        logger.setLevel(min(stream_level, file_level))
-    return logger
+        __logger.addHandler(stream_handler)
+        __logger.addHandler(file_handler)
+        __logger.setLevel(min(stream_level, file_level))
+    return __logger
 
 
-logger = setup_dual_logger(__name__, './logs/app.log', stream_level=logging.INFO, file_level=logging.DEBUG)
+logger = setup_logger(__name__, './logs/app.log', stream_level=logging.INFO, file_level=logging.DEBUG)

@@ -3,7 +3,7 @@ import sys
 from langchain_core.messages import HumanMessage, AIMessage
 
 from core.base import SupportedModel
-from customer_onboarding.assistants import create_customer_onboarding_assistant_as_graph
+from customer_onboarding.assistants import customer_onboarding
 
 
 def print_stream(stream):
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     # TODO TO REMOVE THIS IS TESTING
 
-    graph = create_customer_onboarding_assistant_as_graph(model_name=SupportedModel.DEFAULT)
+    #graph = create_customer_onboarding_assistant_as_graph(model_name=SupportedModel.DEFAULT)
 
     # try:
     #     # Generate the image bytes from the graph
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     inputs = {"messages": chat_history}
     config = {"configurable": {"thread_id": "13579"}}
-    print_stream(graph.stream(inputs, config=config,  stream_mode="values"))
+    print_stream(customer_onboarding.stream(inputs, config=config,  stream_mode="values"))
     #
     # inputs = {"messages": [("user", "Quelle est la différence entre une carte de CREDIT et une carte de DEBIT ?")]}
     # config = {"configurable": {"thread_id": "1"}}
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     inputs = {"messages": [HumanMessage(content="Je ne reçois pas l'e-mail pour valider mon compte.")]}
     config = {"configurable": {"thread_id": "2"}}
-    print_stream(graph.stream(inputs, config=config, stream_mode="values"))
+    print_stream(customer_onboarding.stream(inputs, config=config, stream_mode="values"))
 
     # assistant = create_customer_onboarding_assistant(model_name=SupportedModel.DEFAULT,
     #                                                  faq_directory=_faq_directory,

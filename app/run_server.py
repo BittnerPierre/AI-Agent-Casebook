@@ -14,8 +14,7 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
-
-from customer_onboarding import get_assistant
+from assistants.core import get_assistant
 
 from utils.prompt import ClientMessage, convert_to_openai_messages
 from utils.tools import get_current_weather
@@ -88,10 +87,11 @@ async def stream_text_graph(messages: List[ChatCompletionMessageParam], protocol
     }
 
     graph = get_assistant("customer-onboarding")
-
+    draft_tool_calls = []
     async for event in graph.astream_events(**kwargs, version="v2"):
         if not event:
             continue
+        print(event)
         event_type = event["event"]
         tags = event.get("tags", [])
         # filter on the custom tag
@@ -101,47 +101,47 @@ async def stream_text_graph(messages: List[ChatCompletionMessageParam], protocol
                 chunk = data["chunk"]
                 for message in chunk['messages']:
                     if message.content:
-                        yield '0:{text}\n'.format(text=json.dumps(message.content))
+                        # yield '0:{text}\n'.format(text=json.dumps(message.content))
                         # TODO need to handle all cases. for now just streaming text
-                        # if hasattr(message, 'content') and message.content:
-                        #     yield '0:{text}\n'.format(text=json.dumps(message.content))
-                        # elif hasattr(message, 'additional_kwargs') and message.additional_kwargs.get('tool_calls'):
-                        #     if len(draft_tool_calls) == 0:
-                        #         draft_tool_calls.append({
-                        #             "id": message.tool_call_chunks[0].get('id'),
-                        #             "name": message.tool_call_chunks[0].get('name'),
-                        #             "arguments": message.tool_call_chunks[0].get('args')
-                        #         })
-                        #     else:
-                        #         draft_tool_calls[0]["arguments"] += message.tool_call_chunks[0].get('args')
-                        # elif hasattr(message, 'response_metadata') and message.response_metadata.get('finish_reason'):
-                        #     if message.response_metadata.get('finish_reason') == "tool_calls":
-                        #         for tool_call in draft_tool_calls:
-                        #             yield '9:{{"toolCallId":"{id}","toolName":"{name}","args":{args}}}\n'.format(
-                        #                 id=tool_call['id'],
-                        #                 name=tool_call['name'],
-                        #                 args=tool_call['arguments'])
-                        #             tool_result = available_tools[tool_call['name']].invoke(
-                        #                 input=json.loads(tool_call['arguments']))
-                        #
-                        #             yield 'a:{{"toolCallId":"{id}","toolName":"{name}","args":{args},"result":{result}}}\n'.format(
-                        #                 id=tool_call['id'],
-                        #                 name=tool_call['name'],
-                        #                 args=tool_call['arguments'],
-                        #                 result=json.dumps(tool_result))
-                        #     else:
-                        #         yield '0:{text}\n'.format(text=json.dumps(message.content))
-                        # elif hasattr(message, 'usage_metadata') and message.usage_metadata:
-                        #     usage = message.usage_metadata
-                        #     prompt_tokens = usage.get('input_tokens')
-                        #     completion_tokens = usage.get('output_tokens')
-                        #
-                        #     yield 'e:{{"finishReason":"{reason}","usage":{{"promptTokens":{prompt},"completionTokens":{completion}}},"isContinued":false}}\n'.format(
-                        #         reason="tool-calls" if len(
-                        #             draft_tool_calls) > 0 else "stop",
-                        #         prompt=prompt_tokens,
-                        #         completion=completion_tokens
-                        #     )
+                        if hasattr(message, 'content') and message.content:
+                            yield '0:{text}\n'.format(text=json.dumps(message.content))
+                        elif hasattr(message, 'additional_kwargs') and message.additional_kwargs.get('tool_calls'):
+                            if len(draft_tool_calls) == 0:
+                                draft_tool_calls.append({
+                                    "id": message.tool_call_chunks[0].get('id'),
+                                    "name": message.tool_call_chunks[0].get('name'),
+                                    "arguments": message.tool_call_chunks[0].get('args')
+                                })
+                            else:
+                                draft_tool_calls[0]["arguments"] += message.tool_call_chunks[0].get('args')
+                        elif hasattr(message, 'response_metadata') and message.response_metadata.get('finish_reason'):
+                            if message.response_metadata.get('finish_reason') == "tool_calls":
+                                for tool_call in draft_tool_calls:
+                                    yield '9:{{"toolCallId":"{id}","toolName":"{name}","args":{args}}}\n'.format(
+                                        id=tool_call['id'],
+                                        name=tool_call['name'],
+                                        args=tool_call['arguments'])
+                                    tool_result = available_tools[tool_call['name']].invoke(
+                                        input=json.loads(tool_call['arguments']))
+
+                                    yield 'a:{{"toolCallId":"{id}","toolName":"{name}","args":{args},"result":{result}}}\n'.format(
+                                        id=tool_call['id'],
+                                        name=tool_call['name'],
+                                        args=tool_call['arguments'],
+                                        result=json.dumps(tool_result))
+                            else:
+                                yield '0:{text}\n'.format(text=json.dumps(message.content))
+                        elif hasattr(message, 'usage_metadata') and message.usage_metadata:
+                            usage = message.usage_metadata
+                            prompt_tokens = usage.get('input_tokens')
+                            completion_tokens = usage.get('output_tokens')
+
+                            yield 'e:{{"finishReason":"{reason}","usage":{{"promptTokens":{prompt},"completionTokens":{completion}}},"isContinued":false}}\n'.format(
+                                reason="tool-calls" if len(
+                                    draft_tool_calls) > 0 else "stop",
+                                prompt=prompt_tokens,
+                                completion=completion_tokens
+                            )
 
 
 @router.post("/api/chat")

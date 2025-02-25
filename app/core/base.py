@@ -10,4 +10,4 @@ class SupportedModel(Enum):
     MISTRAL_NEMO = "open-mistral-nemo"
     MISTRAL_SMALL = "mistral-small-latest"
     MISTRAL_SMALL_2402 = "mistral-small-2402"
-    DEFAULT = MISTRAL_SMALL
+    DEFAULT = MISTRAL_SMALL_2402
