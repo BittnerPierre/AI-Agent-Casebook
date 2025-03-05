@@ -29,8 +29,11 @@ async def main():  # Define an async function
         "final_script": ""  # empty at the start
     }
 
-    # Collect all steps from the astream generator
-    steps = [step async for step in video_script_app.astream(example_input, config=config, stream_mode="values")]
+    # Collect all steps from the astream generator and print each step
+    steps = []
+    async for step in video_script_app.astream(example_input, config=config, stream_mode="values"):
+        steps.append(step)
+        print(f"Step: {step}")
 
     # Access the last step
     last_step = steps[-1]
