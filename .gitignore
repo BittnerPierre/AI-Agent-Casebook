@@ -170,3 +170,7 @@ app/customer_onboarding/mistral-large-latest/chroma.sqlite3
 /.idea
 /experiments/private_test/
 /.langgraph_api
+experiments/langgraph_agentic_rag.ipynb
+experiments/langgraph_agentic_rag.ipynb
+experiments/langgraph_crag.ipynb
+tutorials/Untitled.ipynb
