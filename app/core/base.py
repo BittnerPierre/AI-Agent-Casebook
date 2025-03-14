@@ -10,4 +10,6 @@ class SupportedModel(Enum):
     MISTRAL_NEMO = "open-mistral-nemo"
     MISTRAL_SMALL = "mistral-small-latest"
     MISTRAL_SMALL_2402 = "mistral-small-2402"
-    DEFAULT = MISTRAL_SMALL_2402
+    DEFAULT = MISTRAL_SMALL
+    CLAUDE_SONNET = "claude-3-7-sonnet-latest"
+    CLAUDE_HAIKU = "claude-3-5-haiku-latest"

@@ -1,5 +1,5 @@
 
-from typing import Literal, Optional
+from typing import Literal, Optional, cast
 
 from langchain import hub
 from langchain_core.messages import HumanMessage, AIMessage
@@ -16,9 +16,11 @@ from langgraph.types import Command, RetryPolicy
 from core.base import SupportedModel
 from core.commons import initiate_model
 from core.logger import logger
+from crag import corrective_rag_graph
 from video_script.agents import Planner, Supervisor, Researcher, Writer, Reviewer
 from video_script.configuration import Configuration
-from video_script.state import VideoScriptState, InputState
+from video_script.state import VideoScriptState
+from agents.state import InputState
 from httpx import ReadTimeout
 
 worker_llm = initiate_model(SupportedModel.MISTRAL_SMALL, tags=["worker"])
@@ -157,31 +159,41 @@ async def planning_node(state: VideoScriptState, config: RunnableConfig) -> Vide
     return state
 
 
-async def researcher_node(state: VideoScriptState, config: RunnableConfig) -> Command[Literal["writer"]]:
+async def researcher_node(state: VideoScriptState, config: RunnableConfig):
     """
     The Researcher provides factual data/ideas for the current chapter.
     For demonstration, we just append a dummy 'AIMessage' with bullet points.
     """
     chapter = state.chapters[state.current_chapter_index]
     chapter_title = chapter['title']
-    message_content = f"Provide research for the chapter '{chapter_title}' covering the key topics."
+    message_content = (f"A research assistant will help us to collect informations for the chapter '{chapter_title}'."
+                       f"Formulate 4 questions that cover all key topics of the chapter.")
     human_message = HumanMessage(content=message_content, name="user")
     messages = list(state.messages) + [human_message]
-    res = await researcher.ainvoke(input={"messages": messages, "team": team}, config=config)
+    res = researcher.invoke(input={"messages": messages, "team": team}, config=config)
 
-    research_response_comment = res.get('comment', 'No comment provided.')
-    research_chapter_content = res['research']
-    research_message_content = (f"# Research for {chapter_title}"
-                                f"\n\n{research_chapter_content}"
-                                f"\n\n-----\n\n# Researcher Comment"
-                                f"\n\n{research_response_comment}")
+    res = corrective_rag_graph.invoke(input={"question": res.content})
 
-    return Command(
-        update={
-            "messages": [AIMessage(content=research_message_content, name="researcher")],
-        },
-        goto="writer",
-    )
+    response = cast(
+         AIMessage,
+         res["generation"]
+     )
+
+    return {"messages": [response]}
+
+    # research_response_comment = res.get('comment', 'No comment provided.')
+    # research_chapter_content = res['research']
+    # research_message_content = (f"# Research for {chapter_title}"
+    #                             f"\n\n{research_chapter_content}"
+    #                             f"\n\n-----\n\n# Researcher Comment"
+    #                             f"\n\n{research_response_comment}")
+
+    # return Command(
+    #     update={
+    #         "messages": [AIMessage(content=research_message_content, name="researcher")],
+    #     },
+    #     goto="writer",
+    # )
 
 
 async def writer_node(state: VideoScriptState, config: RunnableConfig) -> Command[Literal["reviewer"]]:
@@ -401,10 +413,23 @@ def create_video_script_agent() -> CompiledStateGraph:
     workflow.add_node("reviewer", reviewer_node,
                       retry=RetryPolicy(retry_on=[KeyError, AttributeError], max_attempts=3))
 
+    # Researcher with tools
+    # tool_node = ToolNode(tools=TOOLS)
+    # workflow.add_node("retrieve", tool_node)
+    # workflow.add_conditional_edges(
+    #     "researcher",
+    #     tools_condition,
+    #     path_map={
+    #              # Translate the condition outputs to nodes in our graph
+    #              "tools": "retrieve",
+    #              END: END,
+    #     },
+    # )
+    # workflow.add_edge("retrieve", "writer")
     # EDGES
     workflow.add_edge(START, "planning")
     workflow.add_edge("planning", "supervisor")
-
+    workflow.add_edge("researcher", "writer")
     # Compile the graph
     memory = MemorySaver()
     video_script_app = workflow.compile(checkpointer=memory)

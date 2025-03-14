@@ -1,4 +1,4 @@
-from typing import Any, TypedDict, Annotated, TypeVar, Union
+from typing import Any, TypedDict, Annotated, TypeVar, Union, List, Callable, Sequence
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AnyMessage
@@ -74,6 +74,7 @@ class State(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
 
+
 class AbstractAgent(abc.ABC, RunnableMixin):
 
     def __init__(self, model: BaseChatModel):
@@ -84,34 +85,27 @@ class AbstractAgent(abc.ABC, RunnableMixin):
         """
         super().__init__()
         self.model = model
+        self.set_runnable(self._initiate_runnable())
 
     def __call__(self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any) -> Output:
         return self.invoke(input, config, **kwargs)
 
-    # I DONT THINK THIS IS NEEDED AND IT LINK TO MUCH WITH LC
-    # UPSTREAM IMPLEMENTATION SHOULD BE ABLE TO MAKE THEIR ON CHOICE
-    # TO USE CHAIN OR ELSE
-    # @abc.abstractmethod
-    # def _initiate_agent_chain(self) -> RunnableSerializable:
-    #     pass
 
-    # def __call__(self, state: State, config: RunnableConfig):
-    #     while True:
-    #         configuration = config.get("configurable", {})
-    #         passenger_id = configuration.get("passenger_id", None)
-    #         state = {**state, "user_info": passenger_id}
-    #         result = self.runnable.invoke(state)
-    #         # If the LLM happens to return an empty response, we will re-prompt it
-    #         # for an actual response.
-    #         if not result.tool_calls and (
-    #             not result.content
-    #             or isinstance(result.content, list)
-    #             and not result.content[0].get("text")
-    #         ):
-    #             messages = state["messages"] + [("user", "Respond with a real output.")]
-    #             state = {**state, "messages": messages}
-    #         else:
-    #             break
-    #     return {"messages": result}
+    @abc.abstractmethod
+    def _initiate_runnable(self):
+        """
+        Abstract method to initiate the runnable.
+        """
+        pass
 
 
+class AbstractAgentWithTools(AbstractAgent, abc.ABC):
+
+    def __init__(self, model: BaseChatModel, tools:Sequence[Callable[..., Any]]):
+        """
+        Initialize the AbstractAgent.
+
+        :param model_name: Type of the language model to use.
+        """
+        self.tools = tools
+        super().__init__(model)

@@ -91,8 +91,6 @@ class SimpleRAGAgent(AbstractRAGAgent):
         """Load and split documents for langchain."""
         if isinstance(source_paths, Path):
             source_paths = [source_paths]
-        else:
-            source_paths = source_paths
 
         source_to_docs = {}
         for path in source_paths:

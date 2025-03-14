@@ -1,10 +1,13 @@
-from typing import TypedDict, List, Literal
+from typing import TypedDict, List, Literal, Callable, Any
 
 from langchain import hub
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableSerializable
 
 from agents import AbstractAgent
+from agents.base import AbstractAgentWithTools
+from core.base import SupportedModel
+from core.commons import initiate_model
 from core.logger import logger
 
 ##############
@@ -67,8 +70,8 @@ class Researcher(AbstractAgent):
 
     def _initiate_runnable(self) -> RunnableSerializable:
         logger.debug("Initiating Researcher Agent")
-        researcher_prompt = hub.pull("video-script-researcher-prompt")
-        return researcher_prompt | self.model.with_structured_output(ResearchChapter)
+        researcher_prompt = hub.pull("video-script-researcher-prompt2")
+        return researcher_prompt | self.model
 
 
 ##############

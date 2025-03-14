@@ -2,6 +2,8 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
+from langchain.chat_models import init_chat_model
+from langchain_anthropic import ChatAnthropic
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
@@ -41,6 +43,9 @@ def initiate_model(model_name: Optional[SupportedModel] = None,
           or _model_name.startswith("open-mistral")):
         # naming of model parameter (alias) is inconsistent in mistral and openAI
         return ChatMistralAI(model_name=_model_name, temperature=temperature, tags=tags) #, api_key=mistral_api_key)
+    elif _model_name.startswith("claude"):
+        # naming of model parameter (alias) is inconsistent in mistral and openAI
+        return init_chat_model(model_provider="anthropic", model=_model_name, temperature=temperature, tags=tags) #, api_key=mistral_api_key)
     logger.warning(f"Invalid or unsupported model type: {_model_name}")
     return None
 
