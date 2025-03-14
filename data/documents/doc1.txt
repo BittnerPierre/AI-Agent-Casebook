@@ -1,0 +1,1 @@
+Document 1 covers natural language processing. NLP is a field of AI focused on enabling computers to understand human language.

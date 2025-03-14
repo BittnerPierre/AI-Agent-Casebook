@@ -5,9 +5,6 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableSerializable
 
 from agents import AbstractAgent
-from agents.base import AbstractAgentWithTools
-from core.base import SupportedModel
-from core.commons import initiate_model
 from core.logger import logger
 
 ##############
@@ -27,8 +24,8 @@ class Planning(TypedDict):
 
 
 class Planner(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name = name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:
@@ -43,8 +40,8 @@ class Approval(TypedDict):
     status: Literal['approved', 'revised']
 
 class Supervisor(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name=name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:
@@ -64,8 +61,8 @@ class ResearchChapter(TypedDict):
 
 
 class Researcher(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name=name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:
@@ -83,8 +80,8 @@ class DraftChapter(TypedDict):
     comment: str
 
 class Writer(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name=name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:
@@ -105,8 +102,8 @@ class ReviewFeedback(TypedDict):
 
 
 class Reviewer(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name=name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:

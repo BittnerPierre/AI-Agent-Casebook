@@ -1,0 +1,1 @@
+Document 2 discusses machine learning algorithms. These algorithms allow computers to learn from data without being explicitly programmed.

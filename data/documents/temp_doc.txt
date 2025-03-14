@@ -1,0 +1,1 @@
+This is a temporary document about robotics. Robotics combines AI, engineering and computer science to create machines that can perform tasks.

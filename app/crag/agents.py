@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Any
 
 from langchain import hub
 from langchain_chroma import Chroma
@@ -15,25 +15,25 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import Field, BaseModel
 
 from agents import AbstractAgent
+from agents.base import Input, Output, Agent
 from core import SupportedModel, initiate_model, logger, initiate_embeddings
+from semantic_search.core import SearchStrategy, SimpleVectorSearch, VectorStoreManager
+from semantic_search.factory import SemanticSearchFactory, SearchStrategyType
 
 
 class Retriever(AbstractAgent):
 
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
+                 urls: Union[str, List[str]]
                  ):
 
         self.embeddings = embeddings
-        self.urls = [
-            "https://lilianweng.github.io/posts/2023-06-23-agent/",
-            "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-            "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
-        ]
-        print(f"Source path: '{self.urls}'")
+        self.urls = urls
         self.docs = self._initiate_docs(urls=self.urls)
-        super().__init__(model=model)
+        super().__init__(name=name, model=model)
 
 
     def _initiate_docs(self, urls: Union[str, List[str]]) -> List[Document]:
@@ -70,6 +70,29 @@ class Retriever(AbstractAgent):
         )
         _retriever = vectorstore.as_retriever()
         return _retriever
+
+
+class Retriever2(Agent):
+    """Agent that uses a search strategy to retrieve documents"""
+
+    def __init__(self,
+                 name: str,
+                 search_strategy: SearchStrategy):
+        self.search_strategy = search_strategy
+        super().__init__(name=name)
+
+    # def _initiate_runnable(self):
+    #     def retriever_func(query):
+    #         results = self.search_strategy.retrieve(query)
+    #         # Return the raw results for further processing
+    #         return results
+    #
+    #     return self.search_strategy.retrieve
+
+
+    def invoke(self, input: Input, **kwargs: Any) -> Output:
+        response = self.search_strategy.retrieve(input)
+        return response
 
 
 class QuestionRewriter(AbstractAgent):
@@ -144,12 +167,19 @@ class RAGChain(AbstractAgent):
 model = initiate_model(SupportedModel.DEFAULT)
 embeddings = initiate_embeddings(SupportedModel.DEFAULT)
 
-retriever = Retriever(model, embeddings)
+search = SemanticSearchFactory.create_strategy(
+    SearchStrategyType.SIMPLE_VECTOR,
+    embeddings,
+    kwargs={"collection_name", "simple-vector-store"}
+)
+VectorStoreManager(search)
 
-rag_chain = RAGChain(model)
+retriever = Retriever2("retriever", search)
 
-retrieval_grader = RetrievalGrader(model)
+rag_chain = RAGChain("rag_chain", model)
 
-question_rewriter = QuestionRewriter(model)
+retrieval_grader = RetrievalGrader("retrieval_grader", model)
+
+question_rewriter = QuestionRewriter("question_writer", model)
 
 web_search_tool = TavilySearchResults(max_results=3)

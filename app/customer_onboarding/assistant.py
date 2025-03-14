@@ -79,10 +79,10 @@ __langgraph_chat_agent__ = '''You are an customer onboarding AI chatbot for an o
     You respond in a short, conversational friendly tone.
     '''
 
-faq_agent = FAQAgent(model=model,
+faq_agent = FAQAgent(name="FAQAgent",
+                     model=model,
                      embeddings=embeddings,
-                     source_paths=_faq_file
-                     )
+                     source_paths=_faq_file)
 
 @tool
 def faq_answerer(
@@ -96,7 +96,7 @@ def faq_answerer(
     return faq_agent.invoke(input={"question": input})
 
 
-eligibility_agent = EligibilityAgent(model=model)
+eligibility_agent = EligibilityAgent(name="EligibilityAgent", model=model)
 
 @tool
 def eligibility_checker(
@@ -116,7 +116,8 @@ def eligibility_checker(
                                            "age": age})
 
 
-problem_solver_agent = ProblemSolverAgent(model=model,
+problem_solver_agent = ProblemSolverAgent(name="problem-solver",
+                                          model=model,
                                           embeddings=embeddings,
                                           problem_directory=_problem_directory,
                                           persist_directory=_chroma_persist_directory,

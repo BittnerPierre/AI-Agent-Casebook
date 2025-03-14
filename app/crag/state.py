@@ -1,12 +1,6 @@
-from dataclasses import dataclass, field
-from typing import Optional, List, TypedDict
+from typing import  List, TypedDict
 
 from langchain_core.documents import Document
-
-from langgraph.managed import IsLastStep
-
-from agents.state import InputState
-
 
 class CragAgentState(TypedDict):
     """

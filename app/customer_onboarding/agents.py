@@ -56,11 +56,12 @@ def format_docs(docs):
 
 class FAQAgent(SimpleRAGAgent):
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  source_paths: Path,
                  ):
-        super().__init__(model=model, embeddings=embeddings, source_paths=source_paths, collection_name="faq")
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=source_paths, collection_name="faq")
         # super().set_runnable(self._initiate_runnable())
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
@@ -94,8 +95,8 @@ class FAQAgent(SimpleRAGAgent):
 
 
 class EligibilityAgent(AbstractAgent):
-    def __init__(self, model: BaseChatModel):
-        super().__init__(model=model)
+    def __init__(self, name: str, model: BaseChatModel):
+        super().__init__(name=name, model=model)
         super().set_runnable(self._initiate_runnable())
 
     def _initiate_runnable(self) -> RunnableSerializable:
@@ -269,6 +270,7 @@ class ProblemSolverAgent(SimpleRAGAgent):
     We are using the RAGAgent to load error_db.json and initiate the vector database that is use as tool.
     """
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  persist_directory: str,
@@ -279,7 +281,7 @@ class ProblemSolverAgent(SimpleRAGAgent):
         self.problem_directory = Path(problem_directory)
         self.problem_file = Path(problem_file)
         self.source_paths = self.problem_directory / self.problem_file
-        super().__init__(model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name="errors")
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name="errors")
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
         source_to_docs = {}

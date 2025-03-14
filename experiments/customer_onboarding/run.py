@@ -3,7 +3,7 @@ import sys
 from langchain_core.messages import HumanMessage, AIMessage
 
 from core.base import SupportedModel
-from customer_onboarding.assistants import customer_onboarding
+from customer_onboarding.assistant import customer_onboarding
 
 
 def print_stream(stream):

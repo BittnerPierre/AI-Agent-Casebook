@@ -1,0 +1,1 @@
+This additional document explains deep learning. Deep learning is a subset of machine learning that uses neural networks with many layers.

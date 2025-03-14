@@ -174,3 +174,5 @@ experiments/langgraph_agentic_rag.ipynb
 experiments/langgraph_agentic_rag.ipynb
 experiments/langgraph_crag.ipynb
 tutorials/Untitled.ipynb
+/data/indices
+/data/vector_store

@@ -68,27 +68,27 @@ team = "small video editing team for Youtube channels"
 # PRODUCER   #
 ##############
 
-planner = Planner(model=producer_llm)
+planner = Planner(name="planner", model=producer_llm)
 
-supervisor = Supervisor(model=producer_llm)
+supervisor = Supervisor(name="supervisor", model=producer_llm)
 
 ##############
 # RESEARCHER #
 ##############
 
-researcher = Researcher(model=worker_llm)
+researcher = Researcher(name="researcher", model=worker_llm)
 
 ##############
 # WRITER     #
 ##############
 
-writer = Writer(model=worker_llm)
+writer = Writer(name="writer", model=worker_llm)
 
 ##############
 # REVIEWER   #
 ##############
 
-reviewer = Reviewer(model=worker_llm)
+reviewer = Reviewer(name="reviewer", model=worker_llm)
 
 
 ####################

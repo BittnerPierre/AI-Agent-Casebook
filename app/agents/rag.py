@@ -54,10 +54,11 @@ _set_env("OPENAI_API_TYPE", "openai")
 class AbstractRAGAgent(AbstractAgent):
 
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  source_paths: Union[Path, List[Path]]):
-        super().__init__(model=model)
+        super().__init__(name=name, model=model)
         self.embeddings = embeddings
         self.source_paths = source_paths
         print(f"Source path: '{self.source_paths}'")
@@ -74,12 +75,13 @@ class SimpleRAGAgent(AbstractRAGAgent):
 
     # TODO add a in memory vectorstore...
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  source_paths: Path,
                  collection_name: Optional[str] = _RAG_AGENT_DEFAULT_COLLECTION_NAME,
                  ):
-        super().__init__(model=model, embeddings=embeddings, source_paths=source_paths)
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=source_paths)
         self._collection_name = collection_name or _RAG_AGENT_DEFAULT_COLLECTION_NAME
 
         # RAG classic
@@ -163,10 +165,11 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
     Settings.llm = MistralAI(model=SupportedModel.DEFAULT.value)
 
     def __init__(self,
+                 name: str,
                  model: BaseChatModel,
                  embeddings: Embeddings,
                  source_paths: Union[Path, List[Path]]):
-        super().__init__(model=model, embeddings=embeddings, source_paths=source_paths)
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=source_paths)
 
         self._agent_runner = self._initiate_agent()
         # RAG classic
