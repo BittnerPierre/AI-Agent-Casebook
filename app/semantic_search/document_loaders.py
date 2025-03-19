@@ -160,7 +160,7 @@ class LlamaIndexDocumentLoader:
     def create_document_tools(embeddings: Embeddings,
                             file_to_nodes: Dict[Path, List[BaseNode]]) -> List[Any]:
         """Create search and summary tools for each document"""
-        from agents.utils import get_doc_tools
+        from ai_agents.utils import get_doc_tools
 
         all_tools = []
         for file_path, nodes in file_to_nodes.items():

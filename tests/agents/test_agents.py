@@ -2,7 +2,7 @@ from pathlib import Path
 
 from llama_index.core import Settings
 
-from agents import RAGAgentType, RAGAgentFactory
+from ai_agents import RAGAgentType, RAGAgentFactory
 from core.commons import initiate_model, initiate_embeddings
 from core.base import SupportedModel
 

@@ -19,7 +19,7 @@ from pydantic import BaseModel, HttpUrl
 
 from core.commons import initiate_model, initiate_embeddings
 from core.base import SupportedModel
-from agents import AbstractAgent, SimpleRAGAgent
+from ai_agents import AbstractAgent, SimpleRAGAgent
 from core.config_loader import load_config
 from core.logger import logger
 

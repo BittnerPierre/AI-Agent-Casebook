@@ -25,8 +25,8 @@ from llama_index.core.schema import BaseNode
 from llama_index.embeddings.mistralai import MistralAIEmbedding
 from llama_index.llms.mistralai import MistralAI
 
-from agents.base import AbstractAgent, Input, Output
-from agents.utils import get_doc_tools
+from ai_agents.base import AbstractAgent, Input, Output
+from ai_agents.utils import get_doc_tools
 from core.base import SupportedModel
 from core.logger import logger
 

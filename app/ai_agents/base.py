@@ -46,6 +46,23 @@ class Agent(abc.ABC):
         """
         pass
 
+    @abc.abstractmethod
+    async def ainvoke(
+            self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
+    ) -> Output:
+        """
+        Asynchronously process the input and produce an output.
+
+        Args:
+            input: The input data to process
+            config: Optional configuration for the runnable
+            **kwargs: Additional keyword arguments
+
+        Returns:
+            The output produced by the agent
+        """
+        pass
+
 
 class RunnableMixin:
 
@@ -84,16 +101,20 @@ class RunnableMixin:
             raise NotImplementedError("No runnable has been set. Make sure to call set_runnable")
 
 
-    def ainvoke(
+    async def ainvoke(
             self, input: Input, config: Optional[RunnableConfig] = None, **kwargs: Any
     ) -> Output:
         """Implementation for invoking the agent."""
         runnable = self.get_runnable
         if runnable:
             if isinstance(runnable, (Runnable, RunnableSequence)):
-                return runnable.ainvoke(input, config, **kwargs)
+                result = await runnable.ainvoke(input, config, **kwargs)
+                return result
             elif callable(runnable):
-                return runnable(input, config, **kwargs)
+                result = runnable(input, config, **kwargs)
+                # Si le résultat est une coroutine, il faut l'attendre
+                if hasattr(result, '__await__'):
+                    result = await result
             else:
                 raise NotImplementedError("No valid invoke method found")
         else:

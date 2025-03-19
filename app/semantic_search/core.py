@@ -20,6 +20,12 @@ class SearchStrategy(abc.ABC):
         pass
 
     @abc.abstractmethod
+    async def aretrieve(self, query: str, **kwargs) -> List[Any]:
+        """Asynchronously retrieve relevant items based on query"""
+        pass
+
+
+    @abc.abstractmethod
     def add_documents(self, documents: List[Any]) -> None:
         """Add documents to the search index"""
         pass
@@ -170,6 +176,13 @@ class SimpleVectorSearch(SearchStrategy):
             return []
 
         return self.retriever.invoke(query, **kwargs)
+
+    async def aretrieve(self, query: str, **kwargs) -> List[Document]:
+        """Asynchronously retrieve documents using vector similarity"""
+        if not self.retriever:
+            logger.warning("No documents have been added to the vector store yet")
+            return []
+        return await self.retriever.ainvoke(query, **kwargs)
 
 
 class VectorStoreManager:

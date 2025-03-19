@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph
 from llama_index.core import Settings
 from llama_index.embeddings.mistralai import MistralAIEmbedding
 
-from agents import RAGAgentFactory, RAGAgentType
+from ai_agents import RAGAgentFactory, RAGAgentType
 from core.base import SupportedModel
 from core.commons import initiate_model, initiate_embeddings
 from video_script.assistant import _format_chapters

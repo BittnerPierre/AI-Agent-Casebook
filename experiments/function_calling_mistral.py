@@ -176,7 +176,20 @@ if EXECUTE_PART_2:
         You respond in a short, conversational friendly tone.
         """
 
-    messages = [
+    messages_fix = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": "What should I do if my card is blocked at an ATM?"},
+        {"role": "assistant", "content": "", "tool_calls":
+            [{"id": "t1TO1tl5o", "function":
+                {"name": "faq_answerer", "arguments":
+                    {"input": "What should I do if my card is blocked at an ATM?"}}}]},
+        {"role": "tool", "content": "{'output': 'If your card is blocked at an ATM,"
+                                    " immediately report it using our mobile app under \'Card Services\' > \'Block Card\'"
+                                    " and request a replacement.'}", "name": "faq_answerer",
+         "tool_call_id": "t1TO1tl5o"},
+    ]
+
+    messages_dont_work = [
         {"role": "system", "content": system},
         {"role": "user", "content": "What should I do if my card is blocked at an ATM?"},
         {"role": "assistant", "content": "", "tool_calls":
@@ -184,7 +197,7 @@ if EXECUTE_PART_2:
                 {"name": "faq_answerer", "arguments":
                     {"input": "What should I do if my card is blocked at an ATM?"}}}]},
         {"role": "tool", "content": "If your card is blocked at an ATM,"
-                                    " immediately report it using our mobile app under 'Card Services' > 'Block Card'"
+                                    " immediately report it using our mobile app under \'Card Services\' > \'Block Card\'"
                                     " and request a replacement.", "name": "faq_answerer",
          "tool_call_id": "t1TO1tl5o"},
     ]
@@ -197,7 +210,7 @@ if EXECUTE_PART_2:
 
     response = client.chat.complete(
         model=model,
-        messages=messages,
+        messages=messages_dont_work,
         tools=tools2,
         tool_choice="auto",
     )
@@ -214,7 +227,7 @@ if EXECUTE_PART_2:
 
     response = client.chat.complete(
         model=model,
-        messages=messages,
+        messages=messages_dont_work,
         tools=tools2,
         tool_choice="auto",
     )

@@ -3,7 +3,7 @@ from langchain_core.documents import Document
 from crag import retriever, rag_chain, retrieval_grader, question_rewriter, web_search_tool, CragAgentState
 
 
-def retrieve(state: CragAgentState):
+async def retrieve(state: CragAgentState):
     """
     Retrieve documents
 
@@ -17,11 +17,11 @@ def retrieve(state: CragAgentState):
     question = state["question"]
 
     # Retrieval
-    documents = retriever.invoke(question)
+    documents = await retriever.ainvoke(question)
     return {"documents": documents, "question": question}
 
 
-def generate(state: CragAgentState):
+async def generate(state: CragAgentState):
     """
     Generate answer
 
@@ -36,11 +36,11 @@ def generate(state: CragAgentState):
     documents = state["documents"]
 
     # RAG generation
-    generation = rag_chain.invoke({"context": documents, "question": question})
+    generation = await rag_chain.ainvoke({"context": documents, "question": question})
     return {"documents": documents, "question": question, "generation": generation}
 
 
-def grade_documents(state: CragAgentState):
+async def grade_documents(state: CragAgentState):
     """
     Determines whether the retrieved documents are relevant to the question.
 
@@ -59,7 +59,7 @@ def grade_documents(state: CragAgentState):
     filtered_docs = []
     web_search = "No"
     for d in documents:
-        score = retrieval_grader.invoke(
+        score = await retrieval_grader.ainvoke(
             {"question": question, "document": d.page_content}
         )
         grade = score.binary_score
@@ -73,7 +73,7 @@ def grade_documents(state: CragAgentState):
     return {"documents": filtered_docs, "question": question, "web_search": web_search}
 
 
-def transform_query(state: CragAgentState):
+async def transform_query(state: CragAgentState):
     """
     Transform the query to produce a better question.
 
@@ -89,11 +89,11 @@ def transform_query(state: CragAgentState):
     documents = state["documents"]
 
     # Re-write question
-    better_question = question_rewriter.invoke({"question": question})
+    better_question = await question_rewriter.ainvoke({"question": question})
     return {"documents": documents, "query": better_question[:400]}
 
 
-def web_search(state: CragAgentState):
+async def web_search(state: CragAgentState):
     """
     Web search based on the re-phrased question.
 
@@ -109,7 +109,7 @@ def web_search(state: CragAgentState):
     documents = state["documents"]
 
     # Web search
-    docs = web_search_tool.invoke({"query": query})
+    docs = await web_search_tool.ainvoke({"query": query})
     web_results = "\n".join([d["content"] for d in docs])
     web_results = Document(page_content=web_results)
     documents.append(web_results)
@@ -117,7 +117,7 @@ def web_search(state: CragAgentState):
     return {"documents": documents}
 
 
-def decide_to_generate(state: CragAgentState):
+async def decide_to_generate(state: CragAgentState):
     """
     Determines whether to generate an answer, or re-generate a question.
 

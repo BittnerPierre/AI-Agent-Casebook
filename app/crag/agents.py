@@ -14,8 +14,8 @@ from langchain_core.runnables import RunnableSerializable
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import Field, BaseModel
 
-from agents import AbstractAgent
-from agents.base import Input, Output, Agent
+from ai_agents import AbstractAgent
+from ai_agents.base import Input, Output, Agent
 from core import SupportedModel, initiate_model, logger, initiate_embeddings
 from semantic_search.core import SearchStrategy, SimpleVectorSearch, VectorStoreManager
 from semantic_search.factory import SemanticSearchFactory, SearchStrategyType
@@ -92,6 +92,10 @@ class Retriever2(Agent):
 
     def invoke(self, input: Input, **kwargs: Any) -> Output:
         response = self.search_strategy.retrieve(input)
+        return response
+    
+    async def ainvoke(self, input: Input, **kwargs: Any) -> Output:
+        response = await self.search_strategy.aretrieve(input)
         return response
 
 

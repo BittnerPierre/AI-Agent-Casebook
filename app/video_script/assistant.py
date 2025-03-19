@@ -17,10 +17,10 @@ from core.base import SupportedModel
 from core.commons import initiate_model
 from core.logger import logger
 from crag import corrective_rag_graph
-from video_script.agents import Planner, Supervisor, Researcher, Writer, Reviewer
+from video_script.agents import Planner, Planner2, Supervisor, Researcher, Writer, Reviewer
 from video_script.configuration import Configuration
 from video_script.state import VideoScriptState
-from agents.state import InputState
+from ai_agents.state import InputState
 from httpx import ReadTimeout
 
 worker_llm = initiate_model(SupportedModel.MISTRAL_SMALL, tags=["worker"])
@@ -68,7 +68,7 @@ team = "small video editing team for Youtube channels"
 # PRODUCER   #
 ##############
 
-planner = Planner(name="planner", model=producer_llm)
+planner = Planner2(name="planner", model_name="gpt-4o-mini")
 
 supervisor = Supervisor(name="supervisor", model=producer_llm)
 
@@ -141,18 +141,24 @@ async def planning_node(state: VideoScriptState, config: RunnableConfig) -> Vide
         message_content = planner_prompt.format(storytelling_guidebook= storytelling_guidebook)
         human_message = HumanMessage(content=message_content, name="user")
         messages = list(state.messages) + [ human_message]
-        res = await planner.ainvoke(input={"messages": messages, "team": team,
-                                              "storytelling_guidebook": storytelling_guidebook,
-                                              "prompt": planner_prompt}, config=config)
-        chapters = res['plan']
-        state.video_title = res['video_title']
+        # res = await planner.ainvoke(input={"messages": messages, "team": team,
+        #                                       "storytelling_guidebook": storytelling_guidebook,
+        #                                       "prompt": planner_prompt}, config=config)
+        # change for Agent SDK (simplify version)
+        user_message = state.messages[0].content
+        planner_res = await planner.ainvoke(input=user_message, config=config)
+        print("########################")
+        print(planner_res)
+        print("########################")
+        chapters = planner_res['plan']
+        state.video_title = planner_res['video_title']
         state.chapters = chapters
         state.final_script = ""
         state.current_chapter_index = 0
         state.current_chapter_content = ""
         state.current_chapter_revision = 0
         formatted_chapters = _format_chapters(chapters)
-        producer_message = (f"Here's a suggested agenda for your {len(chapters)}-chapter video on {res['video_title']}."
+        producer_message = (f"Here's a suggested agenda for your {len(chapters)}-chapter video on {planner_res['video_title']}."
                             f"\n\n{formatted_chapters}")
         host_message = AIMessage(content=producer_message, name="planner")
         state.messages += [host_message]
@@ -170,9 +176,11 @@ async def researcher_node(state: VideoScriptState, config: RunnableConfig):
                        f"Formulate 4 questions that cover all key topics of the chapter.")
     human_message = HumanMessage(content=message_content, name="user")
     messages = list(state.messages) + [human_message]
-    res = researcher.invoke(input={"messages": messages, "team": team}, config=config)
-
-    res = corrective_rag_graph.invoke(input={"question": res.content})
+    researcher_response = await researcher.ainvoke(input={"messages": messages, "team": team}, config=config)
+    print("########################")
+    print(researcher_response)
+    print("########################")   
+    res = await corrective_rag_graph.ainvoke(input={"question": researcher_response.content})
 
     response = cast(
          AIMessage,
