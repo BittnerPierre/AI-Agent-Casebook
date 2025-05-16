@@ -4,7 +4,7 @@ from typing import Literal, Optional, cast
 from langchain import hub
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.memory import MemorySaver
+#from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import (
     StateGraph,
     START,
@@ -439,8 +439,8 @@ def create_video_script_agent() -> CompiledStateGraph:
     workflow.add_edge("planning", "supervisor")
     workflow.add_edge("researcher", "writer")
     # Compile the graph
-    memory = MemorySaver()
-    video_script_app = workflow.compile(checkpointer=memory)
+    #memory = MemorySaver()
+    video_script_app = workflow.compile() #checkpointer=memory)
     return video_script_app
 
 

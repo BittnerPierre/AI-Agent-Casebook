@@ -176,3 +176,5 @@ experiments/langgraph_crag.ipynb
 tutorials/Untitled.ipynb
 /data/indices
 /data/vector_store
+/experiments/openai-agents
+/experiments/mistralai

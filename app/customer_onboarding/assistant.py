@@ -158,7 +158,7 @@ def create_customer_onboarding_assistant_as_react_graph(model_name: Optional[Sup
 
     llm_with_tools = llm.bind_tools(lc_tools)
 
-    memory = MemorySaver()
+   # memory = MemorySaver()
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", __langgraph_chat_agent__),
@@ -169,7 +169,7 @@ def create_customer_onboarding_assistant_as_react_graph(model_name: Optional[Sup
         # You can do more complex modifications here
         return prompt.invoke({"messages": state["messages"]})
 
-    agent = create_react_agent(model=llm_with_tools, tools=lc_tools, checkpointer=memory,
+    agent = create_react_agent(model=llm_with_tools, tools=lc_tools, # checkpointer=memory,
                                state_modifier=format_for_model,
                                debug=True)
 
@@ -236,7 +236,7 @@ def create_customer_onboarding_assistant_as_graph(model_name: Optional[Supported
     graph_builder.add_edge("tools", "customer-onboarding")
     # Any time a tool is called, we return to the chatbot to decide the next step
     graph_builder.add_conditional_edges("customer-onboarding", _should_continue, ["tools", END])
-    graph = graph_builder.compile(checkpointer=MemorySaver())
+    graph = graph_builder.compile() # checkpointer=MemorySaver())
     return graph
 
 
