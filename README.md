@@ -1,152 +1,177 @@
 # AI Agent Casebook
 
-This project aims to showcase "real-life" AI Multi-Agents systems.
+This project showcases real-world implementations of **AI multi-agent systems**, using agentic frameworks such as **LangGraph** and **OpenAI's Agents SDK**.
 
-## Introduction
+## 🔍 Overview
 
-We have two workflows for now:
+We currently demonstrate two end-to-end agent workflows:
 
-- Customer Onboarding Assistant
-- Video Script Assistant
+- **Customer Onboarding Assistant**
+- **Video Script Assistant**
 
-We leverage mainly on [LangGraph](https://github.com/langchain-ai/langgraph) from LangChain for agentic workflows but we won't restrict to this.
-Planner of video script assistant use [OpenAI's Agents SDK](https://openai.github.io/openai-agents-python/).
+The goal is to explore production-ready AI agent use cases, focusing on:
 
-[CrewAI](https://www.crewai.com/open-source), and [PydanticAI](https://ai.pydantic.dev/) are also on the radar.
+- Agent orchestration (LangGraph, OpenAI Agents SDK)
+- Multi-provider LLM compatibility (Mistral, OpenAI, Anthropic)
+- Retrieval-Augmented Generation (ChromaDB, LlamaIndex)
+- Evaluation & Testing of agent behavior
 
-For LLM provider, we target Mistral AI (mistral-small) but also test against OpenAI GPT (gpt-4o-mini) and sometimes Anthropic Claude.
+Future additions may include [CrewAI](https://www.crewai.com/open-source) and [PydanticAI](https://ai.pydantic.dev/).
 
-For Retrieval Augmental Generation, we use [ChromaDB](https://github.com/chroma-core/chroma) as Vector Store.
+---
 
 ## Roadmap
 
-- Common
-- Advanced RAG (on-going)
-- Customer Onboarding
-- Strengthen Eligibility control
-- Back-End: Streaming Event
-- Query Augmentation
-- Video Script
-- Finalize workflow
-- Research <-> Brainstorm
-- Final revision
+### Core
+
+- Shared agent tools and testing setup
+
+### Customer Onboarding Assistant
+
+- Initial implementation
+- Improve eligibility controls
+- Streaming with server-sent events (SSE)
+- Data refactor & backend cleanup
+
+### Video Script Assistant
+
+- Initial version with LangGraph
+- Refactor planner with OpenAI Agents SDK
+- Research + Ideation agent loop
+- Final script review & CoT improvements
+
+### RAG & Evaluation (WIP)
+
+- Query Augmentation strategies
+- Advanced testing with LangSmith & synthetic data
+
+---
 
 ## Installation
 
-1. Clone the Repository
+### 1. Clone the repository
 
-```shell
+```bash
 git clone https://github.com/BittnerPierre/AI-Agent-Casebook
 cd AI-Agent-Casebook
 ```
 
-2. Configure Environment Variables
+### 2. Set up environment variables
 
-Create a .env file in the root directory and add your Mistral or OpenAI key.
+Create a `.env` file in the root directory:
 
-```shell
-echo "MISTRAL_API_KEY=your-api-key-here" > .env
+```dotenv
+# Required LLM providers
+MISTRAL_API_KEY=your-mistral-key
+OPENAI_API_KEY=your-openai-key
+LANGCHAIN_API_KEY=your-langchain-key
 ```
 
-We use LangChain hub to store prompt template. Langchain / Langsmith is free for individual developer.
+> ⚠️ We recommend using [LangSmith](https://smith.langchain.com/) to monitor workflows. It’s free for individual developers.
 
-```shell
-echo "LANGCHAIN_API_KEY=your-api-key-here" > .env
+### 3. Install dependencies
+
+This project uses **Poetry** with Python `>=3.12`.
+
+```bash
+poetry install
 ```
 
-## Installation
+To activate the virtual environment:
 
-The project uses poetry for package management and has been tested with python 3.12.xx.
-
-Main dependencies:
-
-- Common
-  - LangChain
-  - LangGraph
-  - MistralAI
-  - Langsmith
-  - pytests
-- Script Editor
-  - LlamaIndex (for RAG)
-  - Tavily (for Search)
-- Customer Onboarding
-  - OpenAI
-  - Chroma
-  - FastAPI
-  - Unicorn
-  - SQLite
-  - Vercel
-
-Project uses dotenv to load ACCESS TOKEN to LLM platform.
-You'll need OpenAI, Mistral, Langsmith key in a .env file.
-
-### Customer Onboarding Specifics
-
-Data (vectorstore chromadb and sql sqlite) are loaded from 'data' directory. It contains fake data generated with AI assistant.
-Location can be setup in app/config.ini and test/config.ini.
-
-- tools dir contains python script generator for langsmith test suite.
-- tests covered most agents and assistants. Some tests will fail to show that it is better to use advanced testing :)
-
-#### Front-End
-
-Front-end is available in a separate project: [AI-Agent-Casebook-UI](ttps://github.com/BittnerPierre/AI-Agent-Casebook-UI). The front-end is in typescript and use React/NodeJS.
-
-#### Run
-
-To launch the backend, go to app directory and run
-
-```
-$> poetry run langgraph dev
+```bash
+poetry shell
 ```
 
-## Youtube Video Script Generator
+---
 
-I've made a tutorial with this agentic workflows.
+## 📂 Project Structure
 
-Youtube video (in french) that show the development of the ai workflow (simplified version):
+```bash
+AI-Agent-Casebook/
+│
+├── app/                  # Main app logic and LangGraph workflows
+├── data/                 # Fake onboarding data (vectorstore, SQLite)
+├── tests/                # Agent test coverage (unit + integration)
+├── tools/                # LangSmith suite and evaluation helpers
+├── tutorials/            # Notebooks & walk-throughs
+└── res/                  # Images and workflow diagrams
+```
 
-[![IMAGE ALT TEXT HERE](https://i.ytimg.com/vi/0KY-73mwCdQ/hqdefault.jpg)](https://www.youtube.com/live/0KY-73mwCdQ)
+---
 
-[Tutorial](https://bittnerpierre.github.io/AI-Agent-Casebook/tutorials/agentic-script-writer.html)
+## Video Script Generator
 
-[Notebook](https://github.com/BittnerPierre/AI-Agent-Casebook/blob/main/tutorials/agentic-script-writer.ipynb)
+A complete tutorial (in French) is available:
 
-The langgraph workflow.
+🎥 [Watch the YouTube video](https://www.youtube.com/live/0KY-73mwCdQ)
 
-![image](res/video_script_state_graph.png)
+📘 [Tutorial (HTML)](https://bittnerpierre.github.io/AI-Agent-Casebook/tutorials/agentic-script-writer.html)
+📓 [Notebook](https://github.com/BittnerPierre/AI-Agent-Casebook/blob/main/tutorials/agentic-script-writer.ipynb)
+
+State graph (LangGraph):
+
+![LangGraph script state](res/video_script_state_graph.png)
+
+---
 
 ## Customer Onboarding Assistant
 
-This project aims to showcase agentic framework on a Customer Onboarding Assistant.
+Project to demonstrate onboarding automation using agentic workflows.
 
-Youtube video (in french) explaining the project:
+[Watch the YouTube video (French)](http://www.youtube.com/watch?v=_rctwY6sVFM)
 
-[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/_rctwY6sVFM/0.jpg)](http://www.youtube.com/watch?v=_rctwY6sVFM)
+### Architectures
 
-### Architecture
+- **Functional view**
 
-#### Assistant Architecture Functional
+  ![Functional](res/Schema_Fonctionnel.png)
 
-![image](res/Schema_Fonctionnel.png)
+- **LCEL + React-like output**
 
-#### Assistant Architecture with LCEL and Structured React
+  ![LCEL](res/Schema_LCEL-React.png)
 
-![image](res/Schema_LCEL-React.png)
+- **LangGraph agent loop**
 
-#### Assistant Architecture with LangGraph
+  ![LangGraph](res/Schema_LangGraph.png)
 
-![image](res/Schema_LangGraph.png)
+- **Generated graph**
 
-#### LangGraph generated graph
+  ![Graph](res/state_graph.png)
 
-![image](res/state_graph.png)
+### Testing
 
-## Licence
+- Use `pytest` with coverage across workflows
+- Some tests are expected to fail: they demonstrate edge cases or brittle logic under test
 
-Apache Licence
+---
 
-## Code
+## Front-End (Separate Repo)
 
-Some inspiration was taken from LangGraph example (https://github.com/langchain-ai/langgraph) demo on simulator for pytest.
-and agent-service-toolkit (https://github.com/JoshuaC215/agent-service-toolkit/) for streaming graph to front.
+The front-end (React/TypeScript) is available here:
+[AI-Agent-Casebook-UI](https://github.com/BittnerPierre/AI-Agent-Casebook-UI)
+
+> Designed for deployment on **Vercel**, communicating with the backend via API.
+
+---
+
+## Run Locally
+
+To run the agent workflows locally (development mode):
+
+```bash
+poetry run langgraph dev
+```
+
+---
+
+## License
+
+Distributed under the **Apache License 2.0**.
+
+---
+
+## Credits & Inspiration
+
+- [LangGraph](https://github.com/langchain-ai/langgraph) example simulators (pytest-style workflows)
+- [agent-service-toolkit](https://github.com/JoshuaC215/agent-service-toolkit/) for ideas on streaming graphs to the UI
