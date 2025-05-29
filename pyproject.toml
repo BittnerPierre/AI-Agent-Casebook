@@ -10,13 +10,13 @@ authors = [
 dependencies = [
     "langchain>=0.3.14",
     "langgraph>=0.3.6",
-    "mistralai=1.8.0rc0",
+    "mistralai>=1.8.0",
     "openai>=1.59.7",
     "chromadb>=1.0.8",
     "langchain-community>=0.3.14",
     "langchain-openai>=0.3.8",
     "langchain-mistralai>=0.2.4",
-   "langchain-chroma>=0.2.0",
+    "langchain-chroma>=0.2.0",
     "langsmith>=0.3.13",
     "llama-index>=0.12.11",
     "llama-index-embeddings-langchain>=0.3.0",
@@ -51,7 +51,7 @@ python = ">=3.12,<4.0"
 langchain = "^0.3.14"
 langgraph = "^0.3.6"
 openai = "^1.59.7"
-mistralai = {path = "../mistralai-1.8.0rc0"}
+mistralai =  "^1.8.0" # {path = "../mistralai-1.8.0rc0"}
 chromadb = ">=1.0.8"
 langchain-community = ">=0.3.14"
 langchain-openai = ">=0.3.8"
@@ -74,6 +74,7 @@ openai-agents = {extras = ["viz"], version = ">=0.0.14"}
 litellm = ">=1.67.2"
 mcp = {extras = ["cli"], version = "^1.7.1"}
 langgraph-cli = {extras = ["inmem"], version = "^0.2.10"}
+ipykernel = "^6.29.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
