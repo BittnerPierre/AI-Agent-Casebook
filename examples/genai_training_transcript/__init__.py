@@ -1,0 +1,1 @@
+"""Package for GenAI training transcript example."""

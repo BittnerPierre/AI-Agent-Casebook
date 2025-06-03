@@ -1,0 +1,3 @@
+Hello, this is a mock transcript file for unit tests.
+
+It has multiple sentences. It serves as dummy content.

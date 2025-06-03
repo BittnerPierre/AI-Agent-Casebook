@@ -26,10 +26,10 @@ When generating Mermaid diagrams inside Markdown, follow **strict syntax rules**
 - **No inline comments:** Place Mermaid comments (`%% ...`) on their own lines, at the beginning of the line.
 - **Example of a valid comment:**
 
-  ```mermaid
-  %% This is a valid Mermaid comment on its own line
-  A --> B
-  ```
+```mermaid
+%% This is a valid Mermaid comment on its own line
+A --> B
+```
 
 Avoid inline comments like:
 
@@ -48,7 +48,7 @@ Certain characters must be escaped or avoided in **labels**, **node content**, o
 | `<`       | `<`                | `&lt;`                      |
 | `>`       | `>`                | `&gt;`                      |
 | `&`       | `&`                | `&amp;`                     |
-| `"`      | `"` in some themes | Use `'` or escape carefully |
+| `"`       | `"` in some themes | Use `'` or escape carefully |
 | `'`       | OK                 | OK                          |
 
 **Example:**

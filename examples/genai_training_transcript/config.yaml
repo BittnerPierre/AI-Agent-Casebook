@@ -1,0 +1,15 @@
+# Configuration for GenAI Training Transcript Generator (Local v1)
+# Edit paths and settings as needed for your environment.
+syllabus_path: syllabus.md
+# Directory containing raw .txt transcripts for past modules
+raw_transcripts_dir: ../../data/training_courses
+# (Optional) Directory to store preprocessed transcripts (not used in this stub)
+preprocessed_dir: data/preprocessed
+# Paths and folders for intermediate and final outputs
+course_agenda_path: research_agenda/course_agenda.md
+research_notes_dir: research_notes
+drafts_dir: drafts
+# Final output directory for generated module scripts
+output_dir: output
+# Maximum number of editing revisions per chapter (stub setting)
+max_revisions: 2

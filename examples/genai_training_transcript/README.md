@@ -14,15 +14,23 @@ You can manually start the file server:
 npx @modelcontextprotocol/server-filesystem <path/to/course-directory>
 ```
 
-## Launching the MCP Evernote server
+## Launching the MCP Evernote server (TypeScript)
 
-Set the environment variable `EVERNOTE_TOKEN` to a valid Evernote developer token, then run:
+Set the environment variable `EVERNOTE_TOKEN` to a valid Evernote developer token and ensure Node.js is installed.
+
+Clone the MCP servers repository and install dependencies:
 
 ```bash
-bash run_mcp_evernote.sh
+git clone https://github.com/modelcontextprotocol/servers.git
+cd servers/src/filesystem
+npm install
 ```
 
-Or use the provided entrypoint which handles this automatically:
+Start the Evernote plugin:
+
+```bash
+npm run start -- --plugin evernote --token "$EVERNOTE_TOKEN"
+```
 
 ## Usage
 ```bash

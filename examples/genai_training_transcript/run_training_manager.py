@@ -52,8 +52,22 @@ async def main() -> None:
         }
         mcp_server = MCPServerStdio(params=mcp_params, name="Training Courses Filesystem")
     elif args.mcp_endpoint.startswith("evernote://"):
-        script = os.path.join(os.path.dirname(__file__), "run_mcp_evernote.sh")
-        mcp_params = {"command": script}
+        if not shutil.which("npx"):
+            raise RuntimeError("npx is required for the TypeScript MCP Evernote server")
+        evernote_token = os.environ.get("EVERNOTE_TOKEN")
+        if not evernote_token:
+            raise RuntimeError(
+                "Environment variable EVERNOTE_TOKEN must be set for Evernote MCP"
+            )
+
+        mcp_params = {
+            "command": "npx",
+            "args": [
+                "-y", "@modelcontextprotocol/server-filesystem",
+                "--plugin", "evernote",
+                "--token", evernote_token,
+            ],
+        }
         mcp_server = MCPServerStdio(params=mcp_params, name="Evernote MCP Server")
     else:
         raise ValueError(f"Unsupported MCP endpoint: {args.mcp_endpoint}")

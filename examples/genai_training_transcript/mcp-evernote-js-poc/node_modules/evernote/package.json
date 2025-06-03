@@ -1,0 +1,20 @@
+{
+  "author": "Evernote",
+  "name": "evernote",
+  "description": "Evernote SDK for Node.js",
+  "version": "1.25.82",
+  "repository": {
+    "url": "https://github.com/evernote/evernote-sdk-js"
+  },
+  "main": "index",
+  "directories": {
+    "lib": "evernote-sdk-js",
+    "example": "sample"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "dependencies": {
+    "oauth": "*"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@genai-training-transcript/mcp-evernote",
+  "version": "0.1.0",
+  "description": "MCP Filesystem Evernote plugin for GenAI Training Transcript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && node dist/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "0.5.0",
+    "evernote": "^1.25.0",
+    "diff": "^5.1.0",
+    "minimatch": "^10.0.1",
+    "zod-to-json-schema": "^3.23.5"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0",
+    "@types/node": "^14.0.0",
+    "jest": "^26.0.0",
+    "ts-jest": "^26.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/tests"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    }
+  }
+}
