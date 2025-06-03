@@ -1,0 +1,12 @@
+{
+  "name": "mcp-evernote-js-poc",
+  "version": "0.1.0",
+  "description": "POC OAuth Evernote authentication and simple note read/write using Evernote JavaScript SDK",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "evernote": "^1.25.0"
+  }
+}
