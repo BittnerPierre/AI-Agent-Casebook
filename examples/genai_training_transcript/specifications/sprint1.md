@@ -1,23 +1,22 @@
-# Sprint 1 (MVP v1): Scaffold & Basic Workflow with MCP FileClient
+# Sprint 1 (POC v0): Evernote OAuth 2.0 PKCE Integration (On Hold)
 
-**Goal:** Scaffold and implement a hierarchical local-only workflow using the MCP FileClient (no RAG or Evernote integration), including transcript preprocessing, syllabus ingestion, planning, research, editing, and final transcript assembly.
+**Goal:** Proof-of-concept for Evernote integration via OAuth 2.0 PKCE, enabling basic read/write operations against an Evernote account without using a client secret.
 
-**Refer to plan.md (section “Short-Term Execution Plan (Sprints)” – Sprint 1 (MVP v1)).**
+**Note:** This sprint is currently on hold pending receipt of `EVERNOTE_CLIENT_ID` from Evernote support.
+
+**Refer to** `plan_mcp_evernote.md` (sections “Itération 1” and “Itération 2”) for the full MCP Evernote integration plan.
 
 ## Acceptance Criteria
-- TranscriptPreprocessor cleans raw `.txt` transcripts into Markdown files with punctuation, paragraph segmentation, and outputs a `manifest.json` metadata file.
-- SyllabusLoader reads and parses a local `syllabus.md` file to extract chapter titles and objectives.
-- MCP FileClient lists and loads preprocessed transcripts from `data/training_courses/`.
-- Planner produces a detailed course agenda (`research_agenda/course_agenda.md`).
-- Research Team aggregates cross-course context based on the agenda.
-- Editing Team (Documentalist, Writer, Reviewer) generates `research_notes/` and `drafts/` artifacts under supervision.
-- Course Authoring Agent stitches approved chapter drafts into final per-chapter transcripts and writes them under `output/`.
+- A Node.js POC script (`index.js` in `mcp-evernote-js-poc/`) implements the OAuth 2.0 PKCE flow (code verifier/challenge), requests an authorization code, and exchanges it for an access token using Evernote’s `/oauth2/token` endpoint.
+- The POC script can successfully create a new note in Evernote with a sample ENML body.
+- The POC script can read back and display the content of the newly created note.
+- Environment variables `EVERNOTE_CLIENT_ID` and (optional) `EVERNOTE_REDIRECT_URI` are used, with out-of-band fallback if no redirect URI is specified.
+- The `README.md` in `mcp-evernote-js-poc/` documents setup steps, required variables, and commands to run the POC.
 
 ## Tasks
-- [ ] Implement `TranscriptPreprocessor` tool (`transcript_preprocessor.py`) for formatting and metadata generation.
-- [ ] Implement `syllabus_loader.py` to parse local syllabus Markdown.
-- [ ] Integrate MCP FileClient (`file_client_loader.py`) to load and list transcripts (US2).
-- [ ] Stub Planner, Research Team, Editing Team, and Course Authoring flows in `training_manager.py`.
-- [ ] Define directory structure for `research_agenda/`, `research_notes/`, `drafts/`, and `output/`.
-- [ ] Add sample transcripts under `data/training_courses/` for end-to-end test coverage.
-- [ ] Write unit tests and an end-to-end smoke test for the MVP v1 workflow.
+- [ ] Finalize POC script in `examples/genai_training_transcript/mcp-evernote-js-poc/index.js`.
+- [ ] Implement PKCE utilities for generating `code_verifier` and `code_challenge`.
+- [ ] Add CLI prompt to input the OAuth authorization code.
+- [ ] Exchange authorization code for an access token and handle token storage or display.
+- [ ] Implement Evernote read/write test calls: `createNote()` and `getNoteContent()`.
+- [ ] Update `README.md` with clear instructions and mark this sprint as on hold until credentials are available.
