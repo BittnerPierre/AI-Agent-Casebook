@@ -5,6 +5,7 @@ import argparse
 import os
 
 import yaml
+import asyncio
 
 from tools.transcript_preprocessor import preprocess_transcript
 from tools.syllabus_loader import load_syllabus
@@ -19,25 +20,53 @@ def main(config_path: str):
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    preprocess_transcript(config)
+    # Preprocess transcripts (async)
+    asyncio.run(preprocess_transcript(config))
+    # Load syllabus and transcripts
     modules = load_syllabus(config["syllabus_path"])
+    config["modules"] = [m["title"] if isinstance(m, dict) else m for m in modules]
     transcripts = load_transcripts(config)
+
+    # Planning: produce course agenda
     agenda = refine_syllabus(modules, config)
+    agenda_path = config["course_agenda_path"]
+    os.makedirs(os.path.dirname(agenda_path), exist_ok=True)
+    with open(agenda_path, "w", encoding="utf-8") as f:
+        f.write("# Course Agenda\n\n")
+        for m in agenda:
+            if isinstance(m, dict):
+                f.write(f"- {m.get('title')}\n")
+            else:
+                f.write(f"- {m}\n")
+
+    # Research Team: aggregate research notes
     research_notes = aggregate_research(agenda, transcripts, config)
+    notes_dir = config.get("research_notes_dir", "research_notes")
+    os.makedirs(notes_dir, exist_ok=True)
+    for module, note in research_notes.items():
+        fname = module.replace(" ", "_") + ".md"
+        with open(os.path.join(notes_dir, fname), "w", encoding="utf-8") as f:
+            f.write(note)
+
+    # Editing Team: generate drafts
     drafts = edit_chapters(research_notes, config)
-
-    # Generate final scripts per module
-    outputs = {}
+    drafts_dir = config.get("drafts_dir", "drafts")
+    os.makedirs(drafts_dir, exist_ok=True)
     for module, draft in drafts.items():
-        outputs[module] = generate_transcript(module, draft, config)
+        fname = module.replace(" ", "_") + ".md"
+        with open(os.path.join(drafts_dir, fname), "w", encoding="utf-8") as f:
+            f.write(draft)
 
-    # Write outputs to files
+    # Course Authoring: generate final transcripts
+    outputs: dict[str, str] = {}
+    for module, draft in drafts.items():
+        outputs[module] = generate_transcript(module, draft)
+
     output_dir = config.get("output_dir", "output")
     os.makedirs(output_dir, exist_ok=True)
     for module, content in outputs.items():
-        filename = f"{module.replace(' ', '_')}.md"
-        path = os.path.join(output_dir, filename)
-        with open(path, "w") as f:
+        fname = module.replace(" ", "_") + ".md"
+        with open(os.path.join(output_dir, fname), "w", encoding="utf-8") as f:
             f.write(content)
 
     print(f"Generated {len(outputs)} module scripts in {output_dir}")
