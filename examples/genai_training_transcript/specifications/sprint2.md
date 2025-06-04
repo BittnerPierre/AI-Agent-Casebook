@@ -30,9 +30,9 @@
 - Persist per-chapter `research_agenda/`, `research_notes/`, and `drafts/` outputs and stub test cases.
 
 #### Sprint 2 (MVP v2)
-- Implement Course Authoring agent to stitch and review approved chapter drafts (US6).
-- Implement final script writer to persist per-chapter transcripts under `output/` (US7).
-- Add integration tests for end-to-end local-only flow.
+- [x] Implement Course Authoring agent to stitch and review approved chapter drafts (US6).
+- [x] Implement final script writer to persist per-chapter transcripts under `output/` (US7).
+- [x] Add integration tests for end-to-end local-only flow.
 
 ## Next Iteration (v2: Evernote Integration)
 

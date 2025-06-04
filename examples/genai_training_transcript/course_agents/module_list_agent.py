@@ -14,8 +14,8 @@ class ModuleList(BaseModel):
     """List of transcript file names."""
 
 
-planner_agent = Agent(
-    name="PlannerAgent",
+module_list_agent = Agent(
+    name="ModuleListAgent",
     instructions=PROMPT,
     output_type=ModuleList,
 )

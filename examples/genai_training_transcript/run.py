@@ -14,6 +14,7 @@ from tools.planner import refine_syllabus
 from tools.research_team import aggregate_research
 from tools.editing_team import edit_chapters
 from tools.transcript_generator import generate_transcript
+from tools.reviewer import review_transcript
 
 
 def main(config_path: str):
@@ -69,7 +70,18 @@ def main(config_path: str):
         with open(os.path.join(output_dir, fname), "w", encoding="utf-8") as f:
             f.write(content)
 
-    print(f"Generated {len(outputs)} module scripts in {output_dir}")
+    # Review transcripts for alignment
+    print("[reviewer] Reviewing final transcripts (stub)")
+    for module, content in outputs.items():
+        # Find syllabus entry for this module
+        syllabus_item = next(
+            (m for m in modules if (m.get("title") == module if isinstance(m, dict) else m == module)),
+            module
+        )
+        research_note = research_notes.get(module, "")
+        review_transcript(module, content, syllabus_item, research_note)
+
+    print(f"Generated and reviewed {len(outputs)} module scripts in {output_dir}")
 
 
 if __name__ == "__main__":
