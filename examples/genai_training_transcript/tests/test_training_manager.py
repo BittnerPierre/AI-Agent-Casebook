@@ -3,18 +3,10 @@
 Unit tests for transcript preprocessor and metadata extractor.
 """
 
-import os
-import sys
 import pytest
 
-# add examples/genai_training_transcript to path for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
-try:
-    from tools.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
-    from tools.metadata_extractor import extract_metadata, Runner as MetadataRunner
-except ImportError:
-    pytest.skip("Agents SDK not installed; skipping tests", allow_module_level=True)
+from src.tools.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
+from src.tools.metadata_extractor import extract_metadata, Runner as MetadataRunner
 
 
 class DummyOutput:
