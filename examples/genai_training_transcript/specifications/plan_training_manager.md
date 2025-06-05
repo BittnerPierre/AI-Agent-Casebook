@@ -90,3 +90,27 @@ poetry run run_training_manager \
 - `--mcp-endpoint`: URI for the MCP filesystem server (e.g. `stdio://` or `evernote://...`). If omitted, inferred from `MCP_ENDPOINT` environment variable or defaults to `stdio://`.
 - `--overwrite`: Overwrite existing cleaned transcripts and metadata files; by default, skip modules or metadata entries that already exist to save time.
 - Original source files (`.txt`) are never modified or deleted.
+
+## 8. Enhanced Implementation Specifications
+
+### Package Structure
+- **Training Manager Agents**: Module-specific agents are located in `training_manager/agents/`
+  - `module_list_agent.py`: Lists transcript files in course directories
+  - `summarizer_agent.py`: Generates summaries of transcript content
+- **MCP Helper Methods**: Training manager implements MCP-aware file operations with local fallbacks
+  - `_ensure_directories_exist()`: Creates output directories via MCP
+  - `_list_transcript_files()`: Lists files via MCP with fallback
+  - `_file_exists()`: Checks file existence via MCP with fallback
+  - `_read_file()`: Reads files via MCP with fallback
+  - `_write_file()`: Writes files via MCP with fallback
+
+### Course Structure Support
+- **Multi-Module Courses**: Directory structure `<course_id> - <course_name>/transcripts/*.txt`
+- **Single-File Courses**: Direct `.txt` files like `Course_Name.txt`
+- **Automatic Detection**: Training manager detects course type and processes accordingly
+- **Output Consistency**: Both structures generate same output format in `output/<course_id>/`
+
+### Unit Testing Requirements
+- **MCP Helper Methods**: Unit tests required for all async MCP helper methods with mock MCP servers
+- **Course Processing**: Unit tests for `_process_single_file_course()` and `_process_directory_course()` methods
+- **Integration Tests**: End-to-end tests with sample course data
