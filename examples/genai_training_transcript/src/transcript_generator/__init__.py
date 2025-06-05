@@ -1,0 +1,3 @@
+"""
+Transcript generator package.
+"""
