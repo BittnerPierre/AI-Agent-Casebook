@@ -1,4 +1,4 @@
-from src.tools.syllabus_loader import load_syllabus
+from tools.syllabus_loader import load_syllabus
 
 
 def test_load_syllabus(tmp_path):

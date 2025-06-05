@@ -1,4 +1,4 @@
-from src.tools.file_client_loader import load_transcripts
+from tools.file_client_loader import load_transcripts
 
 
 def test_load_transcripts(tmp_path):
