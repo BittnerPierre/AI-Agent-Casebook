@@ -27,7 +27,7 @@ async def main() -> None:
     parser.add_argument(
         "--course-path",
         required=True,
-        help="Path to course directory (data/training_courses/<course_id> - <course_name>)",
+        help="Path to course directory or single .txt file (e.g., data/training_courses/Course_Name.txt or data/training_courses/<course_id> - <course_name>)",
     )
     parser.add_argument(
         "--mcp-endpoint",
