@@ -1,9 +1,4 @@
-import os
-import sys
-# allow imports from src/tools relative to project root
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'src')))
-
-from tools.file_client_loader import load_transcripts
+from src.tools.file_client_loader import load_transcripts
 
 
 def test_load_transcripts(tmp_path):

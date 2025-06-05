@@ -1,9 +1,4 @@
-import os
-import sys
-# allow imports from src/tools relative to project root
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'src')))
-
-from tools.syllabus_loader import load_syllabus
+from src.tools.syllabus_loader import load_syllabus
 
 
 def test_load_syllabus(tmp_path):
