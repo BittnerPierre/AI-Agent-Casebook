@@ -5,8 +5,8 @@ Unit tests for transcript preprocessor and metadata extractor.
 
 import pytest
 
-from tools.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
-from tools.metadata_extractor import extract_metadata, Runner as MetadataRunner
+from utils.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
+from utils.metadata_extractor import extract_metadata, Runner as MetadataRunner
 
 
 class DummyOutput:

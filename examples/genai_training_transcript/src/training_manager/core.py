@@ -9,8 +9,8 @@ import json
 from rich.console import Console
 from agents.mcp import MCPServer
 
-from tools.transcript_preprocessor import preprocess_transcript
-from tools.metadata_extractor import extract_metadata
+from utils.transcript_preprocessor import preprocess_transcript
+from utils.metadata_extractor import extract_metadata
 
 
 class TrainingManager:
