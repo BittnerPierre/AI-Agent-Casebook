@@ -11,14 +11,14 @@ import asyncio
 # Ensure src directory is on PYTHONPATH for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from tools.transcript_preprocessor import preprocess_transcript
-from tools.syllabus_loader import load_syllabus
-from tools.file_client_loader import load_transcripts
-from tools.planner import refine_syllabus
-from tools.research_team import aggregate_research
-from tools.editing_team import edit_chapters
-from tools.transcript_generator import generate_transcript
-from tools.reviewer import review_transcript
+from transcript_generator.tools.transcript_preprocessor import preprocess_transcript
+from transcript_generator.tools.syllabus_loader import load_syllabus
+from transcript_generator.tools.file_client_loader import load_transcripts
+from transcript_generator.tools.planner import refine_syllabus
+from transcript_generator.tools.research_team import aggregate_research
+from transcript_generator.tools.editing_team import edit_chapters
+from transcript_generator.tools.transcript_generator import generate_transcript
+from transcript_generator.tools.reviewer import review_transcript
 
 
 def main(config_path: str):
