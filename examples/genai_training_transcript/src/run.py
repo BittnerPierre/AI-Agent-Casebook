@@ -11,7 +11,7 @@ import asyncio
 # Ensure src directory is on PYTHONPATH for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from transcript_generator.tools.transcript_preprocessor import preprocess_transcript
+from training_manager.tools.transcript_preprocessor import preprocess_transcript
 from transcript_generator.tools.syllabus_loader import load_syllabus
 from transcript_generator.tools.file_client_loader import load_transcripts
 from transcript_generator.tools.planner import refine_syllabus
