@@ -1,7 +1,7 @@
 import os
 import sys
-# allow imports from tools/ relative to this directory
-sys.path.insert(0, os.path.dirname(__file__))
+# allow imports from src/tools relative to project root
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'src')))
 
 from tools.planner import refine_syllabus
 from tools.research_team import aggregate_research

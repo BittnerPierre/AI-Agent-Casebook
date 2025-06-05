@@ -1,11 +1,15 @@
 """
 Entry point for the GenAI Training Transcript Generator (Local v1).
 """
-import argparse
+import sys
 import os
+import argparse
 
 import yaml
 import asyncio
+
+# Ensure src directory is on PYTHONPATH for imports
+sys.path.insert(0, os.path.dirname(__file__))
 
 from tools.transcript_preprocessor import preprocess_transcript
 from tools.syllabus_loader import load_syllabus
@@ -18,8 +22,20 @@ from tools.reviewer import review_transcript
 
 
 def main(config_path: str):
+    # Load configuration
     with open(config_path) as f:
         config = yaml.safe_load(f)
+    # Resolve relative paths based on config file location
+    config_dir = os.path.dirname(os.path.abspath(config_path))
+    def _resolve(key: str) -> None:
+        val = config.get(key)
+        if isinstance(val, str) and not os.path.isabs(val):
+            config[key] = os.path.join(config_dir, val)
+    for key in [
+        "syllabus_path", "raw_transcripts_dir", "preprocessed_dir",
+        "course_agenda_path", "research_notes_dir", "drafts_dir", "output_dir"
+    ]:
+        _resolve(key)
 
     # Preprocess transcripts (async)
     asyncio.run(preprocess_transcript(config))
