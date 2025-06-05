@@ -1,0 +1,45 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "genai-training-transcript"
+version = "0.1.0"
+description = "GenAI Training Transcript Generator with MCP integration"
+authors = ["BittnerPierre <pierre@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.scripts]
+run_training_manager = "training_manager:main"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.0"
+pydantic-ai = "^0.0.13"
+anthropic = "^0.40.0"
+openai = "^1.55.0"
+pyyaml = "^6.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.8.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --disable-warnings --maxfail=1"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "RUF"]
+ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
