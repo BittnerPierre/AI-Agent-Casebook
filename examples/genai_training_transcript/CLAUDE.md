@@ -16,13 +16,13 @@ poetry run pytest -q --disable-warnings --maxfail=1
 ### Training Manager (Sprint 0) - Main Application
 ```bash
 # Basic usage
-poetry run python run_training_manager.py --course-path data/training_courses/<course_id>\ -\ <course_name>
+poetry run run_training_manager --course-path data/training_courses/<course_id>\ -\ <course_name>
 
 # With overwrite option
-poetry run python run_training_manager.py --course-path data/training_courses/<course_id>\ -\ <course_name> --overwrite
+poetry run run_training_manager --course-path data/training_courses/<course_id>\ -\ <course_name> --overwrite
 
 # With custom MCP endpoint
-poetry run python run_training_manager.py --course-path data/training_courses/<course_id>\ -\ <course_name> --mcp-endpoint evernote://
+poetry run run_training_manager --course-path data/training_courses/<course_id>\ -\ <course_name> --mcp-endpoint evernote://
 ```
 
 ### Legacy Transcript Generator (Local v1)
