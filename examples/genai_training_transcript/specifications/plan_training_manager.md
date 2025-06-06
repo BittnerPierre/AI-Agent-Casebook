@@ -91,7 +91,54 @@ poetry run run_training_manager \
 - `--overwrite`: Overwrite existing cleaned transcripts and metadata files; by default, skip modules or metadata entries that already exist to save time.
 - Original source files (`.txt`) are never modified or deleted.
 
-## 8. Single-File Course Support Specification
+## 8. MCP Helper Methods Specification
+
+### User Story US0-MCP
+**As** a developer integrating with MCP filesystem protocols  
+**I want** abstracted file I/O operations with local fallbacks  
+**So that** the training manager works with both MCP servers and local filesystem without code duplication.
+
+### MCP Helper Methods
+The training manager implements the following async helper methods to abstract MCP operations:
+
+#### `_ensure_directories_exist(mcp_server: MCPServer, directories: list[str]) -> None`
+- **Purpose**: Create output directories using MCP protocol with local fallback
+- **Behavior**: Creates directories recursively if they don't exist
+- **Fallback**: Uses `os.makedirs()` when MCP directory creation is unavailable
+- **Error Handling**: Continues silently if directories already exist
+
+#### `_list_transcript_files(mcp_server: MCPServer, transcripts_dir: str) -> list[str]`
+- **Purpose**: List transcript files in directory via MCP with local fallback
+- **Behavior**: Returns sorted list of `.txt` files only
+- **Fallback**: Uses `os.listdir()` when MCP file listing is unavailable
+- **Error Handling**: Returns empty list if directory doesn't exist or MCP fails
+
+#### `_file_exists(mcp_server: MCPServer, file_path: str) -> bool`
+- **Purpose**: Check file existence via MCP with local fallback
+- **Behavior**: Returns boolean indicating file existence
+- **Fallback**: Uses `os.path.exists()` when MCP existence check is unavailable
+- **Error Handling**: Returns `False` for any exceptions
+
+#### `_read_file(mcp_server: MCPServer, file_path: str) -> str`
+- **Purpose**: Read file content via MCP with local fallback  
+- **Behavior**: Returns file content as UTF-8 string
+- **Fallback**: Uses standard `open()` when MCP reading is unavailable
+- **Error Handling**: Raises exception on read errors for proper error propagation
+
+#### `_write_file(mcp_server: MCPServer, file_path: str, content: str) -> None`
+- **Purpose**: Write file content via MCP with local fallback
+- **Behavior**: Writes UTF-8 encoded content to file
+- **Fallback**: Uses standard `open()` when MCP writing is unavailable  
+- **Error Handling**: Raises exception on write errors for proper error propagation
+
+### Implementation Requirements
+1. **Local Fallback**: All methods must work with local filesystem when MCP is unavailable
+2. **Async Pattern**: All methods are async to support future MCP integration
+3. **Error Transparency**: File I/O errors should propagate to caller for proper handling
+4. **UTF-8 Encoding**: All text operations use UTF-8 encoding for consistency
+5. **Unit Testing**: Full test coverage with mock MCP servers and error scenarios
+
+## 9. Single-File Course Support Specification
 
 ### User Story US0-SingleFile
 **As** a content engineer  
