@@ -1,2 +1,2 @@
-# Training Manager Agents
-# Course-specific agents for data preparation and processing
+"""Package for GenAI training transcript agents."""
+
