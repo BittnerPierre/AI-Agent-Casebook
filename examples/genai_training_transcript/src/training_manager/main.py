@@ -83,5 +83,10 @@ async def main() -> None:
             )
 
 
-if __name__ == "__main__":
+def cli_main():
+    """Sync entrypoint for Poetry scripts."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    cli_main()
