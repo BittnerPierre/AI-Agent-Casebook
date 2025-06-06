@@ -11,7 +11,7 @@ import asyncio
 # Ensure src directory is on PYTHONPATH for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from training_manager.tools.transcript_preprocessor import preprocess_transcript
+from transcript_generator.tools.knowledge_retriever import KnowledgeRetriever
 from transcript_generator.tools.syllabus_loader import load_syllabus
 from transcript_generator.tools.file_client_loader import load_transcripts
 from transcript_generator.tools.planner import refine_syllabus
@@ -21,7 +21,7 @@ from transcript_generator.tools.transcript_generator import generate_transcript
 from transcript_generator.tools.reviewer import review_transcript
 
 
-def main(config_path: str):
+async def main(config_path: str):
     # Load configuration
     with open(config_path) as f:
         config = yaml.safe_load(f)
@@ -37,8 +37,16 @@ def main(config_path: str):
     ]:
         _resolve(key)
 
-    # Preprocess transcripts (async)
-    asyncio.run(preprocess_transcript(config))
+    # Initialize knowledge retriever to access preprocessed training data
+    # Note: Training data should be preprocessed using training_manager first
+    knowledge_retriever = KnowledgeRetriever()
+    available_courses = await knowledge_retriever.list_available_courses()
+    
+    if not available_courses:
+        print("⚠️  No preprocessed training data found.")
+        print("Please run training_manager first to preprocess course data:")
+        print("  poetry run python run_training_manager.py --course-path <course-path>")
+        return
     # Load syllabus and transcripts
     modules = load_syllabus(config["syllabus_path"])
     config["modules"] = [m["title"] if isinstance(m, dict) else m for m in modules]
@@ -104,4 +112,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run GenAI Training Transcript Generator")
     parser.add_argument("--config", default="config.yaml", help="Path to the config file")
     args = parser.parse_args()
-    main(args.config)
+    asyncio.run(main(args.config))
