@@ -137,3 +137,65 @@ The training manager implements the following async helper methods to abstract M
 3. **Error Transparency**: File I/O errors should propagate to caller for proper handling
 4. **UTF-8 Encoding**: All text operations use UTF-8 encoding for consistency
 5. **Unit Testing**: Full test coverage with mock MCP servers and error scenarios
+
+## 9. Single-File Course Support Specification
+
+### User Story US0-SingleFile
+**As** a content engineer  
+**I want** to process single `.txt` transcript files directly (not in a directory structure)  
+**So that** I can handle simple courses without creating complex directory hierarchies.
+
+### Acceptance Criteria
+1. **File Detection**: Training manager automatically detects if `--course-path` points to a `.txt` file vs. directory
+2. **Single File Processing**: Direct `.txt` files are processed as single-module courses
+3. **Course ID Extraction**: Course ID derived from filename (without extension)
+4. **Title Generation**: Course title generated from filename (underscores → spaces)
+5. **Output Consistency**: Same output structure as multi-module courses in `output/<course_id>/`
+6. **Error Handling**: Proper error messages for invalid file types or missing files
+
+### Course Structure Support
+
+#### Multi-Module Courses (Existing)
+```
+data/training_courses/COURSE001 - Advanced AI/
+└── transcripts/
+    ├── module1.txt
+    ├── module2.txt
+    └── module3.txt
+```
+
+#### Single-File Courses (New)
+```
+data/training_courses/
+└── Advanced_AI_Course.txt
+```
+
+### Processing Methods
+
+#### `_process_single_file_course(course_path: str) -> tuple[str, str, list[dict], str]`
+- **Purpose**: Process a single `.txt` file as a complete course
+- **Input**: Path to `.txt` file (e.g., `"Advanced_AI_Course.txt"`)
+- **Returns**: `(course_id, course_title, modules, transcripts_dir)`
+  - `course_id`: Filename without extension (`"Advanced_AI_Course"`)
+  - `course_title`: Readable title (`"Advanced AI Course"`)
+  - `modules`: List with single module dict containing filepath info
+  - `transcripts_dir`: Parent directory of the file
+- **Behavior**: Creates module metadata for single file processing
+
+#### `_process_directory_course(course_path: str) -> tuple[str, str, list[str], str]`
+- **Purpose**: Process traditional multi-module directory structure
+- **Input**: Path to course directory (e.g., `"COURSE001 - Advanced AI"`)
+- **Returns**: `(course_id, course_title, modules, transcripts_dir)`
+  - `course_id`: Extracted from directory name (`"COURSE001"`)
+  - `course_title`: Extracted from directory name (`"Advanced AI"`)
+  - `modules`: List of transcript filenames
+  - `transcripts_dir`: Path to transcripts subdirectory
+- **Error Handling**: Validates transcripts directory exists and contains `.txt` files
+
+### Implementation Requirements
+1. **Automatic Detection**: Use `os.path.isfile()` and `.endswith(".txt")` for file detection
+2. **Unified Processing**: Both methods feed into the same processing pipeline
+3. **Consistent Output**: Both structures generate identical output format
+4. **Error Handling**: Clear error messages for missing files/directories
+5. **Unit Testing**: Full test coverage for both processing methods with edge cases
+

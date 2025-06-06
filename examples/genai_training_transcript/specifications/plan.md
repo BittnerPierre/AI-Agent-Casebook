@@ -90,12 +90,13 @@ Below is a sketch of where code and tests could live, following the research_bot
 ├── examples/
 │   └── genai_training_transcript/        # your new example
 │       ├── agent.py                     # Agents-SDK orchestration
-│       ├── tools/
-│       │   ├── syllabus_loader.py       # load local MD / Evernote note
-│       │   ├── transcript_preprocessor.py# format raw .txt transcripts, split chapters, metadata
-│       │   ├── rag_retriever.py         # wrap Completions file-search
-│       │   ├── transcript_generator.py  # wraps Completions API calls
-│       │   └── evernote_exporter.py     # small “MCP”‐style integration
+│       ├── transcript_generator/
+│       │   ├── tools/
+│       │   │   ├── syllabus_loader.py       # load local MD / Evernote note
+│       │   │   ├── transcript_preprocessor.py# format raw .txt transcripts, split chapters, metadata
+│       │   │   ├── rag_retriever.py         # wrap Completions file-search
+│       │   │   ├── transcript_generator.py  # wraps Completions API calls
+│       │   │   └── evernote_exporter.py     # small “MCP”‐style integration
 │       ├── config.yaml                  # notebook IDs, style settings, paths
 │       └── run.py                       # CLI entrypoint for the workflow
 ├── docs/

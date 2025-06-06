@@ -72,6 +72,9 @@ graph TD
 - **Fast execution (MCP):** MCP clients and servers should be launched using the `uv` or `uvx` commands for fast execution.
 
 - **GitHub Interaction Annotation:** When Codex interacts with GitHub via the CLI (`gh`)—such as creating or commenting on Issues and Pull Requests—it must clearly annotate all comments and commands to indicate that it is Codex performing the action, so that contributions from other agentic developers (e.g., Claude Code) remain distinguishable.
+- **No 'Claude Code' signature:** Do not sign any comment, PR, or GitHub action as `Claude Code`. All annotations must use `Codex`.
+
+- **Never modify `CLAUDE.md`:** This file is the configuration for Claude Code and must not be touched.
 
 ## Code Generation
 
