@@ -151,3 +151,4 @@ data/training_courses/
 3. **Consistent Output**: Both structures generate identical output format
 4. **Error Handling**: Clear error messages for missing files/directories
 5. **Unit Testing**: Full test coverage for both processing methods with edge cases
+
