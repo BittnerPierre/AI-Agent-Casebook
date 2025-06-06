@@ -1,7 +1,7 @@
-from tools.planner import refine_syllabus
-from tools.research_team import aggregate_research
-from tools.editing_team import edit_chapters
-from tools.transcript_generator import generate_transcript
+from transcript_generator.tools.planner import refine_syllabus
+from transcript_generator.tools.research_team import aggregate_research
+from transcript_generator.tools.editing_team import edit_chapters
+from transcript_generator.tools.transcript_generator import generate_transcript
 
 def test_refine_syllabus():
     modules = ["A", "B"]

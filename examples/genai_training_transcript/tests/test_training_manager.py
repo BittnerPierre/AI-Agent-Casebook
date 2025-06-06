@@ -7,8 +7,9 @@ import os
 import tempfile
 import pytest
 
-from tools.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
-from tools.metadata_extractor import extract_metadata, Runner as MetadataRunner
+
+from transcript_generator.tools.transcript_preprocessor import preprocess_transcript, Runner as PreprocessorRunner
+from transcript_generator.tools.metadata_extractor import extract_metadata, Runner as MetadataRunner
 from training_manager.core import TrainingManager
 
 
