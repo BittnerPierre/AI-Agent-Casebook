@@ -20,6 +20,14 @@
 - **Claude Code**: Reviews code, creates tests, manages GitHub workflows, evaluates LLM performance
 - **Cursor Agent**: Analyzes architecture, identifies improvements, strategic planning
 
+### ⚠️ Claude Code Workflow Reminders
+**NEVER FORGET - ALL CHANGES REQUIRE PR:**
+1. 🚫 **NO direct commits to main** - Create feature branch FIRST
+2. ✅ **Create PR for EVERY change** - No matter how small  
+3. 🔍 **Wait for agent reviews** - Do not self-merge
+4. 📋 **Follow spec-first policy** - Document before implement
+5. 🤝 **Respect team collaboration** - PRs enable team coordination
+
 ## Evolution Towards Feature-Based Collaboration
 
 ### Proposed Transition
@@ -66,16 +74,37 @@ Based on Issue #28 discussion, moving from module-based to feature-based collabo
 
 ## Communication Protocols
 
-### GitHub Integration
+### ⚠️ STRICT GitHub Workflow - NO EXCEPTIONS
+
+#### **NEVER Push Directly to Main**
+- **🚫 FORBIDDEN**: Direct commits to main branch for ANY reason
+- **✅ REQUIRED**: All changes must go through PR review process
+- **⚠️ VIOLATION**: Direct main commits violate team collaboration principles
+
+#### **Mandatory PR Process**
+1. **Create Feature Branch**: `git checkout -b feature/description`
+2. **Implement Changes**: Follow spec-first policy
+3. **Create PR**: `gh pr create` with detailed description
+4. **Wait for Review**: ALL agents must review before merge
+5. **Merge Only After Approval**: No self-merging allowed
+
+#### **Branch Protection Rules**
+- **Main Branch**: Protected, requires PR + reviews
+- **Feature Branches**: Named `feature/`, `fix/`, `enhancement/`
+- **Emergency Fixes**: Still require PR (can be fast-tracked)
+- **No Exceptions**: Even "small" changes need PR review
+
+### GitHub Integration Standards
 - **Issue Creation**: Use `gh issue create` for bug reports and feature discussions
 - **PR Reviews**: All agents review before merge, identify as agent in comments
 - **Agent Identification**: Always sign contributions to distinguish agents
 - **Example signature**: `---\n*Created by Claude Code*`
 
-### Decision Making
+### Decision Making Protocol
 - **Technical Disputes**: Use GitHub issues for transparent discussion
 - **Specification Changes**: Require consensus before implementation
 - **Architecture Decisions**: Document rationale in specifications
+- **PR Approval**: Minimum 1 other agent review required
 
 ## Future Evolution
 
