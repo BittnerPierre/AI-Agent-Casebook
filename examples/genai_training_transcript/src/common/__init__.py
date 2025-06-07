@@ -1,0 +1,1 @@
+"""Common interfaces and models for module independence."""

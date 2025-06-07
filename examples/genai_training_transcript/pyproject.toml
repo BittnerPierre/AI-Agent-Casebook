@@ -11,7 +11,7 @@ readme = "README.md"
 packages = [{include = "src"}]
 
 [tool.poetry.scripts]
-run_training_manager = "training_manager.main:main"
+run_training_manager = "training_manager.main:cli_main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -19,7 +19,9 @@ pydantic = "^2.0"
 pydantic-ai = "^0.0.13"
 anthropic = "^0.40.0"
 openai = "^1.55.0"
+openai-agents = "^0.0.17"
 pyyaml = "^6.0"
+rich = "^13.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
