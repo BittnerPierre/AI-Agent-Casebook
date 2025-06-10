@@ -7,7 +7,13 @@ from pydantic import BaseModel
 
 try:
     from agents import Agent, Runner
-    _AGENTS_SDK_AVAILABLE = True
+    import inspect
+    import os
+
+    _AGENTS_SDK_AVAILABLE = (
+        inspect.iscoroutinefunction(getattr(Runner, "run", None))
+        and os.environ.get("OPENAI_API_KEY")
+    )
 except ImportError:
     _AGENTS_SDK_AVAILABLE = False
 
