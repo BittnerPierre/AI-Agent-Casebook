@@ -37,11 +37,17 @@ class TrainingManager:
         # Create output directories via MCP (fallback to local for now)
         await self._ensure_directories_exist(mcp_server, [cleaned_dir, metadata_dir])
 
-        # List raw transcript files via MCP
-        modules = await self._list_transcript_files(mcp_server, transcripts_dir)
+        # List raw transcript files via MCP for multi-module courses
+        if is_single_file:
+            # modules already contains info for the single transcript file
+            transcript_files = modules
+        else:
+            transcript_files = await self._list_transcript_files(
+                mcp_server, transcripts_dir
+            )
 
         metadata_list = []
-        for module_info in modules:
+        for module_info in transcript_files:
             if is_single_file:
                 module_file = module_info["filename"]
                 module_path = module_info["filepath"]
