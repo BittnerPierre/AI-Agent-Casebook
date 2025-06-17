@@ -20,6 +20,9 @@ from transcript_generator.tools.editing_team import edit_chapters
 from transcript_generator.tools.transcript_generator import generate_transcript
 from transcript_generator.tools.reviewer import review_transcript
 
+# Import Knowledge Bridge MCP interface
+from knowledge_bridge.mcp_interface import create_knowledge_mcp_server
+
 
 async def main(config_path: str):
     # Load configuration
@@ -37,16 +40,34 @@ async def main(config_path: str):
     ]:
         _resolve(key)
 
-    # Initialize knowledge retriever to access preprocessed training data
-    # Note: Training data should be preprocessed using training_manager first
-    knowledge_retriever = KnowledgeRetriever()
-    available_courses = await knowledge_retriever.list_available_courses()
+    # Initialize Knowledge Bridge MCP Server for US-001
+    print("🔗 Initializing Knowledge Bridge MCP interface...")
+    output_base_path = config.get("preprocessed_dir", "output")
+    knowledge_mcp_server = create_knowledge_mcp_server(output_base_path)
     
-    if not available_courses:
+    # Check knowledge availability
+    health = knowledge_mcp_server.health_check()
+    if health.get("server_status") != "healthy":
+        print("⚠️  Knowledge Bridge MCP server not healthy.")
+        print("Please run training_manager first to preprocess course data:")
+        print("  poetry run python run_training_manager.py --course-path <course-path>")
+        return
+    
+    accessor_health = health.get("content_accessor", {})
+    available_courses = accessor_health.get("available_courses", 0)
+    total_modules = accessor_health.get("total_modules", 0)
+    
+    if available_courses == 0:
         print("⚠️  No preprocessed training data found.")
         print("Please run training_manager first to preprocess course data:")
         print("  poetry run python run_training_manager.py --course-path <course-path>")
         return
+    
+    print(f"✅ Knowledge Bridge MCP ready: {available_courses} courses, {total_modules} modules")
+    
+    # Initialize legacy knowledge retriever for backward compatibility
+    knowledge_retriever = KnowledgeRetriever()
+    available_courses_legacy = await knowledge_retriever.list_available_courses()
     # Load syllabus and transcripts
     modules = load_syllabus(config["syllabus_path"])
     config["modules"] = [m["title"] if isinstance(m, dict) else m for m in modules]
