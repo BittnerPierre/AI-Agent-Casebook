@@ -174,6 +174,7 @@ sequenceDiagram
   "type": "object",
   "properties": {
     "section_id": {"type": "string"},
+    "topic": {"type": "string"},
     "knowledge_references": {
       "type": "array",
       "items": {
@@ -185,9 +186,11 @@ sequenceDiagram
         "required": ["content_id", "key_points"]
       }
     },
+    "structured_content": {"type": "string"},
+    "learning_objectives": {"type": "array", "items": {"type": "string"}},
     "research_summary": {"type": "string"}
   },
-  "required": ["section_id", "knowledge_references", "research_summary"]
+  "required": ["section_id", "topic", "knowledge_references", "structured_content", "learning_objectives", "research_summary"]
 }
 ```
 
@@ -198,9 +201,12 @@ sequenceDiagram
   "type": "object",
   "properties": {
     "section_id": {"type": "string"},
-    "content": {"type": "string"}
+    "chapter_title": {"type": "string"},
+    "content": {"type": "string"},
+    "duration_estimate": {"type": "number", "description": "Estimated duration in minutes"},
+    "source_references": {"type": "array", "items": {"type": "string"}}
   },
-  "required": ["section_id", "content"]
+  "required": ["section_id", "chapter_title", "content", "duration_estimate", "source_references"]
 }
 ```
 
@@ -216,10 +222,11 @@ sequenceDiagram
       "items": {
         "type": "object",
         "properties": {
-          "description": {"type": "string"},
-          "severity": {"type": "string", "enum": ["INFO", "WARNING", "ERROR"]}
+          "misconduct_type": {"type": "string", "enum": ["content_syllabus_alignment", "inadequate_level", "duration_violation", "groundedness_violation", "training_principles_violation", "content_repetition"]},
+          "severity": {"type": "string", "enum": ["Critical", "High", "Medium"]},
+          "description": {"type": "string"}
         },
-        "required": ["description", "severity"]
+        "required": ["misconduct_type", "severity", "description"]
       }
     },
     "approved": {"type": "boolean"}
