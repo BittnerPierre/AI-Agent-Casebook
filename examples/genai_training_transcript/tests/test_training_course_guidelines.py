@@ -30,7 +30,8 @@ def test_guidelines_content():
         'guidelines',
         'training_course_guidelines.md',
     )
-    content = open(guidelines_path, encoding='utf-8').read()
+    with open(guidelines_path, encoding='utf-8') as f:
+        content = f.read()
     assert '## Pedagogical Patterns' in content, 'Pedagogical Patterns section missing'
     assert '### 1. Learning Scaffolding' in content, 'Learning Scaffolding subsection missing'
     assert '### Prompt: Course Structure Outline' in content, 'Prompt template missing'
