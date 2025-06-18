@@ -34,7 +34,14 @@ This document provides pedagogical guidelines and few-shot prompt templates to e
 
 ## Few-Shot Prompt Templates
 
-Use these templates to guide AI agents when generating course materials.
+Use these templates to guide AI agents when generating course materials. The placeholders `{{section_title}}`, `{{section_description}}`, and `{{key_concept}}` are replaced programmatically (e.g., using Python's `str.format()` or a similar templating mechanism). For example:
+
+```python
+prompt = TEMPLATE_COURSE_STRUCTURE.format(
+    section_title="Introduction to RAG",
+    section_description="Overview of Retrieval-Augmented Generation"
+)
+```
 
 ### Prompt: Course Structure Outline
 ```
@@ -61,14 +68,22 @@ Create a brief real-world scenario that illustrates "{{key_concept}}" in context
 
 ## Adapting Video Script Patterns
 
-Adapt elements from video_script guidelines:
-- Use a conversational tone (see `app/video_script/script_guidelines.md`).
-- Employ contextual hooks and narrative flow (see `app/video_script/storytelling_guidebook.md`).
+Adapt elements from established narrative signature guidelines:
+- Use a conversational tone.
+- Employ contextual hooks and narrative flow.
 - Replace conflict loops with knowledge loops: open a question, then resolve it with examples.
 
 ## Usage
 
-At the start of each content generation phase, agents should load this guidelines document and apply the patterns above to structure chapter content consistently.
+At the start of each content generation phase, agents should load this guidelines document and apply the patterns above to structure chapter content consistently. For example:
+
+```python
+from transcript_generator.guidelines.training_course_guidelines import load_guidelines
+
+guidelines = load_guidelines()
+# use guidelines patterns for syllabus section
+chapter_outline = apply_scaffolding(guidelines, section_data)
+```
 
 ---
 
