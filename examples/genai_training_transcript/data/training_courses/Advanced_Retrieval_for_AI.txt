@@ -1,1 +1,624 @@
-Placeholder raw transcript for Advanced Retrieval for AI.
+# Advanced Retrieval for AI - Complete Training Module
+
+## Introduction to Advanced Retrieval Systems
+
+Welcome to Advanced Retrieval for AI, where we'll explore how to build sophisticated retrieval-augmented generation (RAG) systems that go far beyond basic semantic search. This module covers embeddings, vector databases, and practical implementation patterns for production RAG applications.
+
+Modern AI applications increasingly rely on retrieval systems to ground language models in specific knowledge bases, enabling more accurate, up-to-date, and contextually relevant responses. Understanding these systems is essential for building reliable AI applications that can access and reason over large document collections.
+
+## Understanding Embeddings and Vector Search Fundamentals
+
+### What are Embeddings?
+
+Embeddings are dense vector representations of text that capture semantic meaning in high-dimensional space. Unlike traditional keyword-based search, embeddings enable semantic similarity matching, allowing us to find conceptually related content even when exact words don't match.
+
+**Key Properties of Quality Embeddings:**
+- **Semantic Preservation**: Similar concepts cluster together in vector space
+- **Dimensionality**: Typically 384 to 1536 dimensions for modern models
+- **Distance Metrics**: Cosine similarity, dot product, or Euclidean distance
+- **Domain Adaptation**: Can be fine-tuned for specific domains or tasks
+
+### Vector Search Mechanics
+
+Vector search operates by computing similarity between query embeddings and document embeddings stored in a vector database.
+
+**Basic Vector Search Process:**
+1. **Encode Query**: Convert text query into embedding vector
+2. **Similarity Computation**: Calculate distance/similarity to all stored vectors
+3. **Ranking**: Sort results by similarity score
+4. **Retrieval**: Return top-k most similar documents
+
+### Distance Metrics Explained
+
+**Cosine Similarity**: Measures angle between vectors, normalized for magnitude
+```python
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+```
+
+**Dot Product**: Direct multiplication, sensitive to vector magnitude
+```python
+def dot_product_similarity(a, b):
+    return np.dot(a, b)
+```
+
+**Euclidean Distance**: L2 distance in vector space
+```python
+def euclidean_distance(a, b):
+    return np.linalg.norm(a - b)
+```
+
+## Vector Database Technologies
+
+### Popular Vector Database Options
+
+**Specialized Vector Databases:**
+- **Pinecone**: Managed cloud service with auto-scaling
+- **Weaviate**: Open-source with GraphQL API
+- **Qdrant**: High-performance Rust-based database
+- **Milvus**: Distributed vector database for large-scale deployments
+
+**Traditional Databases with Vector Extensions:**
+- **PostgreSQL + pgvector**: SQL database with vector similarity search
+- **Redis**: In-memory database with vector search capabilities
+- **MongoDB Atlas**: Document database with vector search features
+
+**Embedded Solutions:**
+- **ChromaDB**: Lightweight, embeddable vector database
+- **FAISS**: Facebook's library for efficient similarity search
+- **Annoy**: Spotify's approximate nearest neighbor library
+
+### ChromaDB Deep Dive
+
+ChromaDB offers an excellent balance of simplicity and performance for development and small-to-medium scale production deployments.
+
+**ChromaDB Key Features:**
+- **Embeddable**: Runs in-process with your application
+- **Persistent**: Data survives application restarts
+- **Metadata Filtering**: Combine vector search with traditional filters
+- **Collections**: Organize documents into logical groups
+- **Built-in Embeddings**: Automatic embedding generation
+
+**Basic ChromaDB Setup:**
+```python
+import chromadb
+from chromadb.config import Settings
+
+# Initialize persistent client
+client = chromadb.PersistentClient(
+    path="./chroma_db",
+    settings=Settings(
+        chroma_server_host="localhost",
+        chroma_server_http_port="8000"
+    )
+)
+
+# Create or get collection
+collection = client.get_or_create_collection(
+    name="knowledge_base",
+    metadata={"description": "Technical documentation"}
+)
+```
+
+## Building Production RAG Workflows
+
+### RAG Architecture Components
+
+**1. Document Processing Pipeline**
+- **Chunking**: Split documents into manageable pieces
+- **Embedding**: Convert chunks to vector representations
+- **Storage**: Store vectors and metadata in database
+- **Indexing**: Optimize for fast similarity search
+
+**2. Query Processing Pipeline**
+- **Query Enhancement**: Rewrite, expand, or clarify user queries
+- **Retrieval**: Find relevant document chunks
+- **Ranking**: Score and order results by relevance
+- **Context Assembly**: Combine retrieved chunks for generation
+
+**3. Generation Pipeline**
+- **Prompt Construction**: Build prompts with retrieved context
+- **Language Model**: Generate response using context
+- **Post-processing**: Format, filter, or enhance output
+- **Citation**: Track sources used in generation
+
+### Advanced Chunking Strategies
+
+**Fixed-Size Chunking**
+```python
+def fixed_size_chunking(text, chunk_size=1000, overlap=200):
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start = end - overlap
+    return chunks
+```
+
+**Semantic Chunking**
+```python
+def semantic_chunking(text, model, similarity_threshold=0.7):
+    sentences = split_into_sentences(text)
+    chunks = []
+    current_chunk = [sentences[0]]
+    
+    for i in range(1, len(sentences)):
+        similarity = compute_similarity(
+            model.encode(current_chunk[-1]),
+            model.encode(sentences[i])
+        )
+        
+        if similarity > similarity_threshold:
+            current_chunk.append(sentences[i])
+        else:
+            chunks.append(' '.join(current_chunk))
+            current_chunk = [sentences[i]]
+    
+    chunks.append(' '.join(current_chunk))
+    return chunks
+```
+
+**Hierarchical Chunking**
+```python
+def hierarchical_chunking(document):
+    # Extract structure: sections, subsections, paragraphs
+    sections = extract_sections(document)
+    chunks = []
+    
+    for section in sections:
+        # Create section-level chunk
+        section_chunk = {
+            'text': section.full_text,
+            'level': 'section',
+            'title': section.title
+        }
+        chunks.append(section_chunk)
+        
+        # Create paragraph-level chunks
+        for paragraph in section.paragraphs:
+            para_chunk = {
+                'text': paragraph.text,
+                'level': 'paragraph',
+                'parent_section': section.title
+            }
+            chunks.append(para_chunk)
+    
+    return chunks
+```
+
+### Query Enhancement Techniques
+
+**Query Expansion**
+```python
+def expand_query(original_query, expansion_model):
+    # Generate related terms and concepts
+    related_terms = expansion_model.generate_related_terms(original_query)
+    
+    # Combine original query with expansions
+    expanded_query = f"{original_query} {' '.join(related_terms)}"
+    return expanded_query
+```
+
+**Multi-Query Generation**
+```python
+def generate_multiple_queries(original_query, llm):
+    prompt = f"""
+    Generate 3 different ways to ask the same question as: "{original_query}"
+    
+    Focus on:
+    1. Different terminology and phrasing
+    2. More specific or more general versions
+    3. Alternative perspectives on the same topic
+    
+    Return only the questions, one per line.
+    """
+    
+    response = llm.generate(prompt)
+    queries = response.strip().split('\n')
+    return [original_query] + queries
+```
+
+**Hypothetical Document Generation (HyDE)**
+```python
+def hypothetical_document_embedding(query, llm, embedding_model):
+    prompt = f"""
+    Write a detailed paragraph that would answer this question: "{query}"
+    
+    Focus on providing factual, technical information that would typically
+    be found in documentation or technical articles.
+    """
+    
+    hypothetical_doc = llm.generate(prompt)
+    return embedding_model.encode(hypothetical_doc)
+```
+
+## Hands-On: Building a Document Q&A Chatbot
+
+### Complete Implementation Example
+
+```python
+import chromadb
+from sentence_transformers import SentenceTransformer
+import openai
+
+class DocumentQAChatbot:
+    def __init__(self, collection_name="documents"):
+        # Initialize components
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.chroma_client = chromadb.PersistentClient()
+        self.collection = self.chroma_client.get_or_create_collection(
+            name=collection_name
+        )
+        
+    def add_document(self, document_text, document_id, metadata=None):
+        """Add a document to the knowledge base"""
+        # Chunk the document
+        chunks = self.chunk_document(document_text)
+        
+        # Generate embeddings
+        embeddings = self.embedding_model.encode(chunks)
+        
+        # Store in ChromaDB
+        chunk_ids = [f"{document_id}_chunk_{i}" for i in range(len(chunks))]
+        
+        self.collection.add(
+            embeddings=embeddings.tolist(),
+            documents=chunks,
+            ids=chunk_ids,
+            metadatas=[metadata] * len(chunks) if metadata else None
+        )
+        
+    def chunk_document(self, text, chunk_size=1000, overlap=200):
+        """Simple chunking strategy"""
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + chunk_size
+            chunk = text[start:end]
+            chunks.append(chunk)
+            start = end - overlap
+        return chunks
+    
+    def retrieve_context(self, query, n_results=5):
+        """Retrieve relevant context for a query"""
+        # Generate query embedding
+        query_embedding = self.embedding_model.encode([query])
+        
+        # Search for similar chunks
+        results = self.collection.query(
+            query_embeddings=query_embedding.tolist(),
+            n_results=n_results
+        )
+        
+        return results['documents'][0]  # Return list of relevant chunks
+    
+    def generate_answer(self, query, context_chunks):
+        """Generate answer using retrieved context"""
+        context = "\n\n".join(context_chunks)
+        
+        prompt = f"""
+        Based on the following context, answer the question. If the context
+        doesn't contain enough information to answer the question, say so.
+        
+        Context:
+        {context}
+        
+        Question: {query}
+        
+        Answer:
+        """
+        
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.1
+        )
+        
+        return response.choices[0].message.content
+    
+    def ask_question(self, query):
+        """Main interface for asking questions"""
+        # Retrieve relevant context
+        context_chunks = self.retrieve_context(query)
+        
+        # Generate answer
+        answer = self.generate_answer(query, context_chunks)
+        
+        return {
+            'answer': answer,
+            'sources': context_chunks,
+            'query': query
+        }
+
+# Usage example
+chatbot = DocumentQAChatbot()
+
+# Add documents
+with open('technical_docs.txt', 'r') as f:
+    doc_content = f.read()
+    chatbot.add_document(
+        document_text=doc_content,
+        document_id="tech_docs_1",
+        metadata={"source": "internal_docs", "version": "2024.1"}
+    )
+
+# Ask questions
+result = chatbot.ask_question("How do I configure the authentication system?")
+print(f"Answer: {result['answer']}")
+print(f"Sources: {len(result['sources'])} chunks used")
+```
+
+## Advanced RAG Techniques
+
+### Re-ranking with Cross-Encoders
+
+Cross-encoders provide more accurate relevance scoring by jointly encoding query and document pairs.
+
+```python
+from sentence_transformers import CrossEncoder
+
+class ReRankingRAG:
+    def __init__(self):
+        self.retriever = SentenceTransformer('all-MiniLM-L6-v2')
+        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        
+    def retrieve_and_rerank(self, query, documents, top_k=5, rerank_top_k=20):
+        # First stage: retrieve more candidates than needed
+        initial_results = self.vector_search(query, documents, k=rerank_top_k)
+        
+        # Second stage: rerank with cross-encoder
+        query_doc_pairs = [(query, doc) for doc in initial_results]
+        rerank_scores = self.reranker.predict(query_doc_pairs)
+        
+        # Sort by rerank scores and return top_k
+        scored_docs = list(zip(initial_results, rerank_scores))
+        scored_docs.sort(key=lambda x: x[1], reverse=True)
+        
+        return [doc for doc, score in scored_docs[:top_k]]
+```
+
+### Multi-Vector Retrieval
+
+Generate multiple embeddings per document for different aspects (summary, details, keywords).
+
+```python
+class MultiVectorRetrieval:
+    def __init__(self):
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+    def create_multi_vector_representation(self, document):
+        # Extract different aspects
+        summary = self.extract_summary(document)
+        key_entities = self.extract_entities(document)
+        full_text = document
+        
+        # Create embeddings for each aspect
+        vectors = {
+            'summary': self.embedding_model.encode(summary),
+            'entities': self.embedding_model.encode(' '.join(key_entities)),
+            'full_text': self.embedding_model.encode(full_text)
+        }
+        
+        return vectors
+    
+    def multi_vector_search(self, query, vector_db):
+        query_embedding = self.embedding_model.encode(query)
+        
+        # Search each vector type
+        summary_results = vector_db.search('summary', query_embedding)
+        entity_results = vector_db.search('entities', query_embedding)
+        full_text_results = vector_db.search('full_text', query_embedding)
+        
+        # Combine and deduplicate results
+        combined_results = self.combine_search_results([
+            summary_results, entity_results, full_text_results
+        ])
+        
+        return combined_results
+```
+
+### Adaptive Retrieval
+
+Dynamically adjust retrieval strategy based on query characteristics.
+
+```python
+class AdaptiveRetrieval:
+    def __init__(self):
+        self.query_classifier = self.load_query_classifier()
+        self.retrieval_strategies = {
+            'factual': self.factual_retrieval,
+            'conceptual': self.conceptual_retrieval,
+            'procedural': self.procedural_retrieval
+        }
+        
+    def adaptive_retrieve(self, query, documents):
+        # Classify query type
+        query_type = self.query_classifier.predict(query)
+        
+        # Select appropriate retrieval strategy
+        retrieval_fn = self.retrieval_strategies[query_type]
+        
+        # Execute retrieval with strategy-specific parameters
+        return retrieval_fn(query, documents)
+    
+    def factual_retrieval(self, query, documents):
+        # Optimize for precise fact retrieval
+        return self.vector_search(query, documents, 
+                                similarity_threshold=0.8, 
+                                top_k=3)
+    
+    def conceptual_retrieval(self, query, documents):
+        # Optimize for broader conceptual coverage
+        return self.vector_search(query, documents,
+                                similarity_threshold=0.6,
+                                top_k=8)
+    
+    def procedural_retrieval(self, query, documents):
+        # Optimize for step-by-step information
+        return self.hierarchical_search(query, documents,
+                                      prefer_sequential=True)
+```
+
+## Performance Optimization and Scaling
+
+### Indexing Strategies
+
+**Approximate Nearest Neighbor (ANN) Algorithms:**
+- **HNSW**: Hierarchical Navigable Small World graphs
+- **IVF**: Inverted File indexing with clustering
+- **LSH**: Locality-Sensitive Hashing for high-dimensional spaces
+
+**Index Configuration Example:**
+```python
+# Configure HNSW index for optimal performance
+collection = client.create_collection(
+    name="optimized_collection",
+    metadata={
+        "hnsw:space": "cosine",
+        "hnsw:M": 16,  # Number of connections per layer
+        "hnsw:ef_construction": 200,  # Size of dynamic candidate list
+        "hnsw:ef": 100,  # Size of search candidate list
+    }
+)
+```
+
+### Caching and Precomputation
+
+**Embedding Caching:**
+```python
+import redis
+import pickle
+
+class EmbeddingCache:
+    def __init__(self):
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        
+    def get_embedding(self, text, model):
+        cache_key = f"emb:{hash(text)}:{model.model_name}"
+        
+        # Check cache first
+        cached_embedding = self.redis_client.get(cache_key)
+        if cached_embedding:
+            return pickle.loads(cached_embedding)
+        
+        # Compute and cache
+        embedding = model.encode(text)
+        self.redis_client.setex(
+            cache_key, 
+            timedelta(hours=24), 
+            pickle.dumps(embedding)
+        )
+        
+        return embedding
+```
+
+### Monitoring and Evaluation
+
+**Retrieval Quality Metrics:**
+```python
+def evaluate_retrieval_quality(queries, ground_truth, retrieval_system):
+    metrics = {
+        'precision_at_k': [],
+        'recall_at_k': [],
+        'mrr': [],  # Mean Reciprocal Rank
+        'ndcg': []  # Normalized Discounted Cumulative Gain
+    }
+    
+    for query, relevant_docs in zip(queries, ground_truth):
+        retrieved_docs = retrieval_system.retrieve(query, k=10)
+        
+        # Calculate metrics
+        precision = calculate_precision_at_k(retrieved_docs, relevant_docs, k=10)
+        recall = calculate_recall_at_k(retrieved_docs, relevant_docs, k=10)
+        mrr = calculate_mrr(retrieved_docs, relevant_docs)
+        ndcg = calculate_ndcg(retrieved_docs, relevant_docs, k=10)
+        
+        metrics['precision_at_k'].append(precision)
+        metrics['recall_at_k'].append(recall)
+        metrics['mrr'].append(mrr)
+        metrics['ndcg'].append(ndcg)
+    
+    # Return average metrics
+    return {k: sum(v) / len(v) for k, v in metrics.items()}
+```
+
+## Production Deployment Considerations
+
+### Security and Privacy
+
+**Data Encryption:**
+- Encrypt embeddings at rest and in transit
+- Implement access controls for sensitive documents
+- Use secure connection protocols (TLS/SSL)
+
+**Privacy-Preserving Techniques:**
+- Differential privacy for embedding generation
+- Federated search across distributed databases
+- Data anonymization and pseudonymization
+
+### Scalability Patterns
+
+**Horizontal Scaling:**
+```python
+class DistributedVectorDB:
+    def __init__(self, shard_configs):
+        self.shards = []
+        for config in shard_configs:
+            shard = chromadb.HttpClient(
+                host=config['host'],
+                port=config['port']
+            )
+            self.shards.append(shard)
+    
+    def distributed_search(self, query_embedding, k=10):
+        # Search all shards in parallel
+        shard_results = []
+        for shard in self.shards:
+            results = shard.query(
+                query_embeddings=[query_embedding],
+                n_results=k
+            )
+            shard_results.extend(results['documents'][0])
+        
+        # Merge and rerank global results
+        global_results = self.merge_and_rerank(shard_results, k)
+        return global_results
+```
+
+**Load Balancing:**
+- Distribute queries across multiple vector database instances
+- Implement query routing based on document categories
+- Use caching layers to reduce database load
+
+## Key Takeaways
+
+1. **Embeddings enable semantic search** beyond keyword matching
+2. **Vector databases provide efficient similarity search** at scale
+3. **RAG workflows combine retrieval and generation** for grounded AI responses
+4. **Advanced techniques like re-ranking improve retrieval quality**
+5. **Production systems require optimization for performance and scale**
+6. **Monitoring and evaluation are essential** for maintaining system quality
+
+Advanced retrieval systems form the backbone of modern AI applications that need to access and reason over large knowledge bases. The techniques covered in this module provide the foundation for building sophisticated, production-ready RAG systems that can power everything from customer support chatbots to technical documentation assistants.
+
+## Practical Exercises
+
+### Exercise 1: Vector Database Comparison
+Implement the same document Q&A system using ChromaDB, FAISS, and Pinecone. Compare performance and ease of use.
+
+### Exercise 2: Chunking Strategy Evaluation
+Test different chunking strategies (fixed-size, semantic, hierarchical) on a technical documentation dataset. Measure retrieval quality.
+
+### Exercise 3: Query Enhancement Pipeline
+Build a multi-step query enhancement pipeline that combines query expansion, multi-query generation, and hypothetical document embedding.
+
+### Exercise 4: Production RAG System
+Design and implement a production-ready RAG system with monitoring, caching, and error handling for a specific domain (e.g., legal documents, technical manuals).
+
+### Exercise 5: Evaluation Framework
+Create a comprehensive evaluation framework for retrieval systems, including both automatic metrics and human evaluation protocols.
+
+The future of AI applications increasingly relies on sophisticated retrieval systems. Master these concepts and techniques to build the next generation of knowledge-augmented AI systems.
