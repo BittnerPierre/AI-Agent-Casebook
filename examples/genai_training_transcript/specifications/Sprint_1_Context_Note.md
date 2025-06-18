@@ -117,6 +117,10 @@ The platform follows a **3-module architecture**:
 - Output structured `research_notes.json` with knowledge references
 - Include 3 internal agents: Researcher (finds content), Analyst (evaluates relevance), Synthesizer (structures notes)
 - Store results in `research_notes/` directory for editing team consumption
+- Implement robust error handling for MCP queries and file I/O to allow partial results on failure
+- Perform semantic key-point extraction (e.g. using NLP or LLM-driven summarization) rather than fixed word-chunking
+- Generate a coherent `research_summary` that avoids repetition and structures insights as a narrative
+- Expose parameters (e.g. `max_key_points_per_item`, `max_summary_length`) via configuration for tuning extraction and summarization
 
 **Questions for PO/SM**:
 - What structure should research_notes.json have?
