@@ -194,12 +194,12 @@ mcp_server = create_knowledge_mcp_server("/path/to/training/data")
 
 Run the test suite:
 ```bash
-pytest tests/test_knowledge_mcp.py -v
+pytest examples/genai_training_transcript/tests/test_knowledge_mcp.py -v
 ```
 
 Run the example demo:
 ```bash
-python examples/knowledge_mcp_example.py
+python examples/genai_training_transcript/examples/knowledge_mcp_example.py
 ```
 
 ## Sprint 1 Scope
