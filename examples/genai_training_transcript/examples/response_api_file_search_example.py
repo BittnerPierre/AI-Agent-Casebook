@@ -856,14 +856,13 @@ Implementation considerations:
 def demonstrate_response_api_file_search():
     """Main demonstration function for Response API File_Search integration"""
     
-    print("🚀 OpenAI Response API File_Search Integration (US-011)")
-    print("=" * 60)
-    print("Demonstrating working patterns for EditingTeam content synthesis")
+    logger.info("Starting OpenAI Response API File_Search Integration (US-011)")
+    logger.info("Demonstrating working patterns for EditingTeam content synthesis")
     
     # Check API key
     if not os.getenv('OPENAI_API_KEY'):
         logger.error("OPENAI_API_KEY environment variable not set")
-        print("\n❌ OPENAI_API_KEY environment variable not set")
+        print("❌ OPENAI_API_KEY environment variable not set")
         print("Please set your OpenAI API key:")
         print("export OPENAI_API_KEY='your-api-key-here'")
         return
@@ -875,56 +874,52 @@ def demonstrate_response_api_file_search():
         
         # Create sample research data
         logger.info("Creating sample research data...")
-        print("\n📚 Creating sample research data...")
         research_data = create_sample_research_data()
-        print(f"   ✅ Syllabus: {research_data['syllabus']['title']}")
-        print(f"   ✅ Modules: {len(research_data['agenda'])}")
-        print(f"   ✅ Research Notes: {len(research_data['research_notes'])} sections")
+        logger.info(f"Syllabus: {research_data['syllabus']['title']}")
+        logger.info(f"Modules: {len(research_data['agenda'])}")
+        logger.info(f"Research Notes: {len(research_data['research_notes'])} sections")
         
         # Demonstrate multi-step synthesis
         results = integration.demonstrate_multi_step_synthesis(research_data)
         
         # Display results summary
-        print("\n📊 Integration Demonstration Results")
-        print("=" * 40)
+        logger.info("Integration Demonstration Results")
         
         if 'error' in results:
             logger.error(f"Demonstration failed: {results['error']}")
             print(f"❌ Demonstration failed: {results['error']}")
         else:
             metrics = results.get('performance_metrics', {})
-            print(f"✅ Workflow Steps Completed: {len(results.get('workflow_steps', []))}")
-            print(f"✅ Successful Syntheses: {metrics.get('successful_syntheses', 0)}/{metrics.get('total_synthesis_requests', 0)}")
-            print(f"🔍 Total Sources Integrated: {metrics.get('total_sources_integrated', 0)}")
-            print(f"📝 Content Generated: {metrics.get('total_content_generated', 0):,} characters")
-            print(f"⏱️ Processing Time: {metrics.get('processing_time_seconds', 0):.1f} seconds")
+            logger.info(f"Workflow Steps Completed: {len(results.get('workflow_steps', []))}")
+            logger.info(f"Successful Syntheses: {metrics.get('successful_syntheses', 0)}/{metrics.get('total_synthesis_requests', 0)}")
+            logger.info(f"Total Sources Integrated: {metrics.get('total_sources_integrated', 0)}")
+            logger.info(f"Content Generated: {metrics.get('total_content_generated', 0):,} characters")
+            logger.info(f"Processing Time: {metrics.get('processing_time_seconds', 0):.1f} seconds")
             
             # Show sample synthesis result
             synthesis_results = results.get('synthesis_results', [])
             if synthesis_results and synthesis_results[0].get('status') == 'success':
-                print(f"\n📖 Sample Synthesis Output (Module: {synthesis_results[0].get('target_module')})")
-                print("-" * 60)
+                logger.info(f"Sample Synthesis Output (Module: {synthesis_results[0].get('target_module')})")
                 content = synthesis_results[0].get('synthesized_content', '')
                 preview = content[:500] + "..." if len(content) > 500 else content
-                print(preview)
+                logger.debug(f"Content preview: {preview}")
                 
                 file_search_results = synthesis_results[0].get('file_search_results', [])
                 if file_search_results:
-                    print(f"\n🔍 File Search Results ({len(file_search_results)} sources used):")
+                    logger.info(f"File Search Results ({len(file_search_results)} sources used)")
                     for i, result in enumerate(file_search_results[:3], 1):
-                        print(f"   {i}. File ID: {result.get('file_id')}")
-                        print(f"      Quote: {result.get('quote', '')[:100]}...")
+                        logger.debug(f"{i}. File ID: {result.get('file_id')}")
+                        logger.debug(f"   Quote: {result.get('quote', '')[:100]}...")
         
         # Integration patterns for EditingTeam
-        print("\n🔧 EditingTeam Integration Patterns")
-        print("=" * 40)
-        print("This demonstration provides the following patterns for US-004:")
-        print("1. ✅ File upload and vector store creation")
-        print("2. ✅ Research assistant with file_search capability")
-        print("3. ✅ Multi-step content synthesis workflow")
-        print("4. ✅ File search result processing and annotation handling")
-        print("5. ✅ Performance metrics and quality assessment")
-        print("\n📋 Ready for EditingTeam implementation reference!")
+        logger.info("EditingTeam Integration Patterns")
+        logger.info("This demonstration provides the following patterns for US-004:")
+        logger.info("1. File upload and vector store creation")
+        logger.info("2. Research assistant with file_search capability")
+        logger.info("3. Multi-step content synthesis workflow")
+        logger.info("4. File search result processing and annotation handling")
+        logger.info("5. Performance metrics and quality assessment")
+        logger.info("Ready for EditingTeam implementation reference!")
         
     except Exception as e:
         logger.error(f"Demonstration failed: {str(e)}")
@@ -936,7 +931,6 @@ def demonstrate_response_api_file_search():
             integration.cleanup_resources()
             
         logger.info("Response API File_Search demonstration completed")
-        print("\n✅ Response API File_Search demonstration completed!")
 
 
 if __name__ == "__main__":
