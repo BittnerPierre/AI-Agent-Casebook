@@ -20,13 +20,13 @@ AI developers must follow the same professional standards as human developers. N
 #### **Before Creating Any PR:**
 ```bash
 # 1. Unit Tests
-poetry run pytest tests/ -v
+poetry run pytest examples/genai_training_transcript/tests/ -v
 
 # 2. Integration Test - App Must Still Run
-cd src && python run.py --config ../config.yaml
+cd src && poetry run python run.py --config ../config.yaml
 
 # 3. Import Validation
-python -c "from existing_modules import *; print('✅ No breaking changes')"
+poetry run python -c "from existing_modules import *; print('✅ No breaking changes')"
 
 # 4. Existing Functionality Check
 # Test that critical workflows still work
@@ -107,4 +107,3 @@ python -c "from existing_modules import *; print('✅ No breaking changes')"
 
 🤖 This document applies to all AI coding agents collaborating on this project.
 
-Co-Authored-By: Experienced Tech Lead who's seen this before 😉
