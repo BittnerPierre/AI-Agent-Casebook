@@ -18,8 +18,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-# Import Agent SDK for multi-agent coordination
-from openai import OpenAI
+# No external AI SDK imports needed for this implementation
 
 class IssueSeverity(Enum):
     """Issue severity levels for misconduct tracking"""
@@ -85,6 +84,17 @@ class EditorialFinalizer:
         # Setup logging
         self.logger = logging.getLogger(__name__)
         
+        # Quality thresholds - configurable for different content types
+        self.quality_thresholds = {
+            'min_word_count': 50,
+            'max_word_count': 2000,
+            'min_vocabulary_ratio': 0.4,
+            'error_penalty': 0.3,
+            'warning_penalty': 0.1,
+            'min_structure_score': 2,
+            'min_engagement_threshold': 300
+        }
+        
         # Misconduct categories as defined in specifications
         self.misconduct_categories = {
             "CRITICAL": [
@@ -143,8 +153,12 @@ class EditorialFinalizer:
             
             # Write quality issues for this section to quality_issues/{section_id}.json
             quality_file = self.quality_dir / f"{chapter.section_id}.json"
-            with open(quality_file, 'w', encoding='utf-8') as f:
-                json.dump(section_quality, f, indent=2, ensure_ascii=False)
+            try:
+                with open(quality_file, 'w', encoding='utf-8') as f:
+                    json.dump(section_quality, f, indent=2, ensure_ascii=False)
+            except IOError as e:
+                self.logger.error(f"Failed to write quality file {quality_file}: {e}")
+                raise
             
             # Add to final transcript (regardless of issues - flagged in quality_issues)
             final_sections.append({
@@ -161,8 +175,12 @@ class EditorialFinalizer:
         
         # Write final transcript JSON
         transcript_json_path = self.output_dir / "final_transcript.json"
-        with open(transcript_json_path, 'w', encoding='utf-8') as f:
-            json.dump(final_transcript, f, indent=2, ensure_ascii=False)
+        try:
+            with open(transcript_json_path, 'w', encoding='utf-8') as f:
+                json.dump(final_transcript, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            self.logger.error(f"Failed to write final transcript {transcript_json_path}: {e}")
+            raise
         
         # Create markdown version for readability
         md_path = self.output_dir / "final_transcript.md"
@@ -283,7 +301,7 @@ class EditorialFinalizer:
         word_count = len(words)
         unique_words = len(set(words))
         
-        if word_count > 100 and unique_words / word_count < 0.4:  # Less than 40% unique words
+        if word_count > 100 and unique_words / word_count < self.quality_thresholds['min_vocabulary_ratio']:
             issues.append(QualityIssue(
                 description="Content appears repetitive with low vocabulary diversity",
                 severity=IssueSeverity.WARNING,
@@ -292,14 +310,14 @@ class EditorialFinalizer:
             ))
         
         # Check for extremely short content (inadequate level)
-        if word_count < 50:
+        if word_count < self.quality_thresholds['min_word_count']:
             issues.append(QualityIssue(
                 description=f"Content is too short ({word_count} words)",
                 severity=IssueSeverity.ERROR,
                 section_id=chapter.section_id,
                 misconduct_category="inadequate_level"
             ))
-        elif word_count > 2000:
+        elif word_count > self.quality_thresholds['max_word_count']:
             # Duration violations - content too long
             issues.append(QualityIssue(
                 description=f"Content may be too long ({word_count} words) for a single section",
@@ -338,7 +356,7 @@ class EditorialFinalizer:
         
         structure_score = sum([has_intro, has_examples, has_summary])
         
-        if structure_score < 2 and len(content.split()) > 200:  # For longer content
+        if structure_score < self.quality_thresholds['min_structure_score'] and len(content.split()) > 200:
             issues.append(QualityIssue(
                 description="Content lacks clear educational structure (introduction, examples, summary)",
                 severity=IssueSeverity.WARNING,
@@ -354,7 +372,7 @@ class EditorialFinalizer:
         
         engagement_count = sum(1 for element in engagement_elements if element in content.lower())
         
-        if engagement_count == 0 and len(content.split()) > 300:
+        if engagement_count == 0 and len(content.split()) > self.quality_thresholds['min_engagement_threshold']:
             issues.append(QualityIssue(
                 description="Content lacks engagement elements (questions, exercises, interactive components)",
                 severity=IssueSeverity.INFO,
@@ -486,7 +504,7 @@ class EditorialFinalizer:
             return 1.0
         
         # Weighted scoring: errors more impactful than warnings
-        penalty = (error_count * 0.3) + (warning_count * 0.1)
+        penalty = (error_count * self.quality_thresholds['error_penalty']) + (warning_count * self.quality_thresholds['warning_penalty'])
         score = max(0.0, 1.0 - penalty)
         
         return round(score, 2) 
