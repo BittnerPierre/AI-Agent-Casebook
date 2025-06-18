@@ -15,8 +15,8 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
 
-from ..common.knowledge_bridge import TrainingDataBridge
-from ..common.models import ModuleMetadata, CourseMetadata
+from common.knowledge_bridge import TrainingDataBridge
+from common.models import ModuleMetadata, CourseMetadata
 
 
 class ContentAccessor:

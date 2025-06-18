@@ -271,6 +271,50 @@ The backpropagation algorithm is used to train neural networks by computing grad
 class TestContentAccessor:
     """Test suite for Content Accessor"""
     
+    @pytest.fixture
+    def mock_training_data(self):
+        """Create mock training manager output for testing"""
+        temp_dir = tempfile.mkdtemp()
+        
+        # Create mock course structure
+        course_dir = Path(temp_dir) / "test_course"
+        metadata_dir = course_dir / "metadata" 
+        transcripts_dir = course_dir / "cleaned_transcripts"
+        
+        metadata_dir.mkdir(parents=True)
+        transcripts_dir.mkdir(parents=True)
+        
+        # Create mock index.json
+        mock_index = {
+            "course_title": "Test AI Course",
+            "modules": [
+                {
+                    "module_id": "module_001",
+                    "title": "Introduction to Machine Learning",
+                    "summary": "Covers basic ML concepts, algorithms, and applications",
+                    "keywords": ["machine learning", "algorithms", "data science"],
+                    "tags": ["beginner", "ml", "introduction"],
+                    "word_count": 2500,
+                    "estimated_duration_minutes": 45
+                }
+            ]
+        }
+        
+        with open(metadata_dir / "index.json", 'w') as f:
+            json.dump(mock_index, f)
+        
+        # Create mock transcript files
+        ml_content = """# Introduction to Machine Learning
+Machine learning is a subset of artificial intelligence."""
+        
+        with open(transcripts_dir / "module_001.md", 'w') as f:
+            f.write(ml_content)
+        
+        yield temp_dir
+        
+        # Cleanup
+        shutil.rmtree(temp_dir)
+    
     def test_content_accessor_initialization(self, mock_training_data):
         """Test content accessor initializes correctly"""
         accessor = ContentAccessor(mock_training_data)
