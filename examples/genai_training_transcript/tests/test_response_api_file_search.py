@@ -205,7 +205,7 @@ class TestResponseAPIFileSearchIntegration:
         mock_client.beta.assistants.create.assert_called_once()
         call_args = mock_client.beta.assistants.create.call_args
         assert call_args[1]['name'] == "Research Content Synthesizer"
-        assert call_args[1]['model'] == "gpt-4-turbo-preview"
+        assert call_args[1]['model'] == "gpt-4o-mini"  # Updated default model
         assert call_args[1]['tools'] == [{"type": "file_search"}]
         assert call_args[1]['tool_resources']['file_search']['vector_store_ids'] == ["test-vector-store-id"]
     

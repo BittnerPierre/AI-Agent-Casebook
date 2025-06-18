@@ -14,6 +14,9 @@ import sys
 import os
 import json
 import tempfile
+import shutil
+import logging
+import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
@@ -27,6 +30,15 @@ except ImportError:
     print("❌ OpenAI library not installed. Install with: pip install openai")
     sys.exit(1)
 
+# Setup structured logging
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
 
 class ResponseAPIFileSearchIntegration:
     """
@@ -36,10 +48,26 @@ class ResponseAPIFileSearchIntegration:
     by combining syllabus, agenda, and research notes using OpenAI's file_search capability.
     """
     
-    def __init__(self, api_key: Optional[str] = None, project_id: Optional[str] = None):
-        """Initialize Response API client with project configuration"""
+    def __init__(self, 
+                 api_key: Optional[str] = None, 
+                 project_id: Optional[str] = None,
+                 model: str = "gpt-4o-mini",
+                 poll_interval_secs: float = 1.0,
+                 expires_after_days: int = 1):
+        """Initialize Response API client with project configuration
+        
+        Args:
+            api_key: OpenAI API key (uses OPENAI_API_KEY env var if not provided)
+            project_id: OpenAI project ID 
+            model: OpenAI model to use for synthesis (default: gpt-4o-mini)
+            poll_interval_secs: Polling interval for file batch processing (default: 1.0)
+            expires_after_days: Vector store expiration in days (default: 1)
+        """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.project_id = project_id or "proj_UWuOPp9MOKrOCtZABSCTY4Um"
+        self.model = model
+        self.poll_interval_secs = poll_interval_secs
+        self.expires_after_days = expires_after_days
         
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable required")
@@ -56,8 +84,9 @@ class ResponseAPIFileSearchIntegration:
         self.assistant_id = None
         self.thread_id = None
         self.uploaded_file_ids = []
+        self.temp_dirs = []  # Track temp directories for cleanup
         
-        print(f"🔧 Initialized Response API client with project: {self.project_id}")
+        logger.info(f"Initialized Response API client with project: {self.project_id}, model: {self.model}")
     
     def create_research_notes_files(self, research_data: Dict[str, Any]) -> List[str]:
         """
@@ -71,54 +100,67 @@ class ResponseAPIFileSearchIntegration:
         """
         file_paths = []
         temp_dir = tempfile.mkdtemp()
+        self.temp_dirs.append(temp_dir)  # Track for cleanup
         
-        # 1. Create syllabus file
-        syllabus_path = os.path.join(temp_dir, "course_syllabus.md")
-        with open(syllabus_path, 'w', encoding='utf-8') as f:
-            f.write("# Course Syllabus\n\n")
-            syllabus = research_data.get('syllabus', {})
-            f.write(f"**Course:** {syllabus.get('title', 'N/A')}\n")
-            f.write(f"**Duration:** {syllabus.get('duration_weeks', 'N/A')} weeks\n\n")
-            f.write("## Learning Objectives\n")
-            for obj in syllabus.get('learning_objectives', []):
-                f.write(f"- {obj}\n")
-            f.write("\n## Key Topics\n")
-            for topic in syllabus.get('key_topics', []):
-                f.write(f"- {topic}\n")
-        file_paths.append(syllabus_path)
-        
-        # 2. Create agenda file
-        agenda_path = os.path.join(temp_dir, "module_agenda.md")
-        with open(agenda_path, 'w', encoding='utf-8') as f:
-            f.write("# Module Agenda\n\n")
-            agenda = research_data.get('agenda', [])
-            for i, module in enumerate(agenda, 1):
-                if isinstance(module, dict):
-                    f.write(f"## Module {i}: {module.get('title', 'Untitled')}\n")
-                    f.write(f"**Duration:** {module.get('duration_minutes', 'N/A')} minutes\n")
-                    f.write("### Topics:\n")
-                    for topic in module.get('topics', []):
-                        f.write(f"- {topic}\n")
-                    f.write("\n")
-                else:
-                    f.write(f"## Module {i}: {module}\n\n")
-        file_paths.append(agenda_path)
-        
-        # 3. Create research notes files
-        research_notes = research_data.get('research_notes', {})
-        for module_name, notes in research_notes.items():
-            notes_path = os.path.join(temp_dir, f"research_notes_{module_name.replace(' ', '_').lower()}.md")
-            with open(notes_path, 'w', encoding='utf-8') as f:
-                f.write(f"# Research Notes: {module_name}\n\n")
-                if isinstance(notes, dict):
-                    for section, content in notes.items():
-                        f.write(f"## {section}\n\n{content}\n\n")
-                else:
-                    f.write(f"{notes}\n")
-            file_paths.append(notes_path)
+        try:
+            # 1. Create syllabus file
+            syllabus_path = os.path.join(temp_dir, "course_syllabus.md")
+            with open(syllabus_path, 'w', encoding='utf-8') as f:
+                f.write("# Course Syllabus\n\n")
+                syllabus = research_data.get('syllabus', {})
+                f.write(f"**Course:** {syllabus.get('title', 'N/A')}\n")
+                f.write(f"**Duration:** {syllabus.get('duration_weeks', 'N/A')} weeks\n\n")
+                f.write("## Learning Objectives\n")
+                for obj in syllabus.get('learning_objectives', []):
+                    f.write(f"- {obj}\n")
+                f.write("\n## Key Topics\n")
+                for topic in syllabus.get('key_topics', []):
+                    f.write(f"- {topic}\n")
+            file_paths.append(syllabus_path)
             
-        print(f"📁 Created {len(file_paths)} research files in {temp_dir}")
-        return file_paths
+            # 2. Create agenda file
+            agenda_path = os.path.join(temp_dir, "module_agenda.md")
+            with open(agenda_path, 'w', encoding='utf-8') as f:
+                f.write("# Module Agenda\n\n")
+                agenda = research_data.get('agenda', [])
+                for i, module in enumerate(agenda, 1):
+                    if isinstance(module, dict):
+                        f.write(f"## Module {i}: {module.get('title', 'Untitled')}\n")
+                        f.write(f"**Duration:** {module.get('duration_minutes', 'N/A')} minutes\n")
+                        f.write("### Topics:\n")
+                        for topic in module.get('topics', []):
+                            f.write(f"- {topic}\n")
+                        f.write("\n")
+                    else:
+                        f.write(f"## Module {i}: {module}\n\n")
+            file_paths.append(agenda_path)
+            
+            # 3. Create research notes files
+            research_notes = research_data.get('research_notes', {})
+            for module_name, notes in research_notes.items():
+                notes_path = os.path.join(temp_dir, f"research_notes_{module_name.replace(' ', '_').lower()}.md")
+                with open(notes_path, 'w', encoding='utf-8') as f:
+                    f.write(f"# Research Notes: {module_name}\n\n")
+                    if isinstance(notes, dict):
+                        for section, content in notes.items():
+                            f.write(f"## {section}\n\n{content}\n\n")
+                    else:
+                        f.write(f"{notes}\n")
+                file_paths.append(notes_path)
+                
+            logger.info(f"Created {len(file_paths)} research files in {temp_dir}")
+            return file_paths
+            
+        except Exception as e:
+            logger.error(f"Error creating research files: {str(e)}")
+            # Cleanup on error
+            try:
+                shutil.rmtree(temp_dir)
+                if temp_dir in self.temp_dirs:
+                    self.temp_dirs.remove(temp_dir)
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to cleanup temp directory {temp_dir}: {cleanup_error}")
+            raise
     
     def upload_files_for_search(self, file_paths: List[str]) -> str:
         """
@@ -134,7 +176,7 @@ class ResponseAPIFileSearchIntegration:
             # Upload files
             uploaded_files = []
             for file_path in file_paths:
-                print(f"⬆️ Uploading {os.path.basename(file_path)}...")
+                logger.info(f"Uploading {os.path.basename(file_path)}...")
                 with open(file_path, 'rb') as file:
                     uploaded_file = self.client.files.create(
                         file=file,
@@ -143,18 +185,18 @@ class ResponseAPIFileSearchIntegration:
                     uploaded_files.append(uploaded_file)
                     self.uploaded_file_ids.append(uploaded_file.id)
                     
-            print(f"✅ Uploaded {len(uploaded_files)} files")
+            logger.info(f"Uploaded {len(uploaded_files)} files successfully")
             
-            # Create vector store
+            # Create vector store with configurable expiration
             vector_store = self.client.beta.vector_stores.create(
                 name="Research Notes Vector Store",
                 expires_after={
                     "anchor": "last_active_at",
-                    "days": 1  # Auto-cleanup after 1 day
+                    "days": self.expires_after_days
                 }
             )
             self.vector_store_id = vector_store.id
-            print(f"📚 Created vector store: {vector_store.id}")
+            logger.info(f"Created vector store: {vector_store.id}")
             
             # Add files to vector store
             file_batch = self.client.beta.vector_stores.file_batches.create(
@@ -162,26 +204,34 @@ class ResponseAPIFileSearchIntegration:
                 file_ids=[file.id for file in uploaded_files]
             )
             
-            print(f"🔍 Processing files for search... (batch: {file_batch.id})")
+            logger.info(f"Processing files for search... (batch: {file_batch.id})")
             
-            # Wait for processing to complete
-            import time
+            # Wait for processing to complete with timeout and configurable polling
+            max_wait_time = 300  # 5 minutes timeout
+            start_time = time.time()
+            
             while file_batch.status in ['in_progress', 'cancelling']:
-                time.sleep(1)
+                elapsed_time = time.time() - start_time
+                if elapsed_time > max_wait_time:
+                    logger.error(f"File batch processing timeout after {max_wait_time}s")
+                    raise TimeoutError(f"File batch processing timeout after {max_wait_time}s")
+                
+                time.sleep(self.poll_interval_secs)
                 file_batch = self.client.beta.vector_stores.file_batches.retrieve(
                     vector_store_id=vector_store.id,
                     batch_id=file_batch.id
                 )
+                logger.debug(f"File batch status: {file_batch.status} (elapsed: {elapsed_time:.1f}s)")
                 
             if file_batch.status == 'completed':
-                print(f"✅ Files processed successfully")
+                logger.info("Files processed successfully")
             else:
-                print(f"⚠️ File processing status: {file_batch.status}")
+                logger.warning(f"File processing status: {file_batch.status}")
                 
             return vector_store.id
             
         except Exception as e:
-            print(f"❌ Error uploading files: {str(e)}")
+            logger.error(f"Error uploading files: {str(e)}")
             raise
     
     def create_research_assistant(self, vector_store_id: str) -> str:
@@ -209,7 +259,7 @@ Key responsibilities:
 5. Ensure content flows logically and builds understanding
 
 Use file_search to query the uploaded research materials and provide comprehensive, well-structured responses that demonstrate effective content synthesis patterns for educational content generation.""",
-                model="gpt-4-turbo-preview",
+                model=self.model,
                 tools=[{"type": "file_search"}],
                 tool_resources={
                     "file_search": {
@@ -219,11 +269,11 @@ Use file_search to query the uploaded research materials and provide comprehensi
             )
             
             self.assistant_id = assistant.id
-            print(f"🤖 Created assistant: {assistant.id}")
+            logger.info(f"Created assistant: {assistant.id} with model: {self.model}")
             return assistant.id
             
         except Exception as e:
-            print(f"❌ Error creating assistant: {str(e)}")
+            logger.error(f"Error creating assistant: {str(e)}")
             raise
     
     def synthesize_content(self, synthesis_request: Dict[str, Any]) -> Dict[str, Any]:
@@ -270,7 +320,7 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
                 content=enhanced_query
             )
             
-            print(f"💬 Created synthesis request for: {target_module}")
+            logger.info(f"Created synthesis request for: {target_module}")
             
             # Run assistant
             run = self.client.beta.threads.runs.create(
@@ -279,14 +329,13 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
             )
             
             # Wait for completion
-            import time
             while run.status in ['queued', 'in_progress', 'cancelling']:
                 time.sleep(2)
                 run = self.client.beta.threads.runs.retrieve(
                     thread_id=thread.id,
                     run_id=run.id
                 )
-                print(f"🔄 Processing... (status: {run.status})")
+                logger.debug(f"Processing synthesis... (status: {run.status})")
                 
             if run.status == 'completed':
                 # Get response messages
@@ -333,7 +382,7 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
                 }
                 
         except Exception as e:
-            print(f"❌ Error in content synthesis: {str(e)}")
+            logger.error(f"Error in content synthesis: {str(e)}")
             return {
                 'status': 'error',
                 'error': str(e)
@@ -351,8 +400,7 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
         Returns:
             Results from multi-step synthesis demonstration
         """
-        print("\n🔬 Multi-Step Content Synthesis Demonstration")
-        print("=" * 60)
+        logger.info("Multi-Step Content Synthesis Demonstration")
         
         results = {
             'workflow_steps': [],
@@ -365,21 +413,18 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
         
         try:
             # Step 1: Upload research materials
-            print("\n1️⃣ Uploading Research Materials")
-            print("-" * 30)
+            logger.info("Step 1: Uploading Research Materials")
             file_paths = self.create_research_notes_files(research_data)
             vector_store_id = self.upload_files_for_search(file_paths)
             results['workflow_steps'].append('research_materials_uploaded')
             
             # Step 2: Create research assistant
-            print("\n2️⃣ Creating Research Assistant")  
-            print("-" * 30)
+            logger.info("Step 2: Creating Research Assistant")
             assistant_id = self.create_research_assistant(vector_store_id)
             results['workflow_steps'].append('assistant_created')
             
             # Step 3: Multi-step synthesis requests
-            print("\n3️⃣ Multi-Step Content Synthesis")
-            print("-" * 30)
+            logger.info("Step 3: Multi-Step Content Synthesis")
             
             synthesis_requests = [
                 {
@@ -400,14 +445,13 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
             ]
             
             for i, request in enumerate(synthesis_requests, 1):
-                print(f"\n   Synthesis {i}: {request['type']}")
-                print(f"   Target: {request['target_module']}")
+                logger.info(f"Synthesis {i}: {request['type']} - Target: {request['target_module']}")
                 
                 synthesis_result = self.synthesize_content(request)
                 results['synthesis_results'].append(synthesis_result)
                 
                 if synthesis_result.get('status') == 'success':
-                    print(f"   ✅ Success - {synthesis_result.get('sources_used', 0)} sources used")
+                    logger.info(f"Success - {synthesis_result.get('sources_used', 0)} sources used")
                     results['integration_patterns'].append({
                         'type': request['type'],
                         'sources_integrated': synthesis_result.get('sources_used', 0),
@@ -415,11 +459,10 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
                         'file_search_annotations': len(synthesis_result.get('file_search_results', []))
                     })
                 else:
-                    print(f"   ❌ Failed: {synthesis_result.get('error')}")
+                    logger.error(f"Failed: {synthesis_result.get('error')}")
             
             # Step 4: Integration pattern analysis
-            print("\n4️⃣ Integration Pattern Analysis")
-            print("-" * 30)
+            logger.info("Step 4: Integration Pattern Analysis")
             
             total_sources = sum(p.get('sources_integrated', 0) for p in results['integration_patterns'])
             total_content = sum(p.get('content_length', 0) for p in results['integration_patterns'])
@@ -434,15 +477,15 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
                 'processing_time_seconds': (datetime.now() - start_time).total_seconds()
             }
             
-            print(f"   📊 Total Sources Integrated: {total_sources}")
-            print(f"   📝 Total Content Generated: {total_content:,} characters")
-            print(f"   🔍 Avg File Search Annotations: {avg_annotations:.1f}")
-            print(f"   ⏱️ Processing Time: {results['performance_metrics']['processing_time_seconds']:.1f}s")
+            logger.info(f"Total Sources Integrated: {total_sources}")
+            logger.info(f"Total Content Generated: {total_content:,} characters")
+            logger.info(f"Avg File Search Annotations: {avg_annotations:.1f}")
+            logger.info(f"Processing Time: {results['performance_metrics']['processing_time_seconds']:.1f}s")
             
             results['workflow_steps'].append('integration_analysis_completed')
             
         except Exception as e:
-            print(f"\n❌ Multi-step synthesis failed: {str(e)}")
+            logger.error(f"Multi-step synthesis failed: {str(e)}")
             results['error'] = str(e)
             
         finally:
@@ -456,22 +499,32 @@ Focus on creating content that EditingTeam agents can use as a reference pattern
         return results
     
     def cleanup_resources(self):
-        """Clean up created OpenAI resources"""
-        print("\n🧹 Cleaning up resources...")
+        """Clean up created OpenAI resources and temporary directories"""
+        logger.info("Cleaning up resources...")
         
         try:
             # Delete vector store (also deletes associated files)
             if self.vector_store_id:
                 self.client.beta.vector_stores.delete(self.vector_store_id)
-                print(f"   ✅ Deleted vector store: {self.vector_store_id}")
+                logger.info(f"Deleted vector store: {self.vector_store_id}")
                 
             # Delete assistant
             if self.assistant_id:
                 self.client.beta.assistants.delete(self.assistant_id)
-                print(f"   ✅ Deleted assistant: {self.assistant_id}")
+                logger.info(f"Deleted assistant: {self.assistant_id}")
+                
+            # Cleanup temporary directories
+            for temp_dir in self.temp_dirs:
+                try:
+                    shutil.rmtree(temp_dir)
+                    logger.debug(f"Deleted temporary directory: {temp_dir}")
+                except Exception as temp_error:
+                    logger.warning(f"Failed to delete temp directory {temp_dir}: {temp_error}")
+            
+            self.temp_dirs.clear()
                 
         except Exception as e:
-            print(f"   ⚠️ Cleanup warning: {str(e)}")
+            logger.warning(f"Cleanup warning: {str(e)}")
 
 
 def create_sample_research_data() -> Dict[str, Any]:
@@ -809,6 +862,7 @@ def demonstrate_response_api_file_search():
     
     # Check API key
     if not os.getenv('OPENAI_API_KEY'):
+        logger.error("OPENAI_API_KEY environment variable not set")
         print("\n❌ OPENAI_API_KEY environment variable not set")
         print("Please set your OpenAI API key:")
         print("export OPENAI_API_KEY='your-api-key-here'")
@@ -820,6 +874,7 @@ def demonstrate_response_api_file_search():
         integration = ResponseAPIFileSearchIntegration()
         
         # Create sample research data
+        logger.info("Creating sample research data...")
         print("\n📚 Creating sample research data...")
         research_data = create_sample_research_data()
         print(f"   ✅ Syllabus: {research_data['syllabus']['title']}")
@@ -834,6 +889,7 @@ def demonstrate_response_api_file_search():
         print("=" * 40)
         
         if 'error' in results:
+            logger.error(f"Demonstration failed: {results['error']}")
             print(f"❌ Demonstration failed: {results['error']}")
         else:
             metrics = results.get('performance_metrics', {})
@@ -871,6 +927,7 @@ def demonstrate_response_api_file_search():
         print("\n📋 Ready for EditingTeam implementation reference!")
         
     except Exception as e:
+        logger.error(f"Demonstration failed: {str(e)}")
         print(f"\n❌ Demonstration failed: {str(e)}")
         
     finally:
@@ -878,6 +935,7 @@ def demonstrate_response_api_file_search():
         if integration:
             integration.cleanup_resources()
             
+        logger.info("Response API File_Search demonstration completed")
         print("\n✅ Response API File_Search demonstration completed!")
 
 
