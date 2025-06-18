@@ -13,7 +13,7 @@ import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from .content_accessor import ContentAccessor
+from training_manager.content_accessor import ContentAccessor
 
 
 class KnowledgeMCPServer:
