@@ -25,6 +25,15 @@ from .editorial_finalizer import ChapterDraft, EditorialFinalizer
 from .tools.editing_team import edit_chapters
 from .tools.research_team import ResearchTeam
 
+# LangSmith integration for US-007 evaluation logging
+try:
+    from ..evaluation import EvaluationLogger, LangSmithIntegration
+    LANGSMITH_INTEGRATION_AVAILABLE = True
+except ImportError:
+    EvaluationLogger = None
+    LangSmithIntegration = None
+    LANGSMITH_INTEGRATION_AVAILABLE = False
+
 
 @dataclass
 class WorkflowResult:
@@ -50,6 +59,10 @@ class WorkflowConfig:
     timeout_per_phase: int = 300  # 5 minutes per phase
     continue_on_errors: bool = True
     enable_progress_tracking: bool = True
+    # LangSmith evaluation logging configuration (US-007)
+    enable_langsmith_logging: bool = True
+    langsmith_project_name: str = "story-ops"
+    langsmith_auto_send: bool = True
 
 
 class WorkflowOrchestrator:
@@ -81,6 +94,21 @@ class WorkflowOrchestrator:
         # Component instances
         self._research_team: ResearchTeam | None = None
         self._editorial_finalizer: EditorialFinalizer | None = None
+        
+        # LangSmith integration for US-007 evaluation logging
+        self._langsmith_integration: LangSmithIntegration | None = None
+        if (self.config.enable_langsmith_logging and LANGSMITH_INTEGRATION_AVAILABLE):
+            try:
+                self._langsmith_integration = LangSmithIntegration(
+                    project_name=self.config.langsmith_project_name,
+                    auto_send_enabled=self.config.langsmith_auto_send
+                )
+                self.logger.info("[WorkflowOrchestrator] LangSmith integration enabled")
+            except Exception as e:
+                self.logger.warning(f"[WorkflowOrchestrator] Failed to initialize LangSmith integration: {e}")
+                self._langsmith_integration = None
+        else:
+            self.logger.info("[WorkflowOrchestrator] LangSmith integration disabled")
         
         # Execution state
         self._current_phase = "initialization"
@@ -149,6 +177,35 @@ class WorkflowOrchestrator:
             if self.console:
                 self._display_success_summary(result)
             
+            # US-007: Send execution metadata to LangSmith for post-execution analysis
+            if self._langsmith_integration:
+                try:
+                    execution_context = {
+                        "execution_mode": "pipeline",
+                        "continue_on_errors": self.config.continue_on_errors,
+                        "timeout_per_phase": self.config.timeout_per_phase,
+                        "max_retries": self.config.max_retries,
+                        "current_phase": self._current_phase,
+                        "phases_completed": ["research", "editing", "finalization"],
+                        "resource_usage": {
+                            "total_execution_time": execution_time,
+                            "research_notes_generated": len(research_notes) if research_notes else 0,
+                            "chapter_drafts_created": len(chapter_drafts) if chapter_drafts else 0
+                        }
+                    }
+                    
+                    # Send asynchronously (don't block pipeline completion)
+                    asyncio.create_task(
+                        self._langsmith_integration.send_execution_metadata(
+                            workflow_result=result,
+                            syllabus=syllabus,
+                            execution_context=execution_context
+                        )
+                    )
+                    self.logger.debug("[WorkflowOrchestrator] LangSmith logging initiated for successful execution")
+                except Exception as e:
+                    self.logger.warning(f"[WorkflowOrchestrator] LangSmith logging failed: {e}")
+            
             self.logger.info(f"[WorkflowOrchestrator] Pipeline completed successfully in {execution_time:.2f}s")
             return result
             
@@ -160,7 +217,33 @@ class WorkflowOrchestrator:
             if self.console:
                 self.console.print(f"[bold red]❌ Pipeline Failed: {error_msg}[/bold red]")
             
-            return self._create_error_result(error_msg)
+            # US-007: Log failed execution to LangSmith for analysis
+            error_result = self._create_error_result(error_msg)
+            if self._langsmith_integration:
+                try:
+                    execution_time = (datetime.now() - self._start_time).total_seconds() if self._start_time else 0
+                    execution_context = {
+                        "execution_mode": "pipeline",
+                        "failed_phase": self._current_phase,
+                        "execution_time_before_failure": execution_time,
+                        "error_message": error_msg,
+                        "continue_on_errors": self.config.continue_on_errors,
+                        "timeout_per_phase": self.config.timeout_per_phase
+                    }
+                    
+                    # Send error data asynchronously
+                    asyncio.create_task(
+                        self._langsmith_integration.send_execution_metadata(
+                            workflow_result=error_result,
+                            syllabus=syllabus,
+                            execution_context=execution_context
+                        )
+                    )
+                    self.logger.debug("[WorkflowOrchestrator] LangSmith logging initiated for failed execution")
+                except Exception as log_error:
+                    self.logger.warning(f"[WorkflowOrchestrator] LangSmith error logging failed: {log_error}")
+            
+            return error_result
     
     async def _execute_research_phase(self, syllabus: dict[str, Any]) -> dict[str, Any]:
         """

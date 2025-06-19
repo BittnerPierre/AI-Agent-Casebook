@@ -44,6 +44,14 @@ except ImportError as e:
 # Import base classes from original implementation
 from .editorial_finalizer import ChapterDraft, EditorialFinalizer, IssueSeverity, QualityIssue
 
+# LangSmith integration for US-007 evaluation logging
+try:
+    from ..evaluation import EvaluationLogger
+    LANGSMITH_EVALUATION_AVAILABLE = True
+except ImportError:
+    EvaluationLogger = None
+    LANGSMITH_EVALUATION_AVAILABLE = False
+
 
 class MultiAgentEditorialFinalizer(EditorialFinalizer):
     """
@@ -85,6 +93,21 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         # Store agent assessments for enhanced metrics
         self.agent_assessments_cache = {}
+        
+        # Initialize LangSmith evaluation logger for US-007
+        self._evaluation_logger: EvaluationLogger | None = None
+        if LANGSMITH_EVALUATION_AVAILABLE:
+            try:
+                self._evaluation_logger = EvaluationLogger(
+                    project_name="story-ops",
+                    enabled=True
+                )
+                self.logger.info("LangSmith evaluation logging enabled for EditorialFinalizer")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize LangSmith evaluation logger: {e}")
+                self._evaluation_logger = None
+        else:
+            self.logger.info("LangSmith evaluation logging not available")
 
     def finalize_content(self, chapters: list[ChapterDraft], syllabus: dict[str, Any] | None = None) -> tuple[str, str]:
         """
@@ -117,6 +140,11 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
                     quality_issues = self._convert_agent_assessment_to_issues(agent_assessment, chapter.section_id)
                     # Store enhanced assessment data
                     self._store_agent_assessment(chapter.section_id, agent_assessment)
+                    
+                    # US-007: Log agent conversations to LangSmith
+                    if self._evaluation_logger:
+                        self._log_agent_assessment_to_langsmith(chapter, agent_assessment, syllabus)
+                    
                     self.logger.info(f"Multi-agent assessment completed for {chapter.section_id}")
                 except Exception as e:
                     self.logger.error(f"Multi-agent assessment failed for {chapter.section_id}: {e}")
@@ -351,6 +379,63 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
                 "agent_model_used": self.model
             }
         }
+
+    def _log_agent_assessment_to_langsmith(self, 
+                                         chapter: ChapterDraft, 
+                                         agent_assessment: dict[str, Any],
+                                         syllabus: dict[str, Any] | None = None) -> None:
+        """
+        Log agent assessment conversations and quality data to LangSmith for US-007.
+        
+        Captures detailed agent interaction data for post-execution analysis and evaluation.
+        
+        Args:
+            chapter: Chapter that was assessed
+            agent_assessment: Complete agent assessment results
+            syllabus: Syllabus context for the assessment
+        """
+        try:
+            # Structure agent interaction data for LangSmith
+            agent_interaction_data = {
+                "chapter_metadata": {
+                    "section_id": chapter.section_id,
+                    "title": getattr(chapter, 'title', 'Untitled'),
+                    "content_length": len(chapter.content),
+                    "word_count": len(chapter.content.split()) if chapter.content else 0
+                },
+                "assessment_results": {
+                    "overall_quality_score": agent_assessment.get("overall_quality_score", 0.0),
+                    "consensus_confidence": agent_assessment.get("consensus_confidence", 0.0),
+                    "dimension_scores": agent_assessment.get("dimension_scores", {}),
+                    "consolidated_findings": agent_assessment.get("consolidated_findings", []),
+                    "consolidated_recommendations": agent_assessment.get("consolidated_recommendations", [])
+                },
+                "agent_conversations": agent_assessment.get("agent_assessments", {}),
+                "syllabus_context": {
+                    "syllabus_provided": syllabus is not None,
+                    "course_title": syllabus.get("title", "Unknown") if syllabus else "Unknown",
+                    "section_count": len(syllabus.get("sections", [])) if syllabus else 0
+                },
+                "assessment_metadata": agent_assessment.get("assessment_metadata", {})
+            }
+            
+            # Log the interaction using EvaluationLogger
+            self._evaluation_logger.log_agent_interaction(
+                agent_name="editorial_finalizer_multi_agent",
+                interaction_type="quality_assessment",
+                input_data={
+                    "chapter_content": chapter.content[:1000] + "..." if len(chapter.content) > 1000 else chapter.content,  # Truncate for logging
+                    "section_id": chapter.section_id,
+                    "syllabus_context": agent_interaction_data["syllabus_context"]
+                },
+                output_data=agent_interaction_data["assessment_results"],
+                metadata=agent_interaction_data
+            )
+            
+            self.logger.debug(f"Logged agent assessment for {chapter.section_id} to LangSmith")
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to log agent assessment to LangSmith for {chapter.section_id}: {e}")
 
     def get_quality_metrics(self) -> dict[str, Any]:
         """
