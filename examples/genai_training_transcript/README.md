@@ -199,7 +199,7 @@ Required environment variables:
 export OPENAI_API_KEY="your-openai-api-key"
 
 # Optional: Custom project ID
-export OPENAI_PROJECT_ID="proj_UWuOPp9MOKrOCtZABSCTY4Um"
+export OPENAI_PROJECT_ID="your-openai-project-id"
 ```
 
 ## Usage Examples
