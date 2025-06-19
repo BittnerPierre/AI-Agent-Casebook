@@ -1,0 +1,549 @@
+# Multi AI Agent Systems - Chapter 2: Coordination
+
+## Multi-Agent Planning and Coordination
+
+### Coordination Patterns
+
+**Centralized Coordination**
+```python
+class CentralizedCoordinator:
+    def __init__(self, agents):
+        self.agents = agents
+        self.global_state = {}
+        
+    def coordinate_task(self, task):
+        # Decompose task into subtasks
+        subtasks = self.decompose_task(task)
+        
+        # Assign subtasks to agents
+        assignments = self.assign_subtasks(subtasks)
+        
+        # Monitor execution and handle conflicts
+        results = []
+        for agent, subtask in assignments:
+            result = agent.execute(subtask)
+            results.append(result)
+            self.update_global_state(result)
+            
+        return self.combine_results(results)
+        
+    def decompose_task(self, task):
+        # Break down complex task into smaller pieces
+        return task.subtasks
+        
+    def assign_subtasks(self, subtasks):
+        # Assign subtasks to best-suited agents
+        assignments = []
+        for subtask in subtasks:
+            best_agent = self.find_best_agent(subtask)
+            assignments.append((best_agent, subtask))
+        return assignments
+        
+    def find_best_agent(self, subtask):
+        # Simple capability matching
+        for agent in self.agents:
+            if agent.can_handle(subtask):
+                return agent
+        return self.agents[0]  # Fallback
+```
+
+**Decentralized Coordination (Contract Net Protocol)**
+```python
+class ContractNetAgent:
+    def __init__(self, name, capabilities):
+        self.name = name
+        self.capabilities = capabilities
+        self.current_tasks = []
+        
+    def announce_task(self, task):
+        """Announce task and collect bids"""
+        bids = []
+        for agent in self.get_other_agents():
+            bid = agent.submit_bid(task)
+            if bid:
+                bids.append((agent, bid))
+                
+        # Select best bid and award contract
+        if bids:
+            winner_agent, winning_bid = self.select_winner(bids)
+            return self.award_contract(winner_agent, task)
+        return None
+        
+    def submit_bid(self, task):
+        """Submit bid for announced task"""
+        if self.can_handle(task) and not self.overloaded():
+            return self.calculate_bid(task)
+        return None
+        
+    def can_handle(self, task):
+        return task.required_capability in self.capabilities
+        
+    def calculate_bid(self, task):
+        # Calculate bid based on capability, availability, cost
+        base_cost = task.complexity * 10
+        availability_factor = len(self.current_tasks) * 5
+        return base_cost + availability_factor
+        
+    def select_winner(self, bids):
+        # Select bid with lowest cost
+        return min(bids, key=lambda x: x[1].cost)
+```
+
+**Hierarchical Coordination**
+```python
+class HierarchicalAgentSystem:
+    def __init__(self):
+        self.manager_agents = []
+        self.worker_agents = []
+        
+    def add_manager(self, manager):
+        self.manager_agents.append(manager)
+        
+    def add_worker(self, worker, manager):
+        self.worker_agents.append(worker)
+        manager.add_subordinate(worker)
+        
+class ManagerAgent:
+    def __init__(self, name, domain):
+        self.name = name
+        self.domain = domain
+        self.subordinates = []
+        
+    def add_subordinate(self, agent):
+        self.subordinates.append(agent)
+        
+    def delegate_task(self, task):
+        # Find appropriate subordinate for task
+        for subordinate in self.subordinates:
+            if subordinate.can_handle(task):
+                return subordinate.execute(task)
+        
+        # If no direct subordinate can handle, decompose
+        subtasks = self.decompose_task(task)
+        results = []
+        for subtask in subtasks:
+            result = self.delegate_task(subtask)
+            results.append(result)
+        return self.combine_results(results)
+```
+
+## Memory and State Management
+
+### Shared Memory Systems
+
+**Distributed Shared Memory**
+```python
+class DistributedSharedMemory:
+    def __init__(self):
+        self.local_memory = {}
+        self.remote_nodes = []
+        self.consistency_protocol = "eventual"
+        
+    def read(self, key):
+        # Check local memory first
+        if key in self.local_memory:
+            return self.local_memory[key]
+            
+        # Query remote nodes
+        for node in self.remote_nodes:
+            value = node.query(key)
+            if value is not None:
+                # Cache locally
+                self.local_memory[key] = value
+                return value
+        return None
+        
+    def write(self, key, value):
+        # Write to local memory
+        self.local_memory[key] = value
+        
+        # Propagate to remote nodes based on consistency model
+        if self.consistency_protocol == "strong":
+            self.synchronous_write(key, value)
+        else:
+            self.asynchronous_write(key, value)
+            
+    def synchronous_write(self, key, value):
+        # Wait for all nodes to acknowledge write
+        for node in self.remote_nodes:
+            node.write_sync(key, value)
+            
+    def asynchronous_write(self, key, value):
+        # Send write requests without waiting
+        for node in self.remote_nodes:
+            node.write_async(key, value)
+```
+
+**Agent Working Memory**
+```python
+from collections import defaultdict
+import time
+
+class AgentWorkingMemory:
+    def __init__(self, capacity=1000):
+        self.capacity = capacity
+        self.short_term = {}  # Recent, frequently accessed
+        self.long_term = {}   # Persistent, less frequent
+        self.access_count = defaultdict(int)
+        self.access_time = {}
+        
+    def store(self, key, value, importance=1.0):
+        current_time = time.time()
+        
+        # Store in short-term memory
+        self.short_term[key] = {
+            'value': value,
+            'importance': importance,
+            'created': current_time,
+            'accessed': current_time
+        }
+        
+        self.access_time[key] = current_time
+        self.access_count[key] = 1
+        
+        # Manage memory capacity
+        if len(self.short_term) > self.capacity:
+            self.evict_least_important()
+            
+    def retrieve(self, key):
+        current_time = time.time()
+        
+        # Check short-term memory first
+        if key in self.short_term:
+            item = self.short_term[key]
+            item['accessed'] = current_time
+            self.access_count[key] += 1
+            return item['value']
+            
+        # Check long-term memory
+        if key in self.long_term:
+            item = self.long_term[key]
+            # Promote to short-term if frequently accessed
+            if self.access_count[key] > 5:
+                self.short_term[key] = item
+                del self.long_term[key]
+            return item['value']
+            
+        return None
+        
+    def evict_least_important(self):
+        # Move least important items to long-term memory
+        items = list(self.short_term.items())
+        items.sort(key=lambda x: (
+            x[1]['importance'] * self.access_count[x[0]] / 
+            (time.time() - x[1]['accessed'] + 1)
+        ))
+        
+        # Move bottom 20% to long-term memory
+        num_to_evict = len(items) // 5
+        for key, item in items[:num_to_evict]:
+            self.long_term[key] = item
+            del self.short_term[key]
+```
+
+### Context and State Persistence
+
+**Agent State Serialization**
+```python
+import pickle
+import json
+from datetime import datetime
+
+class AgentStateManager:
+    def __init__(self, agent_id):
+        self.agent_id = agent_id
+        self.state_file = f"agent_{agent_id}_state.json"
+        
+    def save_state(self, agent):
+        state = {
+            'beliefs': agent.beliefs,
+            'goals': [goal.serialize() for goal in agent.goals],
+            'memory': agent.memory.serialize(),
+            'performance_metrics': agent.metrics,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        with open(self.state_file, 'w') as f:
+            json.dump(state, f, indent=2)
+            
+    def load_state(self, agent):
+        try:
+            with open(self.state_file, 'r') as f:
+                state = json.load(f)
+                
+            agent.beliefs = state['beliefs']
+            agent.goals = [Goal.deserialize(g) for g in state['goals']]
+            agent.memory.deserialize(state['memory'])
+            agent.metrics = state['performance_metrics']
+            return True
+        except FileNotFoundError:
+            return False
+            
+    def checkpoint(self, agent):
+        """Create periodic checkpoint"""
+        checkpoint_file = f"agent_{self.agent_id}_checkpoint_{int(time.time())}.json"
+        self.save_state(agent)
+        # Keep only last 5 checkpoints
+        self.cleanup_old_checkpoints()
+```
+
+## Advanced Coordination Techniques
+
+### Consensus Algorithms for Multi-Agent Systems
+
+**Byzantine Fault Tolerant Consensus**
+```python
+class ByzantineConsensus:
+    def __init__(self, agents, fault_tolerance):
+        self.agents = agents
+        self.fault_tolerance = fault_tolerance
+        self.min_honest_agents = len(agents) - fault_tolerance
+        
+    def propose_value(self, proposer, value):
+        # Phase 1: Proposal
+        votes = {}
+        for agent in self.agents:
+            if agent != proposer:
+                vote = agent.vote_on_proposal(value)
+                votes[agent.id] = vote
+                
+        # Phase 2: Decision
+        if self.count_positive_votes(votes) >= self.min_honest_agents:
+            return self.commit_value(value)
+        else:
+            return self.abort_proposal(value)
+            
+    def count_positive_votes(self, votes):
+        return sum(1 for vote in votes.values() if vote == 'accept')
+        
+    def commit_value(self, value):
+        for agent in self.agents:
+            agent.commit_value(value)
+        return True
+        
+    def abort_proposal(self, value):
+        for agent in self.agents:
+            agent.abort_proposal(value)
+        return False
+```
+
+### Load Balancing and Task Distribution
+
+**Dynamic Load Balancing**
+```python
+class LoadBalancer:
+    def __init__(self, agents):
+        self.agents = agents
+        self.task_queue = []
+        self.agent_loads = {agent.id: 0 for agent in agents}
+        
+    def add_task(self, task):
+        self.task_queue.append(task)
+        self.distribute_tasks()
+        
+    def distribute_tasks(self):
+        while self.task_queue:
+            task = self.task_queue.pop(0)
+            best_agent = self.find_least_loaded_agent(task)
+            if best_agent:
+                self.assign_task(best_agent, task)
+                
+    def find_least_loaded_agent(self, task):
+        suitable_agents = [
+            agent for agent in self.agents 
+            if agent.can_handle(task)
+        ]
+        
+        if not suitable_agents:
+            return None
+            
+        return min(suitable_agents, 
+                  key=lambda agent: self.agent_loads[agent.id])
+                  
+    def assign_task(self, agent, task):
+        agent.assign_task(task)
+        self.agent_loads[agent.id] += task.estimated_load
+        
+    def task_completed(self, agent, task):
+        self.agent_loads[agent.id] -= task.estimated_load
+```
+
+### Conflict Resolution
+
+**Conflict Detection and Resolution**
+```python
+class ConflictResolver:
+    def __init__(self):
+        self.conflict_strategies = {
+            'resource': self.resolve_resource_conflict,
+            'goal': self.resolve_goal_conflict,
+            'priority': self.resolve_priority_conflict
+        }
+        
+    def detect_conflicts(self, agents):
+        conflicts = []
+        
+        # Resource conflicts
+        resource_usage = defaultdict(list)
+        for agent in agents:
+            for resource in agent.required_resources:
+                resource_usage[resource].append(agent)
+                
+        for resource, requesting_agents in resource_usage.items():
+            if len(requesting_agents) > 1:
+                conflicts.append({
+                    'type': 'resource',
+                    'resource': resource,
+                    'agents': requesting_agents
+                })
+                
+        return conflicts
+        
+    def resolve_conflict(self, conflict):
+        strategy = self.conflict_strategies.get(conflict['type'])
+        if strategy:
+            return strategy(conflict)
+        return None
+        
+    def resolve_resource_conflict(self, conflict):
+        # Priority-based resolution
+        agents = conflict['agents']
+        agents.sort(key=lambda a: a.priority, reverse=True)
+        
+        # Grant resource to highest priority agent
+        winner = agents[0]
+        resource = conflict['resource']
+        
+        for agent in agents[1:]:
+            agent.resource_denied(resource)
+            
+        winner.resource_granted(resource)
+        return winner
+        
+    def resolve_goal_conflict(self, conflict):
+        # Negotiation-based resolution
+        agents = conflict['agents']
+        proposals = []
+        
+        for agent in agents:
+            proposal = agent.propose_compromise(conflict)
+            proposals.append((agent, proposal))
+            
+        # Select best compromise
+        best_proposal = max(proposals, 
+                           key=lambda x: self.evaluate_proposal(x[1]))
+        return best_proposal
+        
+    def resolve_priority_conflict(self, conflict):
+        # Time-slicing approach
+        agents = conflict['agents']
+        time_slots = self.allocate_time_slots(agents)
+        
+        for agent, slot in time_slots.items():
+            agent.set_execution_window(slot)
+            
+        return time_slots
+```
+
+## Workflow Orchestration
+
+**Workflow Engine for Multi-Agent Tasks**
+```python
+from enum import Enum
+
+class TaskStatus(Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class WorkflowEngine:
+    def __init__(self):
+        self.workflows = {}
+        self.task_dependencies = {}
+        
+    def create_workflow(self, workflow_id, tasks):
+        self.workflows[workflow_id] = {
+            'tasks': tasks,
+            'status': TaskStatus.PENDING,
+            'completed_tasks': set(),
+            'failed_tasks': set()
+        }
+        
+        # Build dependency graph
+        self.task_dependencies[workflow_id] = self.build_dependency_graph(tasks)
+        
+    def build_dependency_graph(self, tasks):
+        graph = {}
+        for task in tasks:
+            graph[task.id] = task.dependencies or []
+        return graph
+        
+    def execute_workflow(self, workflow_id, agents):
+        workflow = self.workflows[workflow_id]
+        dependencies = self.task_dependencies[workflow_id]
+        
+        while workflow['status'] == TaskStatus.PENDING:
+            ready_tasks = self.get_ready_tasks(workflow, dependencies)
+            
+            if not ready_tasks:
+                if workflow['completed_tasks']:
+                    workflow['status'] = TaskStatus.COMPLETED
+                else:
+                    workflow['status'] = TaskStatus.FAILED
+                break
+                
+            # Execute ready tasks in parallel
+            self.execute_tasks_parallel(ready_tasks, agents, workflow)
+            
+    def get_ready_tasks(self, workflow, dependencies):
+        ready_tasks = []
+        completed = workflow['completed_tasks']
+        
+        for task in workflow['tasks']:
+            if (task.id not in completed and 
+                task.id not in workflow['failed_tasks'] and
+                all(dep in completed for dep in dependencies[task.id])):
+                ready_tasks.append(task)
+                
+        return ready_tasks
+        
+    def execute_tasks_parallel(self, tasks, agents, workflow):
+        import threading
+        
+        def execute_task(task, agent):
+            try:
+                result = agent.execute_task(task)
+                workflow['completed_tasks'].add(task.id)
+                task.result = result
+            except Exception as e:
+                workflow['failed_tasks'].add(task.id)
+                task.error = str(e)
+                
+        threads = []
+        for task in tasks:
+            agent = self.select_agent_for_task(task, agents)
+            if agent:
+                thread = threading.Thread(
+                    target=execute_task, 
+                    args=(task, agent)
+                )
+                threads.append(thread)
+                thread.start()
+                
+        # Wait for all tasks to complete
+        for thread in threads:
+            thread.join()
+```
+
+## Key Takeaways
+
+1. **Coordination patterns range from centralized to decentralized** approaches
+2. **Memory systems enable agents to share knowledge** and maintain context
+3. **State persistence allows agents to recover** from failures and interruptions
+4. **Consensus algorithms ensure agreement** in distributed agent systems
+5. **Load balancing optimizes resource utilization** across multiple agents
+6. **Conflict resolution maintains system coherence** when agents compete
+7. **Workflow orchestration enables complex multi-step** collaborative processes
+
+These coordination mechanisms form the backbone of effective multi-agent systems, enabling autonomous agents to work together efficiently while managing resources, resolving conflicts, and maintaining system-wide coherence. Understanding these patterns is crucial for building robust, scalable multi-agent applications.

@@ -46,14 +46,14 @@ async def dummy_metadata(*args, **kwargs):
 @pytest.mark.asyncio
 async def test_preprocess_transcript(monkeypatch):
     monkeypatch.setattr(PreprocessorRunner, "run", dummy_preprocess)
-    cleaned = await preprocess_transcript("mod1.txt", None)
+    cleaned = await preprocess_transcript("tests/fixtures/mod1.txt", None)
     assert cleaned == "cleaned content"
 
 
 @pytest.mark.asyncio
 async def test_extract_metadata(monkeypatch):
     monkeypatch.setattr(MetadataRunner, "run", dummy_metadata)
-    meta = await extract_metadata("mod1.txt", "cleaned content")
+    meta = await extract_metadata("tests/fixtures/mod1.txt", "cleaned content")
     assert meta.summary == "summary text"
     assert meta.keywords == ["kw1", "kw2"]
     assert meta.tags == ["tag"]

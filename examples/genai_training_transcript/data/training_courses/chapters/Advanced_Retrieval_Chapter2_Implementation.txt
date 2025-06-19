@@ -1,0 +1,391 @@
+# Advanced Retrieval for AI - Chapter 2: Implementation
+
+## Advanced RAG Techniques
+
+### Re-ranking with Cross-Encoders
+
+Cross-encoders provide more accurate relevance scoring by jointly encoding query and document pairs.
+
+```python
+from sentence_transformers import CrossEncoder
+
+class ReRankingRAG:
+    def __init__(self):
+        self.retriever = SentenceTransformer('all-MiniLM-L6-v2')
+        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        
+    def retrieve_and_rerank(self, query, documents, top_k=5, rerank_top_k=20):
+        # First stage: retrieve more candidates than needed
+        initial_results = self.vector_search(query, documents, k=rerank_top_k)
+        
+        # Second stage: rerank with cross-encoder
+        query_doc_pairs = [(query, doc) for doc in initial_results]
+        rerank_scores = self.reranker.predict(query_doc_pairs)
+        
+        # Sort by rerank scores and return top_k
+        scored_docs = list(zip(initial_results, rerank_scores))
+        scored_docs.sort(key=lambda x: x[1], reverse=True)
+        
+        return [doc for doc, score in scored_docs[:top_k]]
+```
+
+### Multi-Vector Retrieval
+
+Generate multiple embeddings per document for different aspects (summary, details, keywords).
+
+```python
+class MultiVectorRetrieval:
+    def __init__(self):
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        
+    def create_multi_vector_representation(self, document):
+        # Extract different aspects
+        summary = self.extract_summary(document)
+        key_entities = self.extract_entities(document)
+        full_text = document
+        
+        # Create embeddings for each aspect
+        vectors = {
+            'summary': self.embedding_model.encode(summary),
+            'entities': self.embedding_model.encode(' '.join(key_entities)),
+            'full_text': self.embedding_model.encode(full_text)
+        }
+        
+        return vectors
+    
+    def multi_vector_search(self, query, vector_db):
+        query_embedding = self.embedding_model.encode(query)
+        
+        # Search each vector type
+        summary_results = vector_db.search('summary', query_embedding)
+        entity_results = vector_db.search('entities', query_embedding)
+        full_text_results = vector_db.search('full_text', query_embedding)
+        
+        # Combine and deduplicate results
+        combined_results = self.combine_search_results([
+            summary_results, entity_results, full_text_results
+        ])
+        
+        return combined_results
+```
+
+### Adaptive Retrieval
+
+Dynamically adjust retrieval strategy based on query characteristics.
+
+```python
+class AdaptiveRetrieval:
+    def __init__(self):
+        self.query_classifier = self.load_query_classifier()
+        self.retrieval_strategies = {
+            'factual': self.factual_retrieval,
+            'conceptual': self.conceptual_retrieval,
+            'procedural': self.procedural_retrieval
+        }
+        
+    def adaptive_retrieve(self, query, documents):
+        # Classify query type
+        query_type = self.query_classifier.predict(query)
+        
+        # Select appropriate retrieval strategy
+        retrieval_fn = self.retrieval_strategies[query_type]
+        
+        # Execute retrieval with strategy-specific parameters
+        return retrieval_fn(query, documents)
+    
+    def factual_retrieval(self, query, documents):
+        # Optimize for precise fact retrieval
+        return self.vector_search(query, documents, 
+                                similarity_threshold=0.8, 
+                                top_k=3)
+    
+    def conceptual_retrieval(self, query, documents):
+        # Optimize for broader conceptual coverage
+        return self.vector_search(query, documents,
+                                similarity_threshold=0.6,
+                                top_k=8)
+    
+    def procedural_retrieval(self, query, documents):
+        # Optimize for step-by-step information
+        return self.hierarchical_search(query, documents,
+                                      prefer_sequential=True)
+```
+
+## Performance Optimization and Scaling
+
+### Indexing Strategies
+
+**Approximate Nearest Neighbor (ANN) Algorithms:**
+- **HNSW**: Hierarchical Navigable Small World graphs
+- **IVF**: Inverted File indexing with clustering
+- **LSH**: Locality-Sensitive Hashing for high-dimensional spaces
+
+**Index Configuration Example:**
+```python
+# Configure HNSW index for optimal performance
+collection = client.create_collection(
+    name="optimized_collection",
+    metadata={
+        "hnsw:space": "cosine",
+        "hnsw:M": 16,  # Number of connections per layer
+        "hnsw:ef_construction": 200,  # Size of dynamic candidate list
+        "hnsw:ef": 100,  # Size of search candidate list
+    }
+)
+```
+
+### Caching and Precomputation
+
+**Embedding Caching:**
+```python
+import redis
+import pickle
+from datetime import timedelta
+
+class EmbeddingCache:
+    def __init__(self):
+        self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+        
+    def get_embedding(self, text, model):
+        cache_key = f"emb:{hash(text)}:{model.model_name}"
+        
+        # Check cache first
+        cached_embedding = self.redis_client.get(cache_key)
+        if cached_embedding:
+            return pickle.loads(cached_embedding)
+        
+        # Compute and cache
+        embedding = model.encode(text)
+        self.redis_client.setex(
+            cache_key, 
+            timedelta(hours=24), 
+            pickle.dumps(embedding)
+        )
+        
+        return embedding
+```
+
+### Monitoring and Evaluation
+
+**Retrieval Quality Metrics:**
+```python
+def evaluate_retrieval_quality(queries, ground_truth, retrieval_system):
+    metrics = {
+        'precision_at_k': [],
+        'recall_at_k': [],
+        'mrr': [],  # Mean Reciprocal Rank
+        'ndcg': []  # Normalized Discounted Cumulative Gain
+    }
+    
+    for query, relevant_docs in zip(queries, ground_truth):
+        retrieved_docs = retrieval_system.retrieve(query, k=10)
+        
+        # Calculate metrics
+        precision = calculate_precision_at_k(retrieved_docs, relevant_docs, k=10)
+        recall = calculate_recall_at_k(retrieved_docs, relevant_docs, k=10)
+        mrr = calculate_mrr(retrieved_docs, relevant_docs)
+        ndcg = calculate_ndcg(retrieved_docs, relevant_docs, k=10)
+        
+        metrics['precision_at_k'].append(precision)
+        metrics['recall_at_k'].append(recall)
+        metrics['mrr'].append(mrr)
+        metrics['ndcg'].append(ndcg)
+    
+    # Return average metrics
+    return {k: sum(v) / len(v) for k, v in metrics.items()}
+```
+
+## Production Deployment Considerations
+
+### Security and Privacy
+
+**Data Encryption:**
+- Encrypt embeddings at rest and in transit
+- Implement access controls for sensitive documents
+- Use secure connection protocols (TLS/SSL)
+
+**Privacy-Preserving Techniques:**
+- Differential privacy for embedding generation
+- Federated search across distributed databases
+- Data anonymization and pseudonymization
+
+### Scalability Patterns
+
+**Horizontal Scaling:**
+```python
+class DistributedVectorDB:
+    def __init__(self, shard_configs):
+        self.shards = []
+        for config in shard_configs:
+            shard = chromadb.HttpClient(
+                host=config['host'],
+                port=config['port']
+            )
+            self.shards.append(shard)
+    
+    def distributed_search(self, query_embedding, k=10):
+        # Search all shards in parallel
+        shard_results = []
+        for shard in self.shards:
+            results = shard.query(
+                query_embeddings=[query_embedding],
+                n_results=k
+            )
+            shard_results.extend(results['documents'][0])
+        
+        # Merge and rerank global results
+        global_results = self.merge_and_rerank(shard_results, k)
+        return global_results
+```
+
+**Load Balancing:**
+- Distribute queries across multiple vector database instances
+- Implement query routing based on document categories
+- Use caching layers to reduce database load
+
+### Advanced Production Features
+
+**Real-time Index Updates:**
+```python
+class RealTimeRAGSystem:
+    def __init__(self):
+        self.vector_db = chromadb.PersistentClient()
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.update_queue = asyncio.Queue()
+        
+    async def add_document_realtime(self, document, doc_id):
+        """Add document with real-time indexing"""
+        # Process document
+        chunks = self.chunk_document(document)
+        embeddings = self.embedding_model.encode(chunks)
+        
+        # Add to vector database
+        await self.vector_db.add_async(
+            embeddings=embeddings,
+            documents=chunks,
+            ids=[f"{doc_id}_chunk_{i}" for i in range(len(chunks))]
+        )
+        
+        # Update search indices
+        await self.update_search_indices()
+        
+    async def incremental_index_update(self):
+        """Process incremental updates"""
+        while True:
+            try:
+                update = await asyncio.wait_for(
+                    self.update_queue.get(), 
+                    timeout=5.0
+                )
+                await self.process_update(update)
+            except asyncio.TimeoutError:
+                # Periodic maintenance
+                await self.optimize_indices()
+```
+
+**Multi-modal Retrieval:**
+```python
+class MultiModalRAG:
+    def __init__(self):
+        self.text_encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.image_encoder = SentenceTransformer('clip-ViT-B-32')
+        
+    def encode_multimodal_document(self, text, images):
+        # Encode text content
+        text_embedding = self.text_encoder.encode(text)
+        
+        # Encode images
+        image_embeddings = []
+        for image in images:
+            img_embedding = self.image_encoder.encode(image)
+            image_embeddings.append(img_embedding)
+        
+        # Combine embeddings
+        combined_embedding = self.combine_embeddings(
+            text_embedding, 
+            image_embeddings
+        )
+        
+        return combined_embedding
+        
+    def multimodal_search(self, query_text, query_image=None):
+        # Encode query
+        query_embedding = self.encode_query(query_text, query_image)
+        
+        # Search multimodal index
+        results = self.vector_db.query(
+            query_embeddings=[query_embedding],
+            n_results=10
+        )
+        
+        return self.format_multimodal_results(results)
+```
+
+**Enterprise Integration:**
+```python
+class EnterpriseRAGPlatform:
+    def __init__(self):
+        self.auth_service = AuthenticationService()
+        self.audit_logger = AuditLogger()
+        self.content_filter = ContentFilter()
+        self.usage_tracker = UsageTracker()
+        
+    def secure_query(self, user_id, query, access_level):
+        # Authenticate user
+        if not self.auth_service.verify_user(user_id, access_level):
+            raise AuthenticationError("Insufficient permissions")
+            
+        # Filter query for safety
+        filtered_query = self.content_filter.filter_input(query)
+        
+        # Execute retrieval
+        results = self.retrieve_with_access_control(
+            filtered_query, 
+            access_level
+        )
+        
+        # Filter results based on permissions
+        filtered_results = self.filter_results_by_access(
+            results, 
+            access_level
+        )
+        
+        # Log the interaction
+        self.audit_logger.log_query(user_id, query, len(filtered_results))
+        
+        # Track usage
+        self.usage_tracker.record_usage(user_id, len(filtered_results))
+        
+        return filtered_results
+```
+
+## Key Takeaways
+
+1. **Advanced techniques like re-ranking improve retrieval quality** significantly
+2. **Multi-vector approaches capture different document aspects** for better matching
+3. **Adaptive retrieval optimizes performance** for different query types
+4. **Production systems require robust indexing strategies** for scale
+5. **Caching and monitoring are essential** for performance optimization
+6. **Security considerations protect both users and systems** from various threats
+7. **Enterprise features enable safe deployment** in organizational environments
+
+Advanced retrieval systems form the backbone of modern AI applications that need to access and reason over large knowledge bases. The techniques covered in this module provide the foundation for building sophisticated, production-ready RAG systems that can power everything from customer support chatbots to technical documentation assistants.
+
+## Practical Exercises
+
+### Exercise 1: Vector Database Comparison
+Implement the same document Q&A system using ChromaDB, FAISS, and Pinecone. Compare performance and ease of use.
+
+### Exercise 2: Chunking Strategy Evaluation
+Test different chunking strategies (fixed-size, semantic, hierarchical) on a technical documentation dataset. Measure retrieval quality.
+
+### Exercise 3: Query Enhancement Pipeline
+Build a multi-step query enhancement pipeline that combines query expansion, multi-query generation, and hypothetical document embedding.
+
+### Exercise 4: Production RAG System
+Design and implement a production-ready RAG system with monitoring, caching, and error handling for a specific domain (e.g., legal documents, technical manuals).
+
+### Exercise 5: Evaluation Framework
+Create a comprehensive evaluation framework for retrieval systems, including both automatic metrics and human evaluation protocols.
+
+The future of AI applications increasingly relies on sophisticated retrieval systems. Master these concepts and techniques to build the next generation of knowledge-augmented AI systems.

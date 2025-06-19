@@ -24,6 +24,10 @@ from typing import Any
 
 from .knowledge_retriever import KnowledgeRetriever
 
+# LangSmith tracing support
+from agents import set_trace_processors
+from langsmith.wrappers import OpenAIAgentsTracingProcessor
+
 
 class ResearchTeam:
     """
@@ -46,6 +50,31 @@ class ResearchTeam:
         self.words_per_key_point = cfg.get("words_per_key_point", 5)
         # optional max length for summary string (in characters)
         self.max_summary_length = cfg.get("max_summary_length")
+        
+        # Configure LangSmith tracing for research agents
+        self.langsmith_enabled = False
+        langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
+        langsmith_project = os.getenv('LANGSMITH_PROJECT', 'story-ops')
+        langsmith_tracing = os.getenv('LANGSMITH_TRACING', '').lower() == 'true'
+        
+        if langsmith_api_key and langsmith_tracing:
+            try:
+                # Configure tracing processor for OpenAI Agents SDK
+                os.environ['LANGSMITH_API_KEY'] = langsmith_api_key
+                os.environ['LANGSMITH_PROJECT'] = langsmith_project
+                
+                # Set up trace processors for agents
+                set_trace_processors([OpenAIAgentsTracingProcessor()])
+                
+                self.langsmith_enabled = True
+                print(f"[ResearchTeam] LangSmith tracing configured for project: {langsmith_project}")
+            except Exception as e:
+                print(f"[ResearchTeam] Failed to configure LangSmith tracing: {e}")
+        else:
+            if not langsmith_api_key:
+                print("[ResearchTeam] LANGSMITH_API_KEY not found. LangSmith tracing disabled.")
+            if not langsmith_tracing:
+                print("[ResearchTeam] LANGSMITH_TRACING not enabled. LangSmith tracing disabled.")
 
     def research_topic(self, syllabus_section: dict[str, Any]) -> dict[str, Any]:
         """

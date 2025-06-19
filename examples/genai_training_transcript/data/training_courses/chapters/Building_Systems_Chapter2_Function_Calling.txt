@@ -1,0 +1,313 @@
+# Building Systems with the ChatGPT API - Chapter 2: Function Calling
+
+## Function Calling and Tool Integration
+
+### Understanding Function Calling
+
+Function calling allows ChatGPT to interact with external tools and APIs, making it a powerful orchestrator for complex workflows.
+
+**Function Definition Schema:**
+```python
+def create_function_schema():
+    return {
+        "name": "get_weather",
+        "description": "Get current weather information for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name or location"
+                },
+                "units": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature units"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+```
+
+### Implementing Function Calling
+
+**Function Registry Pattern:**
+```python
+import json
+from typing import Dict, Callable, Any
+
+class FunctionRegistry:
+    def __init__(self):
+        self.functions: Dict[str, Callable] = {}
+        self.schemas: Dict[str, Dict] = {}
+    
+    def register(self, name: str, schema: Dict):
+        def decorator(func: Callable):
+            self.functions[name] = func
+            self.schemas[name] = schema
+            return func
+        return decorator
+    
+    def get_function_schemas(self):
+        return list(self.schemas.values())
+    
+    def execute_function(self, name: str, arguments: str):
+        if name not in self.functions:
+            raise ValueError(f"Function {name} not found")
+        
+        try:
+            args = json.loads(arguments)
+            return self.functions[name](**args)
+        except Exception as e:
+            return f"Error executing function: {e}"
+
+# Usage example
+registry = FunctionRegistry()
+
+@registry.register("get_weather", {
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "Location name"},
+            "units": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+})
+def get_weather(location: str, units: str = "celsius"):
+    # Simulate weather API call
+    return {
+        "location": location,
+        "temperature": 22 if units == "celsius" else 72,
+        "condition": "sunny",
+        "units": units
+    }
+```
+
+**Function Calling Workflow:**
+```python
+class FunctionCallingAgent:
+    def __init__(self, function_registry: FunctionRegistry):
+        self.registry = function_registry
+        self.client = openai.OpenAI()
+    
+    def chat_with_functions(self, user_message: str, conversation_history: list = None):
+        messages = conversation_history or []
+        messages.append({"role": "user", "content": user_message})
+        
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            functions=self.registry.get_function_schemas(),
+            function_call="auto"
+        )
+        
+        response_message = response.choices[0].message
+        
+        # Check if function call is needed
+        if response_message.function_call:
+            function_name = response_message.function_call.name
+            function_args = response_message.function_call.arguments
+            
+            # Execute function
+            function_result = self.registry.execute_function(
+                function_name, function_args
+            )
+            
+            # Add function call and result to conversation
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "function_call": {
+                    "name": function_name,
+                    "arguments": function_args
+                }
+            })
+            
+            messages.append({
+                "role": "function",
+                "name": function_name,
+                "content": json.dumps(function_result)
+            })
+            
+            # Get final response
+            final_response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages
+            )
+            
+            return final_response.choices[0].message.content
+        
+        return response_message.content
+```
+
+### Advanced Function Calling Patterns
+
+**Multi-Step Function Execution:**
+```python
+class MultiStepAgent:
+    def __init__(self, function_registry: FunctionRegistry):
+        self.registry = function_registry
+        self.client = openai.OpenAI()
+        self.max_iterations = 10
+    
+    def execute_multi_step_task(self, task_description: str):
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that can use functions to complete tasks. Use multiple function calls if needed to fully complete the user's request."},
+            {"role": "user", "content": task_description}
+        ]
+        
+        for iteration in range(self.max_iterations):
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages,
+                functions=self.registry.get_function_schemas(),
+                function_call="auto"
+            )
+            
+            response_message = response.choices[0].message
+            
+            if response_message.function_call:
+                # Execute function and continue
+                function_name = response_message.function_call.name
+                function_args = response_message.function_call.arguments
+                
+                function_result = self.registry.execute_function(
+                    function_name, function_args
+                )
+                
+                # Add to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": function_name,
+                        "arguments": function_args
+                    }
+                })
+                
+                messages.append({
+                    "role": "function",
+                    "name": function_name,
+                    "content": json.dumps(function_result)
+                })
+            else:
+                # No more function calls needed
+                return response_message.content
+        
+        return "Task execution exceeded maximum iterations"
+```
+
+## Advanced Tool Integration Patterns
+
+**External API Integration:**
+```python
+import requests
+
+@registry.register("web_search", {
+    "name": "web_search",
+    "description": "Search the web for information",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"},
+            "max_results": {"type": "integer", "description": "Maximum number of results", "default": 5}
+        },
+        "required": ["query"]
+    }
+})
+def web_search(query: str, max_results: int = 5):
+    # This would integrate with a real search API
+    # For demonstration, returning mock results
+    return {
+        "query": query,
+        "results": [
+            {"title": f"Result {i}", "url": f"https://example.com/{i}", "snippet": f"Information about {query}"}
+            for i in range(min(max_results, 3))
+        ]
+    }
+
+@registry.register("calculate", {
+    "name": "calculate",
+    "description": "Perform mathematical calculations",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "expression": {"type": "string", "description": "Mathematical expression to evaluate"}
+        },
+        "required": ["expression"]
+    }
+})
+def calculate(expression: str):
+    try:
+        # In production, use a safer evaluation method
+        result = eval(expression)
+        return {"expression": expression, "result": result}
+    except Exception as e:
+        return {"error": f"Invalid expression: {e}"}
+```
+
+**Database Integration:**
+```python
+@registry.register("query_database", {
+    "name": "query_database",
+    "description": "Query the database for information",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "table": {"type": "string", "description": "Database table name"},
+            "columns": {"type": "array", "items": {"type": "string"}, "description": "Columns to select"},
+            "where_clause": {"type": "string", "description": "Optional WHERE clause"}
+        },
+        "required": ["table"]
+    }
+})
+def query_database(table: str, columns: list = None, where_clause: str = None):
+    # This would connect to a real database
+    # For demonstration, returning mock data
+    return {
+        "table": table,
+        "columns": columns or ["*"],
+        "rows": [
+            {"id": 1, "name": "John Doe", "email": "john@example.com"},
+            {"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
+        ]
+    }
+```
+
+## Error Handling in Function Calling
+
+**Robust Function Execution:**
+```python
+class SafeFunctionRegistry(FunctionRegistry):
+    def execute_function(self, name: str, arguments: str):
+        if name not in self.functions:
+            return {"error": f"Function {name} not found", "available_functions": list(self.functions.keys())}
+        
+        try:
+            args = json.loads(arguments)
+        except json.JSONDecodeError as e:
+            return {"error": f"Invalid JSON arguments: {e}"}
+        
+        try:
+            result = self.functions[name](**args)
+            return {"success": True, "result": result}
+        except TypeError as e:
+            return {"error": f"Invalid function arguments: {e}"}
+        except Exception as e:
+            return {"error": f"Function execution failed: {e}"}
+```
+
+## Key Takeaways
+
+1. **Function calling enables ChatGPT to use external tools** and access real-time data
+2. **Function registries provide organized tool management** for complex applications
+3. **Multi-step execution allows complex workflows** through iterative function calls
+4. **External API integration extends ChatGPT's capabilities** beyond text generation
+5. **Robust error handling ensures reliable function execution** in production environments
+6. **Function schemas define clear interfaces** between ChatGPT and external tools
+
+Function calling transforms ChatGPT from a simple text generator into a powerful orchestrator that can interact with external systems, access databases, call APIs, and perform complex multi-step tasks. This capability is essential for building practical AI applications that need to work with real-world data and systems.

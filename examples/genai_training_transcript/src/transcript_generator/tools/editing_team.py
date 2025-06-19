@@ -19,10 +19,9 @@ src_path = Path(__file__).parent.parent.parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-try:
-    from openai import OpenAI
-except ImportError:
-    raise ImportError("OpenAI library not installed. Install with: pip install openai")
+from openai import OpenAI
+from agents import set_trace_processors
+from langsmith.wrappers import OpenAIAgentsTracingProcessor
 
 # Setup structured logging according to professional standards
 logger = logging.getLogger(__name__)
@@ -101,6 +100,32 @@ class EditingTeam:
             logger.error("OPENAI_API_KEY environment variable not set")
             raise ValueError("OPENAI_API_KEY environment variable required")
             
+        # Configure LangSmith tracing for agents using OpenAI Agents SDK
+        self.langsmith_enabled = False
+        langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
+        langsmith_project = os.getenv('LANGSMITH_PROJECT', 'story-ops')
+        langsmith_tracing = os.getenv('LANGSMITH_TRACING', '').lower() == 'true'
+        
+        if langsmith_api_key and langsmith_tracing:
+            try:
+                # Configure tracing processor for OpenAI Agents SDK
+                os.environ['LANGSMITH_API_KEY'] = langsmith_api_key
+                os.environ['LANGSMITH_PROJECT'] = langsmith_project
+                
+                # Set up trace processors for agents
+                set_trace_processors([OpenAIAgentsTracingProcessor()])
+                
+                self.langsmith_enabled = True
+                logger.info(f"LangSmith tracing configured for project: {langsmith_project}")
+            except Exception as e:
+                logger.warning(f"Failed to configure LangSmith tracing: {e}")
+                self.langsmith_enabled = False
+        else:
+            if not langsmith_api_key:
+                logger.debug("LANGSMITH_API_KEY not found. LangSmith tracing disabled.")
+            if not langsmith_tracing:
+                logger.debug("LANGSMITH_TRACING not enabled. LangSmith tracing disabled.")
+        
         # Initialize OpenAI client
         self.client = OpenAI(
             api_key=self.api_key,
@@ -267,7 +292,7 @@ class EditingTeam:
             logger.info(f"Uploaded {len(uploaded_files)} files successfully")
             
             # Create vector store
-            vector_store = self.client.beta.vector_stores.create(
+            vector_store = self.client.vector_stores.create(
                 name="EditingTeam Research Vector Store",
                 expires_after={
                     "anchor": "last_active_at",
@@ -278,7 +303,7 @@ class EditingTeam:
             logger.info(f"Created vector store: {vector_store.id}")
             
             # Add files to vector store with batch upload
-            file_batch = self.client.beta.vector_stores.file_batches.create_and_poll(
+            file_batch = self.client.vector_stores.file_batches.create_and_poll(
                 vector_store_id=vector_store.id,
                 file_ids=[f.id for f in uploaded_files]
             )
@@ -503,7 +528,7 @@ When responding:
             # Delete vector store
             if self.vector_store_id:
                 try:
-                    self.client.beta.vector_stores.delete(self.vector_store_id)
+                    self.client.vector_stores.delete(self.vector_store_id)
                     logger.info(f"Deleted vector store: {self.vector_store_id}")
                 except Exception as e:
                     logger.warning(f"Failed to delete vector store {self.vector_store_id}: {e}")

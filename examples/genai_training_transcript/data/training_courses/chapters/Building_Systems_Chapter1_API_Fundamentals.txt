@@ -1,0 +1,147 @@
+# Building Systems with the ChatGPT API - Chapter 1: API Fundamentals
+
+## Introduction to the ChatGPT API
+
+Welcome to Building Systems with the ChatGPT API, where we transform from theoretical understanding to practical implementation of production-ready AI applications. This module covers API fundamentals, function calling, error handling, and architectural patterns for building robust ChatGPT-powered systems.
+
+Modern AI applications require seamless integration with language models through well-designed APIs. Understanding how to effectively use the ChatGPT API is essential for building scalable, reliable, and maintainable AI systems that can handle real-world complexity and user demands.
+
+## ChatGPT API Fundamentals
+
+### Authentication and Setup
+
+**API Key Management:**
+```python
+import openai
+import os
+from typing import Optional
+
+class OpenAIClient:
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if not self.api_key:
+            raise ValueError("OpenAI API key required")
+        
+        openai.api_key = self.api_key
+        self.client = openai.OpenAI(api_key=self.api_key)
+        
+    def test_connection(self):
+        """Test API connectivity"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=10
+            )
+            return True
+        except Exception as e:
+            print(f"Connection test failed: {e}")
+            return False
+```
+
+**Environment Configuration:**
+```python
+# .env file
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4
+OPENAI_MAX_TOKENS=2000
+OPENAI_TEMPERATURE=0.7
+
+# Load configuration
+from dotenv import load_dotenv
+load_dotenv()
+
+class APIConfig:
+    def __init__(self):
+        self.api_key = os.getenv('OPENAI_API_KEY')
+        self.model = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
+        self.max_tokens = int(os.getenv('OPENAI_MAX_TOKENS', '1000'))
+        self.temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
+```
+
+### Basic API Usage Patterns
+
+**Simple Chat Completion:**
+```python
+def simple_chat_completion(prompt: str, model: str = "gpt-3.5-turbo"):
+    """Basic chat completion with error handling"""
+    try:
+        response = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except openai.RateLimitError:
+        return "Rate limit exceeded. Please try again later."
+    except openai.APIError as e:
+        return f"API error: {e}"
+    except Exception as e:
+        return f"Unexpected error: {e}"
+```
+
+**System Message Configuration:**
+```python
+def chat_with_system_prompt(user_prompt: str, system_prompt: str):
+    """Chat completion with system message"""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        max_tokens=1500,
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content
+```
+
+**Conversation Management:**
+```python
+class ConversationManager:
+    def __init__(self, system_prompt: str = None):
+        self.messages = []
+        if system_prompt:
+            self.messages.append({"role": "system", "content": system_prompt})
+    
+    def add_user_message(self, content: str):
+        self.messages.append({"role": "user", "content": content})
+    
+    def add_assistant_message(self, content: str):
+        self.messages.append({"role": "assistant", "content": content})
+    
+    def get_completion(self, model: str = "gpt-3.5-turbo"):
+        response = openai.chat.completions.create(
+            model=model,
+            messages=self.messages,
+            max_tokens=1500,
+            temperature=0.7
+        )
+        
+        assistant_message = response.choices[0].message.content
+        self.add_assistant_message(assistant_message)
+        return assistant_message
+    
+    def clear_conversation(self, keep_system: bool = True):
+        if keep_system and self.messages and self.messages[0]["role"] == "system":
+            self.messages = [self.messages[0]]
+        else:
+            self.messages = []
+```
+
+## Key Takeaways
+
+1. **Proper API key management is essential** for security and reliability
+2. **Environment configuration enables flexible deployment** across different stages
+3. **Basic chat completions provide the foundation** for most AI applications
+4. **System prompts establish behavior** and context for AI responses
+5. **Conversation management enables multi-turn interactions** for better user experiences
+6. **Error handling prevents application crashes** and provides graceful degradation
+
+This foundation of API fundamentals is crucial for building any ChatGPT-powered application. Understanding these patterns enables developers to create reliable, maintainable systems that can scale from prototypes to production applications.
