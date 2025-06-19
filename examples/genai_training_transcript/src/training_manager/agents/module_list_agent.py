@@ -1,6 +1,5 @@
-from pydantic import BaseModel
-
 from agents import Agent
+from pydantic import BaseModel
 
 PROMPT = (
     "You are a course assistant. Given a directory of course transcript files accessible via file tool, "

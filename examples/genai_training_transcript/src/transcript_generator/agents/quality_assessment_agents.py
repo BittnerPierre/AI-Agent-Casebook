@@ -17,24 +17,26 @@ that are combined into comprehensive quality reports.
 """
 
 import asyncio
-import json
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Any, Optional, Union
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 try:
-    from agents import Agent, Runner
     import inspect
     import os
+
+    from agents import Agent, Runner
     _AGENTS_SDK_AVAILABLE = (
         inspect.iscoroutinefunction(getattr(Runner, "run", None))
         and os.environ.get("OPENAI_API_KEY")
     )
 except ImportError:
+    Agent = None
+    Runner = None
     _AGENTS_SDK_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,7 @@ class ChapterContent:
     section_id: str
     title: str
     content: str
-    syllabus_section: Optional[Dict[str, Any]] = None
+    syllabus_section: dict[str, Any] | None = None
 
 
 @dataclass
@@ -73,8 +75,8 @@ class QualityFinding:
     severity: str  # "INFO", "WARNING", "ERROR"
     confidence: AssessmentConfidence
     category: str
-    evidence: List[str]
-    recommendations: List[str]
+    evidence: list[str]
+    recommendations: list[str]
 
 
 class AgentAssessment(BaseModel):
@@ -82,8 +84,8 @@ class AgentAssessment(BaseModel):
     dimension: str = Field(description="Quality dimension being assessed")
     overall_score: float = Field(description="Overall quality score (0-1)", ge=0, le=1)
     confidence: str = Field(description="Confidence level of assessment")
-    findings: List[Dict[str, Any]] = Field(description="Specific quality findings")
-    recommendations: List[str] = Field(description="Improvement recommendations")
+    findings: list[dict[str, Any]] = Field(description="Specific quality findings")
+    recommendations: list[str] = Field(description="Improvement recommendations")
     evidence_summary: str = Field(description="Summary of evidence considered")
 
 
@@ -94,7 +96,7 @@ class SemanticAlignmentAssessment(BaseModel):
     key_topics_alignment: float = Field(description="Alignment with key topics (0-1)")
     difficulty_level_match: float = Field(description="Appropriateness of difficulty level (0-1)")
     semantic_coherence: float = Field(description="Semantic coherence and focus (0-1)")
-    misalignment_details: List[str] = Field(description="Specific misalignment issues identified")
+    misalignment_details: list[str] = Field(description="Specific misalignment issues identified")
 
 
 class PedagogicalAssessment(BaseModel):
@@ -104,7 +106,7 @@ class PedagogicalAssessment(BaseModel):
     engagement_elements: float = Field(description="Presence and quality of engagement elements (0-1)")
     active_learning: float = Field(description="Active learning opportunities (0-1)")
     instructional_design: float = Field(description="Overall instructional design quality (0-1)")
-    pedagogical_gaps: List[str] = Field(description="Identified pedagogical gaps")
+    pedagogical_gaps: list[str] = Field(description="Identified pedagogical gaps")
 
 
 class GroundednessAssessment(BaseModel):
@@ -113,7 +115,7 @@ class GroundednessAssessment(BaseModel):
     claim_substantiation: float = Field(description="How well claims are substantiated (0-1)")
     factual_accuracy: float = Field(description="Apparent factual accuracy (0-1)")
     source_attribution: float = Field(description="Quality of source attribution (0-1)")
-    unsupported_claims: List[str] = Field(description="Identified unsupported claims")
+    unsupported_claims: list[str] = Field(description="Identified unsupported claims")
 
 
 class ContentDepthAssessment(BaseModel):
@@ -122,7 +124,7 @@ class ContentDepthAssessment(BaseModel):
     conceptual_depth: float = Field(description="Depth of conceptual coverage (0-1)")
     technical_rigor: float = Field(description="Technical rigor and precision (0-1)")
     audience_alignment: float = Field(description="Alignment with target audience (0-1)")
-    depth_issues: List[str] = Field(description="Specific depth-related issues")
+    depth_issues: list[str] = Field(description="Specific depth-related issues")
 
 
 class GuidelinesComplianceAssessment(BaseModel):
@@ -131,7 +133,7 @@ class GuidelinesComplianceAssessment(BaseModel):
     tone_appropriateness: float = Field(description="Appropriateness of tone and style (0-1)")
     pacing_quality: float = Field(description="Quality of content pacing (0-1)")
     accessibility: float = Field(description="Content accessibility and clarity (0-1)")
-    compliance_violations: List[str] = Field(description="Identified compliance violations")
+    compliance_violations: list[str] = Field(description="Identified compliance violations")
 
 
 class QualityAssessmentAgent:
@@ -145,7 +147,7 @@ class QualityAssessmentAgent:
         """Assess chapter quality in this agent's dimension"""
         raise NotImplementedError("Subclasses must implement assess method")
     
-    def _create_agent(self, name: str, instructions: str, output_type: type) -> Agent:
+    def _create_agent(self, name: str, instructions: str, output_type: type):
         """Create an Agents SDK agent with specified configuration"""
         if not _AGENTS_SDK_AVAILABLE:
             raise RuntimeError("Agents SDK not available")
@@ -667,7 +669,7 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
         """Load training course guidelines"""
         try:
             guidelines_path = Path(__file__).parent.parent / "guidelines" / "training_course_guidelines.md"
-            with open(guidelines_path, 'r', encoding='utf-8') as f:
+            with open(guidelines_path, encoding='utf-8') as f:
                 return f.read()
         except FileNotFoundError:
             return "Training guidelines not found - using default compliance standards"
@@ -718,7 +720,7 @@ class QualityConsensusOrchestrator:
             QualityDimension.GUIDELINES_COMPLIANCE: GuidelinesComplianceAgent(model)
         }
         
-    async def assess_chapter(self, chapter: ChapterContent) -> Dict[str, Any]:
+    async def assess_chapter(self, chapter: ChapterContent) -> dict[str, Any]:
         """Coordinate multi-agent assessment of chapter quality"""
         logger.info(f"Starting multi-agent quality assessment for chapter: {chapter.section_id}")
         
@@ -746,7 +748,7 @@ class QualityConsensusOrchestrator:
         logger.info(f"Multi-agent assessment completed for {chapter.section_id}: overall_score={consensus['overall_quality_score']}")
         return consensus
     
-    def _build_consensus(self, agent_assessments: Dict[str, AgentAssessment]) -> Dict[str, Any]:
+    def _build_consensus(self, agent_assessments: dict[str, AgentAssessment]) -> dict[str, Any]:
         """Build consensus from individual agent assessments"""
         
         # Calculate weighted overall score

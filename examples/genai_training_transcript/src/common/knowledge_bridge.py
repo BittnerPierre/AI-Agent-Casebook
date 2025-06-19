@@ -1,10 +1,9 @@
 """Temporary bridge for transcript_generator to access training data."""
 
-import os
 import json
-from typing import List, Optional, Dict, Any
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from .models import CourseMetadata, ModuleMetadata, SearchQuery, SearchResult
 
 
@@ -20,7 +19,7 @@ class TrainingDataBridge:
     def __init__(self, output_base_path: str = "output"):
         self.output_path = Path(output_base_path)
     
-    def list_available_courses(self) -> List[str]:
+    def list_available_courses(self) -> list[str]:
         """List all course IDs with processed data."""
         if not self.output_path.exists():
             return []
@@ -29,16 +28,16 @@ class TrainingDataBridge:
             if d.is_dir() and (d / "metadata" / "index.json").exists()
         ]
     
-    def get_course_metadata(self, course_id: str) -> Optional[CourseMetadata]:
+    def get_course_metadata(self, course_id: str) -> CourseMetadata | None:
         """Load course metadata from training manager output."""
         index_path = self.output_path / course_id / "metadata" / "index.json"
         if not index_path.exists():
             return None
             
         try:
-            with open(index_path, 'r', encoding='utf-8') as f:
+            with open(index_path, encoding='utf-8') as f:
                 data = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             return None
         
         # Convert to standardized format
@@ -71,7 +70,7 @@ class TrainingDataBridge:
             updated_at=datetime.now()
         )
     
-    def get_module_metadata(self, course_id: str, module_id: str) -> Optional[ModuleMetadata]:
+    def get_module_metadata(self, course_id: str, module_id: str) -> ModuleMetadata | None:
         """Get metadata for a specific module."""
         course = self.get_course_metadata(course_id)
         if not course:
@@ -82,19 +81,19 @@ class TrainingDataBridge:
                 return module
         return None
     
-    def get_cleaned_transcript(self, course_id: str, module_id: str) -> Optional[str]:
+    def get_cleaned_transcript(self, course_id: str, module_id: str) -> str | None:
         """Load cleaned transcript content."""
         transcript_path = self.output_path / course_id / "cleaned_transcripts" / f"{module_id}.md"
         if not transcript_path.exists():
             return None
             
         try:
-            with open(transcript_path, 'r', encoding='utf-8') as f:
+            with open(transcript_path, encoding='utf-8') as f:
                 return f.read()
-        except IOError:
+        except OSError:
             return None
     
-    def search_modules_by_keywords(self, keywords: List[str], limit: int = 10) -> List[ModuleMetadata]:
+    def search_modules_by_keywords(self, keywords: list[str], limit: int = 10) -> list[ModuleMetadata]:
         """Simple keyword search across all courses."""
         results = []
         keywords_lower = [kw.lower() for kw in keywords]
@@ -169,7 +168,7 @@ class TrainingDataBridge:
             query=query
         )
     
-    def get_related_modules(self, course_id: str, module_id: str, limit: int = 5) -> List[ModuleMetadata]:
+    def get_related_modules(self, course_id: str, module_id: str, limit: int = 5) -> list[ModuleMetadata]:
         """Find modules related to the given module (simple implementation)."""
         base_module = self.get_module_metadata(course_id, module_id)
         if not base_module:

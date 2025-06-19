@@ -3,12 +3,14 @@ Stub for generating module scripts via LLM (Completions API) based on draft cont
 """
 
 import asyncio
+
 from pydantic import BaseModel
 
 try:
-    from agents import Agent, Runner
     import inspect
     import os
+
+    from agents import Agent, Runner
 
     _AGENTS_SDK_AVAILABLE = (
         inspect.iscoroutinefunction(getattr(Runner, "run", None))

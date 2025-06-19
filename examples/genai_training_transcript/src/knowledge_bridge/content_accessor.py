@@ -8,15 +8,12 @@ Author: Sprint 1 Development Team
 Reference: US-002 Operational Training Manager Content Access
 """
 
-import os
-import json
 import threading
-from typing import List, Dict, Any, Optional
-from pathlib import Path
 from datetime import datetime
+from typing import Any
 
 from common.knowledge_bridge import TrainingDataBridge
-from common.models import ModuleMetadata, CourseMetadata
+from common.models import ModuleMetadata
 
 
 class ContentAccessor:
@@ -31,10 +28,10 @@ class ContentAccessor:
         """Initialize content accessor with training manager output path"""
         self.bridge = TrainingDataBridge(output_base_path)
         self._lock = threading.RLock()  # Thread-safe access
-        self._content_cache: Dict[str, str] = {}  # Simple content caching
+        self._content_cache: dict[str, str] = {}  # Simple content caching
         print(f"[ContentAccessor] Initialized with base path: {output_base_path}")
     
-    def get_by_keywords(self, keywords: List[str], max_results: int = 10) -> List[Dict[str, Any]]:
+    def get_by_keywords(self, keywords: list[str], max_results: int = 10) -> list[dict[str, Any]]:
         """
         Search content by keywords and return structured results.
         
@@ -77,7 +74,7 @@ class ContentAccessor:
             print(f"[ContentAccessor] Found {len(content_matches)} content matches")
             return content_matches
     
-    def get_content(self, content_id: str) -> Optional[Dict[str, Any]]:
+    def get_content(self, content_id: str) -> dict[str, Any] | None:
         """
         Get full content by content_id.
         
@@ -139,10 +136,10 @@ class ContentAccessor:
                 return content_data
                 
             except Exception as e:
-                print(f"[ContentAccessor] Error getting content {content_id}: {str(e)}")
+                print(f"[ContentAccessor] Error getting content {content_id}: {e!s}")
                 return None
     
-    def _calculate_relevance(self, module: ModuleMetadata, keywords: List[str]) -> float:
+    def _calculate_relevance(self, module: ModuleMetadata, keywords: list[str]) -> float:
         """Calculate relevance score for a module based on keyword matches"""
         keywords_lower = [kw.lower() for kw in keywords]
         
@@ -187,7 +184,7 @@ class ContentAccessor:
         
         return " | ".join(preview_parts)
     
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """Check health of content accessor"""
         with self._lock:
             available_courses = self.bridge.list_available_courses()

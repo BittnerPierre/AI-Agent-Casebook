@@ -13,10 +13,10 @@ Acceptance Criteria:
 
 import json
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 # Multi-agent import check
 try:
@@ -36,28 +36,28 @@ class QualityIssue:
     """Represents a quality issue detected in content"""
     description: str
     severity: IssueSeverity
-    section_id: Optional[str] = None
-    misconduct_category: Optional[str] = None
+    section_id: str | None = None
+    misconduct_category: str | None = None
 
 @dataclass
 class ChapterDraft:
     """Chapter draft data structure"""
     section_id: str
     content: str
-    title: Optional[str] = None
+    title: str | None = None
 
 @dataclass
 class QualityIssues:
     """Quality issues data structure for JSON export"""
     section_id: str
-    issues: List[Dict[str, str]]
+    issues: list[dict[str, str]]
     approved: bool
 
 @dataclass
 class FinalTranscript:
     """Final transcript data structure"""
     course_title: str
-    sections: List[Dict[str, str]]
+    sections: list[dict[str, str]]
 
 class EditorialFinalizer:
     """
@@ -141,7 +141,7 @@ class EditorialFinalizer:
             ]
         }
 
-    def finalize_content(self, chapters: List[ChapterDraft], syllabus: Optional[Dict[str, Any]] = None) -> Tuple[str, str]:
+    def finalize_content(self, chapters: list[ChapterDraft], syllabus: dict[str, Any] | None = None) -> tuple[str, str]:
         """
         Finalize content by reviewing chapters and producing final transcript.
         
@@ -189,7 +189,7 @@ class EditorialFinalizer:
             try:
                 with open(quality_file, 'w', encoding='utf-8') as f:
                     json.dump(section_quality, f, indent=2, ensure_ascii=False)
-            except IOError as e:
+            except OSError as e:
                 self.logger.error(f"Failed to write quality file {quality_file}: {e}")
                 raise
             
@@ -211,7 +211,7 @@ class EditorialFinalizer:
         try:
             with open(transcript_json_path, 'w', encoding='utf-8') as f:
                 json.dump(final_transcript, f, indent=2, ensure_ascii=False)
-        except IOError as e:
+        except OSError as e:
             self.logger.error(f"Failed to write final transcript {transcript_json_path}: {e}")
             raise
         
@@ -226,7 +226,7 @@ class EditorialFinalizer:
         self.logger.info(f"Content finalization complete. Transcript: {md_path}, Quality: {summary_path}")
         return str(md_path), str(summary_path)
 
-    def track_issues(self, chapter: ChapterDraft, syllabus: Optional[Dict[str, Any]] = None) -> List[QualityIssue]:
+    def track_issues(self, chapter: ChapterDraft, syllabus: dict[str, Any] | None = None) -> list[QualityIssue]:
         """
         Track quality issues and misconduct in a chapter draft.
         
@@ -271,7 +271,7 @@ class EditorialFinalizer:
         
         return issues
 
-    def _check_syllabus_alignment(self, chapter: ChapterDraft, syllabus: Dict[str, Any]) -> List[QualityIssue]:
+    def _check_syllabus_alignment(self, chapter: ChapterDraft, syllabus: dict[str, Any]) -> list[QualityIssue]:
         """Check if chapter content aligns with syllabus requirements (CRITICAL misconduct)"""
         issues = []
         
@@ -329,7 +329,7 @@ class EditorialFinalizer:
         
         return issues
 
-    def _check_content_quality(self, chapter: ChapterDraft) -> List[QualityIssue]:
+    def _check_content_quality(self, chapter: ChapterDraft) -> list[QualityIssue]:
         """Check for general content quality issues (MEDIUM misconduct)"""
         issues = []
         content = chapter.content
@@ -382,7 +382,7 @@ class EditorialFinalizer:
         
         return issues
 
-    def _check_training_principles(self, chapter: ChapterDraft) -> List[QualityIssue]:
+    def _check_training_principles(self, chapter: ChapterDraft) -> list[QualityIssue]:
         """Check adherence to training course principles (HIGH misconduct)"""
         issues = []
         content = chapter.content
@@ -420,7 +420,7 @@ class EditorialFinalizer:
         
         return issues
 
-    def _check_groundedness(self, chapter: ChapterDraft) -> List[QualityIssue]:
+    def _check_groundedness(self, chapter: ChapterDraft) -> list[QualityIssue]:
         """Check for groundedness violations (HIGH misconduct)"""
         issues = []
         content = chapter.content
@@ -458,7 +458,7 @@ class EditorialFinalizer:
         
         return issues
 
-    def _create_markdown_transcript(self, transcript: Dict[str, Any], output_path: Path):
+    def _create_markdown_transcript(self, transcript: dict[str, Any], output_path: Path):
         """Create markdown version of final transcript"""
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(f"# {transcript['course_title']}\n\n")
@@ -468,7 +468,7 @@ class EditorialFinalizer:
                 f.write(f"{section['content']}\n\n")
                 f.write("---\n\n")
 
-    def _create_quality_summary(self, all_issues: List[QualityIssue], output_path: Path):
+    def _create_quality_summary(self, all_issues: list[QualityIssue], output_path: Path):
         """Create summary quality report for evaluation system integration"""
         summary = {
             "total_issues": len(all_issues),
@@ -499,7 +499,7 @@ class EditorialFinalizer:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
 
-    def get_quality_metrics(self) -> Dict[str, Any]:
+    def get_quality_metrics(self) -> dict[str, Any]:
         """
         Get quality metrics for evaluation system integration.
         
@@ -517,7 +517,7 @@ class EditorialFinalizer:
         # Read quality summary if it exists
         summary_path = self.quality_dir / "quality_summary.json"
         if summary_path.exists():
-            with open(summary_path, 'r', encoding='utf-8') as f:
+            with open(summary_path, encoding='utf-8') as f:
                 summary = json.load(f)
             
             return {
@@ -540,7 +540,7 @@ class EditorialFinalizer:
             "assessment_type": "basic_pattern_matching"
         }
 
-    def _calculate_quality_score(self, summary: Dict[str, Any]) -> float:
+    def _calculate_quality_score(self, summary: dict[str, Any]) -> float:
         """Calculate overall quality score (0-1) for evaluation metrics"""
         total_issues = summary.get("total_issues", 0)
         error_count = summary.get("issues_by_severity", {}).get("ERROR", 0)

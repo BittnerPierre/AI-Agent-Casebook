@@ -11,13 +11,12 @@ Author: Claude Code - Sprint 1 Week 1
 Reference: US-002 Operational Training Manager Content Access (Issue #48)
 """
 
-import os
 import json
-import threading
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from pathlib import Path
+import threading
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 
 class ContentAccessor:
@@ -44,15 +43,15 @@ class ContentAccessor:
         """
         self.output_path = Path(output_base_path)
         self._lock = threading.RLock()  # Thread-safe access
-        self._content_cache: Dict[str, str] = {}  # Content caching
-        self._metadata_cache: Dict[str, Dict] = {}  # Metadata caching
+        self._content_cache: dict[str, str] = {}  # Content caching
+        self._metadata_cache: dict[str, dict] = {}  # Metadata caching
         
         # Set up logging
         self.logger = logging.getLogger(__name__)
         
         self.logger.info(f"[ContentAccessor] Initialized with output path: {output_base_path}")
     
-    def get_by_keywords(self, keywords: List[str], max_results: int = 10) -> List[Dict[str, Any]]:
+    def get_by_keywords(self, keywords: list[str], max_results: int = 10) -> list[dict[str, Any]]:
         """
         Search content by keywords and return structured results.
         
@@ -109,7 +108,7 @@ class ContentAccessor:
             self.logger.info(f"[ContentAccessor] Found {len(content_matches)} content matches")
             return content_matches
     
-    def get_content(self, content_id: str) -> Optional[Dict[str, Any]]:
+    def get_content(self, content_id: str) -> dict[str, Any] | None:
         """
         Get full content by content_id.
         
@@ -165,10 +164,10 @@ class ContentAccessor:
                 return content_data
                 
             except Exception as e:
-                self.logger.error(f"[ContentAccessor] Error getting content {content_id}: {str(e)}")
+                self.logger.error(f"[ContentAccessor] Error getting content {content_id}: {e!s}")
                 return None
     
-    def list_available_courses(self) -> List[str]:
+    def list_available_courses(self) -> list[str]:
         """
         List all available course IDs with processed content.
         
@@ -189,7 +188,7 @@ class ContentAccessor:
             self.logger.info(f"[ContentAccessor] Available courses: {courses}")
             return sorted(courses)
     
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Check health and status of ContentAccessor.
         
@@ -221,14 +220,14 @@ class ContentAccessor:
                 return health_data
                 
             except Exception as e:
-                self.logger.error(f"[ContentAccessor] Health check failed: {str(e)}")
+                self.logger.error(f"[ContentAccessor] Health check failed: {e!s}")
                 return {
                     "status": "unhealthy",
                     "error": str(e),
                     "timestamp": datetime.now().isoformat()
                 }
     
-    def _get_all_content_metadata(self) -> Dict[str, Dict[str, Any]]:
+    def _get_all_content_metadata(self) -> dict[str, dict[str, Any]]:
         """Get metadata for all available content."""
         all_content = {}
         
@@ -245,7 +244,7 @@ class ContentAccessor:
         
         return all_content
     
-    def _get_course_index(self, course_id: str) -> Optional[Dict[str, Any]]:
+    def _get_course_index(self, course_id: str) -> dict[str, Any] | None:
         """Get course index from metadata cache or file."""
         cache_key = f"course_index:{course_id}"
         
@@ -257,15 +256,15 @@ class ContentAccessor:
             return None
         
         try:
-            with open(index_path, 'r', encoding='utf-8') as f:
+            with open(index_path, encoding='utf-8') as f:
                 course_index = json.load(f)
                 self._metadata_cache[cache_key] = course_index
                 return course_index
-        except (json.JSONDecodeError, IOError) as e:
-            self.logger.error(f"[ContentAccessor] Error loading course index {index_path}: {str(e)}")
+        except (OSError, json.JSONDecodeError) as e:
+            self.logger.error(f"[ContentAccessor] Error loading course index {index_path}: {e!s}")
             return None
     
-    def _get_module_metadata(self, course_id: str, module_id: str) -> Optional[Dict[str, Any]]:
+    def _get_module_metadata(self, course_id: str, module_id: str) -> dict[str, Any] | None:
         """Get metadata for a specific module."""
         course_index = self._get_course_index(course_id)
         if not course_index:
@@ -278,7 +277,7 @@ class ContentAccessor:
         
         return None
     
-    def _get_cleaned_transcript(self, course_id: str, module_id: str) -> Optional[str]:
+    def _get_cleaned_transcript(self, course_id: str, module_id: str) -> str | None:
         """Get cleaned transcript content with caching."""
         cache_key = f"{course_id}:{module_id}"
         
@@ -291,15 +290,15 @@ class ContentAccessor:
             return None
         
         try:
-            with open(transcript_path, 'r', encoding='utf-8') as f:
+            with open(transcript_path, encoding='utf-8') as f:
                 content = f.read()
                 self._content_cache[cache_key] = content
                 return content
-        except IOError as e:
-            self.logger.error(f"[ContentAccessor] Error reading transcript {transcript_path}: {str(e)}")
+        except OSError as e:
+            self.logger.error(f"[ContentAccessor] Error reading transcript {transcript_path}: {e!s}")
             return None
     
-    def _calculate_relevance_score(self, metadata: Dict[str, Any], keywords_lower: List[str]) -> float:
+    def _calculate_relevance_score(self, metadata: dict[str, Any], keywords_lower: list[str]) -> float:
         """
         Calculate relevance score for content based on keyword matches.
         
@@ -333,7 +332,7 @@ class ContentAccessor:
         
         return min(relevance, 1.0)  # Cap at 1.0
     
-    def _create_content_preview(self, metadata: Dict[str, Any]) -> str:
+    def _create_content_preview(self, metadata: dict[str, Any]) -> str:
         """Create a content preview from metadata."""
         title = metadata.get("title", "Unknown")
         summary = metadata.get("summary", "")
@@ -351,7 +350,7 @@ class ContentAccessor:
         
         return " | ".join(preview_parts)
     
-    def export_as_markdown(self, content_id: str) -> Optional[str]:
+    def export_as_markdown(self, content_id: str) -> str | None:
         """
         Export content with metadata as Markdown with YAML frontmatter.
         
@@ -402,7 +401,7 @@ class ContentAccessor:
                     f"content_id: \"{content_id}\"",
                     f"course_id: \"{course_id}\"",
                     f"module_id: \"{module_id}\"",
-                    f"content_type: \"training_transcript\"",
+                    "content_type: \"training_transcript\"",
                     f"word_count: {word_count}",
                     f"estimated_duration_minutes: {estimated_duration}",
                     f"created_at: \"{created_at}\"",
@@ -433,5 +432,5 @@ class ContentAccessor:
                 return markdown_content
                 
             except Exception as e:
-                self.logger.error(f"[ContentAccessor] Error exporting Markdown for {content_id}: {str(e)}")
+                self.logger.error(f"[ContentAccessor] Error exporting Markdown for {content_id}: {e!s}")
                 return None

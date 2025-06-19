@@ -12,6 +12,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.scripts]
 run_training_manager = "training_manager.main:cli_main"
+transcript-generator = "cli.transcript_generator_cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"

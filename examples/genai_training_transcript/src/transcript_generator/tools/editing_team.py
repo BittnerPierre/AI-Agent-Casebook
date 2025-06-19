@@ -5,16 +5,14 @@ Multi-agent editing team using Response API file_search for content synthesis.
 This class coordinates Documentalist, Writer, and Reviewer agents to process chapters.
 """
 
-import os
-import sys
-import json
-import tempfile
-import shutil
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-from datetime import datetime
+import os
+import shutil
+import sys
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent.parent
@@ -42,7 +40,7 @@ class ChapterDraft:
     section_id: str
     content: str
     
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to dict for JSON serialization"""
         return {
             "section_id": self.section_id,
@@ -57,7 +55,7 @@ class SynthesisRequest:
     type: str
     target_module: str
     
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to dict for processing"""
         return {
             "query": self.query,
@@ -75,8 +73,8 @@ class EditingTeam:
     """
     
     def __init__(self, 
-                 api_key: Optional[str] = None,
-                 project_id: Optional[str] = None,
+                 api_key: str | None = None,
+                 project_id: str | None = None,
                  model: str = "gpt-4o-mini",
                  max_revisions: int = 2,
                  poll_interval_secs: float = 1.0,
@@ -119,7 +117,7 @@ class EditingTeam:
         
         logger.info(f"EditingTeam initialized with project: {self.project_id}, model: {self.model}")
     
-    def synthesize_chapter(self, research_notes: Dict[str, Any]) -> ChapterDraft:
+    def synthesize_chapter(self, research_notes: dict[str, Any]) -> ChapterDraft:
         """
         Main interface method for US-004: synthesize chapter content using Response API file_search.
         
@@ -169,17 +167,17 @@ class EditingTeam:
             return chapter_draft
             
         except Exception as e:
-            logger.error(f"Chapter synthesis failed for section {target_section}: {str(e)}")
+            logger.error(f"Chapter synthesis failed for section {target_section}: {e!s}")
             # Return empty chapter draft on failure
             return ChapterDraft(
                 section_id=research_notes.get('target_section', 'Unknown Section'),
-                content=f"Error: Unable to synthesize content. {str(e)}"
+                content=f"Error: Unable to synthesize content. {e!s}"
             )
         finally:
             # Clean up resources
             self._cleanup_resources()
     
-    def _create_research_files(self, research_notes: Dict[str, Any]) -> List[str]:
+    def _create_research_files(self, research_notes: dict[str, Any]) -> list[str]:
         """Create temporary files from research data for file_search upload"""
         file_paths = []
         temp_dir = tempfile.mkdtemp()
@@ -241,7 +239,7 @@ class EditingTeam:
             return file_paths
             
         except Exception as e:
-            logger.error(f"Error creating research files: {str(e)}")
+            logger.error(f"Error creating research files: {e!s}")
             # Cleanup on error
             try:
                 shutil.rmtree(temp_dir)
@@ -251,7 +249,7 @@ class EditingTeam:
                 logger.warning(f"Failed to cleanup temp directory {temp_dir}: {cleanup_error}")
             raise
     
-    def _upload_files_for_search(self, file_paths: List[str]) -> str:
+    def _upload_files_for_search(self, file_paths: list[str]) -> str:
         """Upload files to OpenAI and create vector store for file_search"""
         try:
             # Upload files
@@ -289,7 +287,7 @@ class EditingTeam:
             return vector_store.id
             
         except Exception as e:
-            logger.error(f"File upload failed: {str(e)}")
+            logger.error(f"File upload failed: {e!s}")
             raise
     
     def _create_research_assistant(self, vector_store_id: str) -> str:
@@ -312,10 +310,10 @@ class EditingTeam:
             return assistant.id
             
         except Exception as e:
-            logger.error(f"Assistant creation failed: {str(e)}")
+            logger.error(f"Assistant creation failed: {e!s}")
             raise
     
-    def _execute_synthesis_workflow(self, research_notes: Dict[str, Any], assistant_id: str) -> str:
+    def _execute_synthesis_workflow(self, research_notes: dict[str, Any], assistant_id: str) -> str:
         """Execute multi-step content synthesis workflow with agent feedback loops"""
         try:
             target_section = research_notes.get('target_section', 'Unknown Section')
@@ -344,7 +342,7 @@ class EditingTeam:
             return final_content
             
         except Exception as e:
-            logger.error(f"Synthesis workflow failed: {str(e)}")
+            logger.error(f"Synthesis workflow failed: {e!s}")
             raise
     
     def _synthesize_content_step(self, thread_id: str, assistant_id: str, query: str, agent_role: str) -> str:
@@ -388,10 +386,10 @@ class EditingTeam:
                 return f"Error in {agent_role} synthesis: {error_msg}"
                 
         except Exception as e:
-            logger.error(f"{agent_role} synthesis step failed: {str(e)}")
-            return f"Error in {agent_role} synthesis: {str(e)}"
+            logger.error(f"{agent_role} synthesis step failed: {e!s}")
+            return f"Error in {agent_role} synthesis: {e!s}"
     
-    def _create_documentalist_query(self, target_section: str, research_notes: Dict[str, Any]) -> str:
+    def _create_documentalist_query(self, target_section: str, research_notes: dict[str, Any]) -> str:
         """Create query for Documentalist agent"""
         return f"""As the Documentalist in our editing team, your role is to extract and organize relevant content from the research materials for the section "{target_section}".
 
@@ -404,7 +402,7 @@ Your tasks:
 
 Please provide a comprehensive documented summary that will guide the Writer in creating effective training content."""
     
-    def _create_writer_query(self, target_section: str, documented_content: str, research_notes: Dict[str, Any]) -> str:
+    def _create_writer_query(self, target_section: str, documented_content: str, research_notes: dict[str, Any]) -> str:
         """Create query for Writer agent"""
         return f"""As the Writer in our editing team, create engaging training content for the section "{target_section}" based on the Documentalist's research summary.
 
@@ -481,7 +479,7 @@ When responding:
         """Get training course guidelines content"""
         guidelines_path = Path(__file__).parent.parent / "guidelines" / "training_course_guidelines.md"
         try:
-            with open(guidelines_path, 'r', encoding='utf-8') as f:
+            with open(guidelines_path, encoding='utf-8') as f:
                 return f.read()
         except FileNotFoundError:
             logger.warning(f"Training guidelines file not found at {guidelines_path}")
@@ -539,7 +537,7 @@ When responding:
             self.temp_dirs.clear()
             
         except Exception as e:
-            logger.error(f"Resource cleanup failed: {str(e)}")
+            logger.error(f"Resource cleanup failed: {e!s}")
 
 
 # Legacy function for backward compatibility
@@ -582,7 +580,7 @@ def edit_chapters(research_notes, config):
         return drafts
         
     except Exception as e:
-        logger.error(f"Legacy edit_chapters failed: {str(e)}")
+        logger.error(f"Legacy edit_chapters failed: {e!s}")
         # Fallback to stub behavior
         logger.warning("Falling back to stub implementation")
         drafts: dict[str, str] = {}

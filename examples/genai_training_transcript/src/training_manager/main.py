@@ -4,10 +4,10 @@ Entrypoint for Training Course Manager (Sprint 0): preprocess transcripts and ge
 """
 
 import argparse
-import os
-import sys
 import asyncio
+import os
 import shutil
+import sys
 
 # allow running as module
 if __name__ == "__main__" and __package__ is None:
@@ -17,6 +17,7 @@ if __name__ == "__main__" and __package__ is None:
 
 from agents import gen_trace_id, trace
 from agents.mcp import MCPServerStdio
+
 from training_manager import TrainingManager
 
 
