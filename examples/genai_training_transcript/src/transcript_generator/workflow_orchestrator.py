@@ -13,32 +13,30 @@ Reference: US-006 Component Integration Orchestrator (Issue #53)
 
 import asyncio
 import logging
-import os
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Union
-from dataclasses import dataclass
+from typing import Any
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
-from .tools.research_team import ResearchTeam
+from .editorial_finalizer import ChapterDraft, EditorialFinalizer
 from .tools.editing_team import edit_chapters
-from .editorial_finalizer import EditorialFinalizer, ChapterDraft
-from common.models import ModuleMetadata, CourseMetadata
+from .tools.research_team import ResearchTeam
 
 
 @dataclass
 class WorkflowResult:
     """Result of complete workflow execution"""
     success: bool
-    final_transcript_path: Optional[str] = None
-    quality_summary_path: Optional[str] = None
-    research_notes: Optional[Dict[str, Any]] = None
-    chapter_drafts: Optional[List[ChapterDraft]] = None
-    execution_time: Optional[float] = None
-    errors: Optional[List[str]] = None
-    quality_metrics: Optional[Dict[str, Any]] = None
+    final_transcript_path: str | None = None
+    quality_summary_path: str | None = None
+    research_notes: dict[str, Any] | None = None
+    chapter_drafts: list[ChapterDraft] | None = None
+    execution_time: float | None = None
+    errors: list[str] | None = None
+    quality_metrics: dict[str, Any] | None = None
 
 
 @dataclass
@@ -69,7 +67,7 @@ class WorkflowOrchestrator:
     - Component lifecycle management
     """
     
-    def __init__(self, config: Optional[WorkflowConfig] = None):
+    def __init__(self, config: WorkflowConfig | None = None):
         """
         Initialize WorkflowOrchestrator with configuration.
         
@@ -81,17 +79,17 @@ class WorkflowOrchestrator:
         self.logger = logging.getLogger(__name__)
         
         # Component instances
-        self._research_team: Optional[ResearchTeam] = None
-        self._editorial_finalizer: Optional[EditorialFinalizer] = None
+        self._research_team: ResearchTeam | None = None
+        self._editorial_finalizer: EditorialFinalizer | None = None
         
         # Execution state
         self._current_phase = "initialization"
-        self._start_time: Optional[datetime] = None
-        self._errors: List[str] = []
+        self._start_time: datetime | None = None
+        self._errors: list[str] = []
         
         self.logger.info(f"[WorkflowOrchestrator] Initialized with config: {self.config}")
     
-    async def execute_pipeline(self, syllabus: Dict[str, Any]) -> WorkflowResult:
+    async def execute_pipeline(self, syllabus: dict[str, Any]) -> WorkflowResult:
         """
         Execute complete transcript generation pipeline.
         
@@ -107,7 +105,7 @@ class WorkflowOrchestrator:
         self._start_time = datetime.now()
         self._errors = []
         
-        self.logger.info(f"[WorkflowOrchestrator] Starting pipeline execution")
+        self.logger.info("[WorkflowOrchestrator] Starting pipeline execution")
         
         if self.console:
             self.console.print("[bold blue]🚀 Starting Transcript Generation Pipeline[/bold blue]")
@@ -155,7 +153,7 @@ class WorkflowOrchestrator:
             return result
             
         except Exception as e:
-            error_msg = f"Pipeline execution failed in {self._current_phase} phase: {str(e)}"
+            error_msg = f"Pipeline execution failed in {self._current_phase} phase: {e!s}"
             self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
             self._errors.append(error_msg)
             
@@ -164,7 +162,7 @@ class WorkflowOrchestrator:
             
             return self._create_error_result(error_msg)
     
-    async def _execute_research_phase(self, syllabus: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_research_phase(self, syllabus: dict[str, Any]) -> dict[str, Any]:
         """
         Execute research phase using ResearchTeam component.
         
@@ -237,7 +235,7 @@ class WorkflowOrchestrator:
                             self._errors.append(error_msg)
                         
                         except Exception as e:
-                            error_msg = f"Research failed for section {section_id}: {str(e)}"
+                            error_msg = f"Research failed for section {section_id}: {e!s}"
                             self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
                             self._errors.append(error_msg)
                         
@@ -253,7 +251,7 @@ class WorkflowOrchestrator:
                             aggregated_research[section_id] = research_notes
                             self.logger.info(f"[WorkflowOrchestrator] Research completed for section: {section_id}")
                     except Exception as e:
-                        error_msg = f"Research failed for section {section_id}: {str(e)}"
+                        error_msg = f"Research failed for section {section_id}: {e!s}"
                         self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
                         self._errors.append(error_msg)
             
@@ -261,12 +259,12 @@ class WorkflowOrchestrator:
             return aggregated_research
             
         except Exception as e:
-            error_msg = f"Research phase setup failed: {str(e)}"
+            error_msg = f"Research phase setup failed: {e!s}"
             self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
             self._errors.append(error_msg)
             raise
     
-    async def _execute_editing_phase(self, research_notes: Dict[str, Any], syllabus: Dict[str, Any]) -> List[ChapterDraft]:
+    async def _execute_editing_phase(self, research_notes: dict[str, Any], syllabus: dict[str, Any]) -> list[ChapterDraft]:
         """
         Execute editing phase using EditingTeam component.
         
@@ -337,16 +335,16 @@ class WorkflowOrchestrator:
             raise
         
         except Exception as e:
-            error_msg = f"Editing phase failed: {str(e)}"
+            error_msg = f"Editing phase failed: {e!s}"
             self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
             self._errors.append(error_msg)
             raise
     
     async def _execute_finalization_phase(
         self, 
-        chapter_drafts: List[ChapterDraft], 
-        syllabus: Dict[str, Any]
-    ) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+        chapter_drafts: list[ChapterDraft], 
+        syllabus: dict[str, Any]
+    ) -> tuple[str | None, str | None, dict[str, Any] | None]:
         """
         Execute finalization phase using EditorialFinalizer component.
         
@@ -388,7 +386,7 @@ class WorkflowOrchestrator:
             # Get quality metrics
             quality_metrics = self._editorial_finalizer.get_quality_metrics()
             
-            self.logger.info(f"[WorkflowOrchestrator] Finalization completed")
+            self.logger.info("[WorkflowOrchestrator] Finalization completed")
             self.logger.info(f"[WorkflowOrchestrator] Final transcript: {final_transcript_path}")
             self.logger.info(f"[WorkflowOrchestrator] Quality summary: {quality_summary_path}")
             self.logger.info(f"[WorkflowOrchestrator] Quality score: {quality_metrics.get('quality_score', 'N/A')}")
@@ -402,7 +400,7 @@ class WorkflowOrchestrator:
             raise
         
         except Exception as e:
-            error_msg = f"Finalization phase failed: {str(e)}"
+            error_msg = f"Finalization phase failed: {e!s}"
             self.logger.error(f"[WorkflowOrchestrator] {error_msg}")
             self._errors.append(error_msg)
             raise
@@ -439,7 +437,7 @@ class WorkflowOrchestrator:
         if result.errors:
             self.console.print(f"⚠️  Warnings: {len(result.errors)} non-critical issues")
     
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform health check on orchestrator and all components.
         
@@ -493,8 +491,8 @@ class WorkflowOrchestrator:
 
 # Convenience function for external use
 async def orchestrate_transcript_generation(
-    syllabus: Dict[str, Any], 
-    config: Optional[WorkflowConfig] = None
+    syllabus: dict[str, Any], 
+    config: WorkflowConfig | None = None
 ) -> WorkflowResult:
     """
     Convenience function to orchestrate complete transcript generation.

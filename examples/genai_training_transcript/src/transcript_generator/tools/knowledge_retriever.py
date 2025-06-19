@@ -1,14 +1,14 @@
 """Knowledge retrieval tool for transcript generator."""
 
-from typing import List, Optional, Dict, Any
-import sys
 import os
+import sys
+from typing import Any
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from common.knowledge_bridge import TrainingDataBridge
-from common.models import ModuleMetadata, SearchQuery
+from common.models import SearchQuery
 
 
 class KnowledgeRetriever:
@@ -22,7 +22,7 @@ class KnowledgeRetriever:
     def __init__(self, output_path: str = "output"):
         self.bridge = TrainingDataBridge(output_path)
     
-    async def get_related_content(self, topic_keywords: List[str], limit: int = 5) -> List[Dict[str, Any]]:
+    async def get_related_content(self, topic_keywords: list[str], limit: int = 5) -> list[dict[str, Any]]:
         """Get relevant transcript content for given topics."""
         modules = self.bridge.search_modules_by_keywords(topic_keywords, limit)
         content = []
@@ -45,7 +45,7 @@ class KnowledgeRetriever:
         
         return content
     
-    async def get_course_outline(self, course_id: str) -> Optional[Dict[str, Any]]:
+    async def get_course_outline(self, course_id: str) -> dict[str, Any] | None:
         """Get course structure for planning."""
         course = self.bridge.get_course_metadata(course_id)
         if not course:
@@ -71,10 +71,10 @@ class KnowledgeRetriever:
         }
     
     async def search_by_topic(self, 
-                             keywords: Optional[List[str]] = None,
-                             tags: Optional[List[str]] = None,
-                             course_ids: Optional[List[str]] = None,
-                             limit: int = 10) -> List[Dict[str, Any]]:
+                             keywords: list[str] | None = None,
+                             tags: list[str] | None = None,
+                             course_ids: list[str] | None = None,
+                             limit: int = 10) -> list[dict[str, Any]]:
         """Advanced search for relevant training content."""
         query = SearchQuery(
             keywords=keywords,
@@ -104,11 +104,11 @@ class KnowledgeRetriever:
         
         return enriched_results
     
-    async def get_full_transcript(self, course_id: str, module_id: str) -> Optional[str]:
+    async def get_full_transcript(self, course_id: str, module_id: str) -> str | None:
         """Get full cleaned transcript for a specific module."""
         return self.bridge.get_cleaned_transcript(course_id, module_id)
     
-    async def get_similar_modules(self, course_id: str, module_id: str, limit: int = 3) -> List[Dict[str, Any]]:
+    async def get_similar_modules(self, course_id: str, module_id: str, limit: int = 3) -> list[dict[str, Any]]:
         """Find modules with similar content or topics."""
         related_modules = self.bridge.get_related_modules(course_id, module_id, limit)
         
@@ -128,7 +128,7 @@ class KnowledgeRetriever:
         
         return results
     
-    async def list_available_courses(self) -> List[Dict[str, Any]]:
+    async def list_available_courses(self) -> list[dict[str, Any]]:
         """List all courses with processed training data."""
         course_ids = self.bridge.list_available_courses()
         courses = []
@@ -152,7 +152,7 @@ class KnowledgeRetriever:
         
         return courses
     
-    async def get_knowledge_statistics(self) -> Dict[str, Any]:
+    async def get_knowledge_statistics(self) -> dict[str, Any]:
         """Get overview statistics of available training knowledge."""
         courses = await self.list_available_courses()
         

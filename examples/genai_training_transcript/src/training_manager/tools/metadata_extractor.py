@@ -2,8 +2,8 @@
 LLM-based metadata extractor: summary, keywords, and tags for cleaned transcripts.
 """
 
-from pydantic import BaseModel
 from agents import Agent, Runner
+from pydantic import BaseModel
 
 PROMPT = (
     "You are a course assistant. Given the cleaned transcript content, produce a JSON object with keys 'summary', 'keywords', and 'tags'. "

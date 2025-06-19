@@ -22,21 +22,19 @@ Multi-Agent Architecture:
 - GuidelinesComplianceAgent: Training course guidelines adherence checking
 """
 
+import asyncio
 import json
 import logging
-import asyncio
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass
-from enum import Enum
+from typing import Any
 
 # Import multi-agent quality assessment system
 try:
     from .agents import (
+        AssessmentConfidence,
         ChapterContent,
         QualityConsensusOrchestrator,
-        AssessmentConfidence,
-        QualityDimension
+        QualityDimension,
     )
     _MULTI_AGENT_AVAILABLE = True
 except ImportError as e:
@@ -44,7 +42,7 @@ except ImportError as e:
     _MULTI_AGENT_AVAILABLE = False
 
 # Import base classes from original implementation
-from .editorial_finalizer import IssueSeverity, QualityIssue, ChapterDraft, EditorialFinalizer
+from .editorial_finalizer import ChapterDraft, EditorialFinalizer, IssueSeverity, QualityIssue
 
 
 class MultiAgentEditorialFinalizer(EditorialFinalizer):
@@ -88,7 +86,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         # Store agent assessments for enhanced metrics
         self.agent_assessments_cache = {}
 
-    def finalize_content(self, chapters: List[ChapterDraft], syllabus: Optional[Dict[str, Any]] = None) -> Tuple[str, str]:
+    def finalize_content(self, chapters: list[ChapterDraft], syllabus: dict[str, Any] | None = None) -> tuple[str, str]:
         """
         Finalize content using multi-agent quality assessment.
         
@@ -138,7 +136,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
             try:
                 with open(quality_file, 'w', encoding='utf-8') as f:
                     json.dump(section_quality, f, indent=2, ensure_ascii=False)
-            except IOError as e:
+            except OSError as e:
                 self.logger.error(f"Failed to write quality file {quality_file}: {e}")
                 raise
             
@@ -160,7 +158,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         try:
             with open(transcript_json_path, 'w', encoding='utf-8') as f:
                 json.dump(final_transcript, f, indent=2, ensure_ascii=False)
-        except IOError as e:
+        except OSError as e:
             self.logger.error(f"Failed to write final transcript {transcript_json_path}: {e}")
             raise
         
@@ -175,7 +173,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         self.logger.info(f"Multi-agent content finalization complete. Transcript: {md_path}, Quality: {summary_path}")
         return str(md_path), str(summary_path)
 
-    def _run_multi_agent_assessment(self, chapter: ChapterDraft, syllabus: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _run_multi_agent_assessment(self, chapter: ChapterDraft, syllabus: dict[str, Any] | None) -> dict[str, Any]:
         """Run multi-agent quality assessment on a chapter"""
         
         # Find corresponding syllabus section
@@ -197,7 +195,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         # Run multi-agent assessment
         return asyncio.run(self.quality_orchestrator.assess_chapter(chapter_content))
 
-    def _convert_agent_assessment_to_issues(self, agent_assessment: Dict[str, Any], section_id: str) -> List[QualityIssue]:
+    def _convert_agent_assessment_to_issues(self, agent_assessment: dict[str, Any], section_id: str) -> list[QualityIssue]:
         """Convert multi-agent assessment to QualityIssue objects"""
         quality_issues = []
         
@@ -244,11 +242,11 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         return dimension_mapping.get(dimension, "training_principles_violations")
 
-    def _store_agent_assessment(self, section_id: str, agent_assessment: Dict[str, Any]):
+    def _store_agent_assessment(self, section_id: str, agent_assessment: dict[str, Any]):
         """Store agent assessment for enhanced metrics and reporting"""
         self.agent_assessments_cache[section_id] = agent_assessment
 
-    def _create_section_quality_data(self, chapter: ChapterDraft, quality_issues: List[QualityIssue]) -> Dict[str, Any]:
+    def _create_section_quality_data(self, chapter: ChapterDraft, quality_issues: list[QualityIssue]) -> dict[str, Any]:
         """Create enhanced section quality data including agent assessments"""
         
         # Basic quality data structure
@@ -277,7 +275,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         return section_quality
 
-    def _create_enhanced_quality_summary(self, all_issues: List[QualityIssue], output_path: Path):
+    def _create_enhanced_quality_summary(self, all_issues: list[QualityIssue], output_path: Path):
         """Create enhanced quality summary including multi-agent metrics"""
         
         # Create basic summary
@@ -315,7 +313,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
 
-    def _create_agent_assessment_summary(self) -> Dict[str, Any]:
+    def _create_agent_assessment_summary(self) -> dict[str, Any]:
         """Create summary of multi-agent assessments"""
         
         if not self.agent_assessments_cache:
@@ -354,7 +352,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
             }
         }
 
-    def get_quality_metrics(self) -> Dict[str, Any]:
+    def get_quality_metrics(self) -> dict[str, Any]:
         """
         Get enhanced quality metrics from multi-agent assessment system.
         
@@ -374,7 +372,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         return base_metrics
 
-    def _extract_agent_metrics(self) -> Dict[str, Any]:
+    def _extract_agent_metrics(self) -> dict[str, Any]:
         """Extract metrics from cached agent assessments"""
         
         if not self.agent_assessments_cache:
@@ -407,7 +405,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         return agent_metrics
 
-    def _avg_score(self, scores: List[float]) -> float:
+    def _avg_score(self, scores: list[float]) -> float:
         """Calculate average score with proper handling of empty lists"""
         return round(sum(scores) / len(scores), 3) if scores else 0.0
 

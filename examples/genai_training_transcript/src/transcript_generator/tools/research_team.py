@@ -17,10 +17,10 @@ def aggregate_research(agenda, transcripts, config):
     return notes
 
 
-import os
-import json
 import asyncio
-from typing import Any, Dict
+import json
+import os
+from typing import Any
 
 from .knowledge_retriever import KnowledgeRetriever
 
@@ -35,7 +35,7 @@ class ResearchTeam:
     def __init__(self,
                  output_dir: str = "research_notes",
                  retriever: KnowledgeRetriever | None = None,
-                 config: Dict[str, Any] | None = None):
+                 config: dict[str, Any] | None = None):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         self.retriever = retriever or KnowledgeRetriever()
@@ -47,7 +47,7 @@ class ResearchTeam:
         # optional max length for summary string (in characters)
         self.max_summary_length = cfg.get("max_summary_length")
 
-    def research_topic(self, syllabus_section: Dict[str, Any]) -> Dict[str, Any]:
+    def research_topic(self, syllabus_section: dict[str, Any]) -> dict[str, Any]:
         """
         Execute the research workflow for a syllabus section.
 
@@ -73,7 +73,7 @@ class ResearchTeam:
             raw_items = []
 
         # 2. Analyst: extract key points for each content item
-        knowledge_references: list[Dict[str, Any]] = []
+        knowledge_references: list[dict[str, Any]] = []
         for item in raw_items:
             content_id = item.get("module_id") or item.get("content_id")
             preview = item.get("content_preview", "") or ""
@@ -96,7 +96,7 @@ class ResearchTeam:
         if self.max_summary_length is not None:
             research_summary = research_summary[: self.max_summary_length]
 
-        notes: Dict[str, Any] = {
+        notes: dict[str, Any] = {
             "section_id": section_id,
             "knowledge_references": knowledge_references,
             "research_summary": research_summary,

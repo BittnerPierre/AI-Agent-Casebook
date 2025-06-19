@@ -6,11 +6,11 @@ TrainingManager orchestrates transcript cleaning and metadata index generation (
 import json
 import os
 
-from rich.console import Console
 from agents.mcp import MCPServer
+from rich.console import Console
 
-from .tools.transcript_preprocessor import preprocess_transcript
 from .tools.metadata_extractor import extract_metadata
+from .tools.transcript_preprocessor import preprocess_transcript
 
 
 class TrainingManager:
@@ -128,7 +128,7 @@ class TrainingManager:
         try:
             # TODO: Implement proper MCP file reading when available
             # For now, use local file system as fallback
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
             self.console.log(f"Error reading file {file_path}: {e}")

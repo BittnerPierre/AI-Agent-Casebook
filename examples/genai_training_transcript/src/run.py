@@ -1,27 +1,26 @@
 """
 Entry point for the GenAI Training Transcript Generator (Local v1).
 """
-import sys
-import os
 import argparse
+import asyncio
+import os
+import sys
 
 import yaml
-import asyncio
 
 # Ensure src directory is on PYTHONPATH for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
-from transcript_generator.tools.knowledge_retriever import KnowledgeRetriever
-from transcript_generator.tools.syllabus_loader import load_syllabus
-from transcript_generator.tools.file_client_loader import load_transcripts
-from transcript_generator.tools.planner import refine_syllabus
-from transcript_generator.tools.research_team import aggregate_research
-from transcript_generator.tools.editing_team import edit_chapters
-from transcript_generator.tools.transcript_generator import generate_transcript
-from transcript_generator.tools.reviewer import review_transcript
-
 # Import Knowledge Bridge MCP interface
 from knowledge_bridge.mcp_interface import create_knowledge_mcp_server
+from transcript_generator.tools.editing_team import edit_chapters
+from transcript_generator.tools.file_client_loader import load_transcripts
+from transcript_generator.tools.knowledge_retriever import KnowledgeRetriever
+from transcript_generator.tools.planner import refine_syllabus
+from transcript_generator.tools.research_team import aggregate_research
+from transcript_generator.tools.reviewer import review_transcript
+from transcript_generator.tools.syllabus_loader import load_syllabus
+from transcript_generator.tools.transcript_generator import generate_transcript
 
 
 async def main(config_path: str):

@@ -2,8 +2,8 @@
 Stub for preprocessing raw transcript files into formatted Markdown and metadata.
 """
 
-from pydantic import BaseModel
 from agents import Agent, Runner
+from pydantic import BaseModel
 
 PROMPT = (
     "You are a course assistant. Given a transcript file accessible via file tool, "

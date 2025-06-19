@@ -1,8 +1,8 @@
 """Shared data models for module independence."""
 
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class ModuleMetadata(BaseModel):
@@ -10,14 +10,14 @@ class ModuleMetadata(BaseModel):
     module_id: str
     title: str
     summary: str
-    keywords: List[str]
-    tags: List[str]
+    keywords: list[str]
+    tags: list[str]
     course_id: str
     cleaned_transcript_path: str
     created_at: datetime
     updated_at: datetime
-    word_count: Optional[int] = None
-    estimated_duration_minutes: Optional[int] = None
+    word_count: int | None = None
+    estimated_duration_minutes: int | None = None
 
 
 class CourseMetadata(BaseModel):
@@ -25,7 +25,7 @@ class CourseMetadata(BaseModel):
     course_id: str
     course_title: str
     course_type: str  # "single-file" | "multi-module"
-    modules: List[ModuleMetadata]
+    modules: list[ModuleMetadata]
     total_modules: int
     created_at: datetime
     updated_at: datetime
@@ -33,16 +33,16 @@ class CourseMetadata(BaseModel):
 
 class SearchQuery(BaseModel):
     """Query interface for knowledge database."""
-    keywords: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    course_ids: Optional[List[str]] = None
-    module_ids: Optional[List[str]] = None
+    keywords: list[str] | None = None
+    tags: list[str] | None = None
+    course_ids: list[str] | None = None
+    module_ids: list[str] | None = None
     limit: int = 50
     offset: int = 0
 
 
 class SearchResult(BaseModel):
     """Search results from knowledge database."""
-    modules: List[ModuleMetadata]
+    modules: list[ModuleMetadata]
     total_count: int
     query: SearchQuery

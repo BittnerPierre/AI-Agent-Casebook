@@ -8,11 +8,10 @@ Author: Sprint 1 Development Team
 Reference: US-001 Knowledge Database MCP Interface
 """
 
-import json
-import threading
 import logging
-from typing import List, Dict, Any, Optional
+import threading
 from datetime import datetime
+from typing import Any
 
 from training_manager.content_accessor import ContentAccessor
 
@@ -40,8 +39,8 @@ class KnowledgeMCPServer:
         
         self.logger.info("[KnowledgeMCPServer] Initialized with MCP protocol support")
     
-    def lookup_content(self, keywords: List[str], learning_objectives: Optional[List[str]] = None, 
-                      max_results: int = 10) -> Dict[str, Any]:
+    def lookup_content(self, keywords: list[str], learning_objectives: list[str] | None = None, 
+                      max_results: int = 10) -> dict[str, Any]:
         """
         MCP Operation: lookup_content
         
@@ -100,7 +99,7 @@ class KnowledgeMCPServer:
                 return knowledge_response
                 
             except Exception as e:
-                self.logger.error(f"[KnowledgeMCPServer] Error in lookup_content: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in lookup_content: {e!s}")
                 # Return empty response on error
                 return {
                     "query_id": query_id,
@@ -109,7 +108,7 @@ class KnowledgeMCPServer:
                     "error": str(e)
                 }
     
-    def read_content(self, content_id: str) -> Optional[Dict[str, Any]]:
+    def read_content(self, content_id: str) -> dict[str, Any] | None:
         """
         MCP Operation: read_content
         
@@ -135,10 +134,10 @@ class KnowledgeMCPServer:
                 return content_data
                 
             except Exception as e:
-                self.logger.error(f"[KnowledgeMCPServer] Error in read_content: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in read_content: {e!s}")
                 return None
     
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         MCP Operation: health_check
         
@@ -167,14 +166,14 @@ class KnowledgeMCPServer:
                 return server_health
                 
             except Exception as e:
-                self.logger.error(f"[KnowledgeMCPServer] Error in health_check: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in health_check: {e!s}")
                 return {
                     "server_status": "error",
                     "error": str(e),
                     "timestamp": datetime.now().isoformat()
                 }
     
-    def list_operations(self) -> List[Dict[str, Any]]:
+    def list_operations(self) -> list[dict[str, Any]]:
         """
         MCP Operation: list_operations
         
@@ -210,7 +209,7 @@ class KnowledgeMCPServer:
             }
         ]
     
-    def get_schemas(self) -> Dict[str, Dict[str, Any]]:
+    def get_schemas(self) -> dict[str, dict[str, Any]]:
         """
         MCP Operation: get_schemas
         

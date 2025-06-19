@@ -16,30 +16,27 @@ to properly fulfill US-005 requirements for editorial quality control.
 """
 
 from .quality_assessment_agents import (
-    # Core data structures
-    ChapterContent,
-    QualityFinding,
     AgentAssessment,
     AssessmentConfidence,
-    QualityDimension,
-    
-    # Specialized assessment models
-    SemanticAlignmentAssessment,
-    PedagogicalAssessment,
-    GroundednessAssessment,
+    # Core data structures
+    ChapterContent,
+    ContentDepthAgent,
     ContentDepthAssessment,
+    GroundednessAgent,
+    GroundednessAssessment,
+    GuidelinesComplianceAgent,
     GuidelinesComplianceAssessment,
-    
+    PedagogicalAssessment,
+    PedagogicalQualityAgent,
     # Agent implementations
     QualityAssessmentAgent,
-    SemanticAlignmentAgent,
-    PedagogicalQualityAgent,
-    GroundednessAgent,
-    ContentDepthAgent,
-    GuidelinesComplianceAgent,
-    
     # Orchestration
     QualityConsensusOrchestrator,
+    QualityDimension,
+    QualityFinding,
+    SemanticAlignmentAgent,
+    # Specialized assessment models
+    SemanticAlignmentAssessment,
 )
 
 __all__ = [

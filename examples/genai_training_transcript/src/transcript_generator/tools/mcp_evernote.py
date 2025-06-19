@@ -5,18 +5,17 @@ MCP server for Evernote integration.
 Implements MCP Filesystem API methods using the Evernote Python SDK.
 """
 
-import os
-import asyncio
 import argparse
+import asyncio
+import os
 from urllib.parse import urlparse
 
-from evernote.api.client import EvernoteClient
-from evernote.edam.type import Notebook, NoteFilter
-from evernote.edam.notestore import NoteStore
 import mcp.types as types
+from evernote.api.client import EvernoteClient
+from evernote.edam.notestore import NoteStore
+from evernote.edam.type import Notebook, NoteFilter
 from mcp.server.lowlevel.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.server.models import InitializationOptions
 
 
 def parse_uri(uri: str) -> tuple[str, ...]:
