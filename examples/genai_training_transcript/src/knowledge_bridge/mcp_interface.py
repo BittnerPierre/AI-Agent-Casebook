@@ -10,10 +10,11 @@ Reference: US-001 Knowledge Database MCP Interface
 
 import json
 import threading
+import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from .content_accessor import ContentAccessor
+from training_manager.content_accessor import ContentAccessor
 
 
 class KnowledgeMCPServer:
@@ -33,7 +34,11 @@ class KnowledgeMCPServer:
         self.content_accessor = ContentAccessor(output_base_path)
         self._lock = threading.RLock()
         self._query_count = 0
-        print("[KnowledgeMCPServer] Initialized with MCP protocol support")
+        
+        # Set up logging
+        self.logger = logging.getLogger(__name__)
+        
+        self.logger.info("[KnowledgeMCPServer] Initialized with MCP protocol support")
     
     def lookup_content(self, keywords: List[str], learning_objectives: Optional[List[str]] = None, 
                       max_results: int = 10) -> Dict[str, Any]:
@@ -54,10 +59,10 @@ class KnowledgeMCPServer:
             self._query_count += 1
             query_id = f"query_{self._query_count}_{int(datetime.now().timestamp())}"
             
-            print(f"[KnowledgeMCPServer] Processing lookup_content: {query_id}")
-            print(f"[KnowledgeMCPServer] Keywords: {keywords}")
+            self.logger.info(f"[KnowledgeMCPServer] Processing lookup_content: {query_id}")
+            self.logger.info(f"[KnowledgeMCPServer] Keywords: {keywords}")
             if learning_objectives:
-                print(f"[KnowledgeMCPServer] Learning objectives: {learning_objectives}")
+                self.logger.info(f"[KnowledgeMCPServer] Learning objectives: {learning_objectives}")
             
             try:
                 # Combine keywords with learning objectives for broader search
@@ -91,11 +96,11 @@ class KnowledgeMCPServer:
                     "content_matches": content_matches
                 }
                 
-                print(f"[KnowledgeMCPServer] Lookup complete: {len(content_matches)} matches")
+                self.logger.info(f"[KnowledgeMCPServer] Lookup complete: {len(content_matches)} matches")
                 return knowledge_response
                 
             except Exception as e:
-                print(f"[KnowledgeMCPServer] Error in lookup_content: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in lookup_content: {str(e)}")
                 # Return empty response on error
                 return {
                     "query_id": query_id,
@@ -117,20 +122,20 @@ class KnowledgeMCPServer:
             ContentData schema with full content and metadata or None
         """
         with self._lock:
-            print(f"[KnowledgeMCPServer] Processing read_content: {content_id}")
+            self.logger.info(f"[KnowledgeMCPServer] Processing read_content: {content_id}")
             
             try:
                 content_data = self.content_accessor.get_content(content_id)
                 
                 if content_data:
-                    print(f"[KnowledgeMCPServer] Content retrieved: {content_id}")
+                    self.logger.info(f"[KnowledgeMCPServer] Content retrieved: {content_id}")
                 else:
-                    print(f"[KnowledgeMCPServer] Content not found: {content_id}")
+                    self.logger.warning(f"[KnowledgeMCPServer] Content not found: {content_id}")
                 
                 return content_data
                 
             except Exception as e:
-                print(f"[KnowledgeMCPServer] Error in read_content: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in read_content: {str(e)}")
                 return None
     
     def health_check(self) -> Dict[str, Any]:
@@ -143,7 +148,7 @@ class KnowledgeMCPServer:
             Health status with server metrics
         """
         with self._lock:
-            print("[KnowledgeMCPServer] Processing health_check")
+            self.logger.info("[KnowledgeMCPServer] Processing health_check")
             
             try:
                 # Get content accessor health
@@ -158,11 +163,11 @@ class KnowledgeMCPServer:
                     "content_accessor": accessor_health
                 }
                 
-                print("[KnowledgeMCPServer] Health check complete")
+                self.logger.info("[KnowledgeMCPServer] Health check complete")
                 return server_health
                 
             except Exception as e:
-                print(f"[KnowledgeMCPServer] Error in health_check: {str(e)}")
+                self.logger.error(f"[KnowledgeMCPServer] Error in health_check: {str(e)}")
                 return {
                     "server_status": "error",
                     "error": str(e),
