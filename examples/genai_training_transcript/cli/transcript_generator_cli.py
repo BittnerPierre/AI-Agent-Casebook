@@ -17,11 +17,11 @@ import json
 import logging
 import os
 import sys
-import yaml
 from datetime import datetime
 from typing import Any
 
 import click
+import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
@@ -32,7 +32,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
 
 from knowledge_bridge.mcp_interface import create_knowledge_mcp_server
 from transcript_generator.tools.syllabus_loader import load_syllabus
-from transcript_generator.workflow_orchestrator import WorkflowConfig, WorkflowOrchestrator, WorkflowResult
+from transcript_generator.workflow_orchestrator import (
+    WorkflowConfig,
+    WorkflowOrchestrator,
+    WorkflowResult,
+)
 
 
 class CLIFormatter:
@@ -320,7 +324,7 @@ def main(syllabus, output_dir, config, overwrite, max_retries, timeout, continue
     
     if config:
         try:
-            with open(config, 'r') as f:
+            with open(config) as f:
                 file_config = yaml.safe_load(f)
                 cli_config.update(file_config)
             cli.formatter.print_success(f"Configuration loaded from {config}")
