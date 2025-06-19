@@ -18,7 +18,12 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 
-# No external AI SDK imports needed for this implementation
+# Multi-agent import check
+try:
+    from .editorial_finalizer_multi_agent import MultiAgentEditorialFinalizer
+    _MULTI_AGENT_AVAILABLE = True
+except ImportError:
+    _MULTI_AGENT_AVAILABLE = False
 
 class IssueSeverity(Enum):
     """Issue severity levels for misconduct tracking"""
@@ -68,21 +73,46 @@ class EditorialFinalizer:
     - MEDIUM: content_repetition
     """
     
-    def __init__(self, output_dir: str = "output", quality_dir: str = "quality_issues"):
+    def __init__(self, 
+                 output_dir: str = "output", 
+                 quality_dir: str = "quality_issues",
+                 enable_multi_agent: bool = True,
+                 model: str = "gpt-4o-mini"):
         """
         Initialize the Editorial Finalizer.
         
         Args:
             output_dir: Directory to write final transcript
             quality_dir: Directory to write quality issues JSON files
+            enable_multi_agent: Use sophisticated multi-agent assessment if available
+            model: Model to use for multi-agent assessment
         """
-        self.output_dir = Path(output_dir)
-        self.quality_dir = Path(quality_dir)
-        self.output_dir.mkdir(exist_ok=True)
-        self.quality_dir.mkdir(exist_ok=True)
-        
-        # Setup logging
-        self.logger = logging.getLogger(__name__)
+        # Check if we should use multi-agent version
+        if enable_multi_agent and _MULTI_AGENT_AVAILABLE:
+            # Delegate to multi-agent implementation
+            self._delegate = MultiAgentEditorialFinalizer(
+                output_dir=output_dir,
+                quality_dir=quality_dir, 
+                enable_multi_agent=enable_multi_agent,
+                model=model
+            )
+            self._using_multi_agent = True
+        else:
+            self._delegate = None
+            self._using_multi_agent = False
+            
+            # Initialize basic implementation
+            self.output_dir = Path(output_dir)
+            self.quality_dir = Path(quality_dir)
+            self.output_dir.mkdir(exist_ok=True)
+            self.quality_dir.mkdir(exist_ok=True)
+            
+            # Setup logging
+            self.logger = logging.getLogger(__name__)
+            if not enable_multi_agent:
+                self.logger.info("Multi-agent assessment disabled by configuration")
+            elif not _MULTI_AGENT_AVAILABLE:
+                self.logger.warning("Multi-agent assessment not available - using basic pattern matching")
         
         # Quality thresholds - configurable for different content types
         self.quality_thresholds = {
@@ -115,10 +145,8 @@ class EditorialFinalizer:
         """
         Finalize content by reviewing chapters and producing final transcript.
         
-        This is the main interface method that:
-        1. Reviews each chapter for quality issues
-        2. Tracks misconduct according to defined categories
-        3. Produces final_transcript.md and quality_issues.json
+        Automatically uses sophisticated multi-agent assessment when available,
+        falling back to basic pattern matching when necessary.
         
         Args:
             chapters: List of chapter drafts to review and finalize
@@ -127,6 +155,11 @@ class EditorialFinalizer:
         Returns:
             Tuple of (final_transcript_path, quality_summary_path)
         """
+        # Delegate to multi-agent implementation if available
+        if self._using_multi_agent:
+            return self._delegate.finalize_content(chapters, syllabus)
+        
+        # Continue with basic implementation
         self.logger.info(f"Starting content finalization for {len(chapters)} chapters")
         
         # Track all quality issues across chapters
@@ -197,8 +230,8 @@ class EditorialFinalizer:
         """
         Track quality issues and misconduct in a chapter draft.
         
-        This is the second main interface method that implements the misconduct detection
-        logic according to the categories defined in US-005 specifications.
+        Automatically uses sophisticated multi-agent assessment when available,
+        falling back to basic pattern matching when necessary.
         
         Args:
             chapter: Chapter draft to analyze
@@ -207,6 +240,11 @@ class EditorialFinalizer:
         Returns:
             List of detected quality issues with severity and misconduct category
         """
+        # Delegate to multi-agent implementation if available
+        if self._using_multi_agent:
+            return self._delegate.track_issues(chapter, syllabus)
+        
+        # Continue with basic pattern matching implementation
         issues = []
         
         # Basic content validation
@@ -465,11 +503,17 @@ class EditorialFinalizer:
         """
         Get quality metrics for evaluation system integration.
         
-        This method provides the interface for US-007 and US-008 evaluation logging.
+        Automatically uses enhanced multi-agent metrics when available,
+        falling back to basic metrics when necessary.
         
         Returns:
             Dictionary containing quality metrics for LangSmith logging
         """
+        # Delegate to multi-agent implementation if available
+        if self._using_multi_agent:
+            return self._delegate.get_quality_metrics()
+        
+        # Continue with basic metrics implementation
         # Read quality summary if it exists
         summary_path = self.quality_dir / "quality_summary.json"
         if summary_path.exists():
@@ -485,13 +529,15 @@ class EditorialFinalizer:
                 "quality_score": self._calculate_quality_score(summary)
             }
         
+        # Basic fallback metrics
         return {
             "total_issues": 0, 
             "error_count": 0, 
             "warning_count": 0, 
             "sections_with_errors": 0,
             "misconduct_categories": {},
-            "quality_score": 1.0
+            "quality_score": 1.0,
+            "assessment_type": "basic_pattern_matching"
         }
 
     def _calculate_quality_score(self, summary: Dict[str, Any]) -> float:
