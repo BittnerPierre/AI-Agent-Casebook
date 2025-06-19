@@ -48,6 +48,7 @@
 - **So that** editing has knowledge-grounded input for content creation
 - **Acceptance:** ResearchTeam outputs `research_notes.json` with knowledge references and structured content
 - **Integration Point:** Uses `KnowledgeMCPServer.lookup_content()`, outputs to `research_notes/` for editing team
+- **Implementation Notes:** Include robust error handling, semantic key-point extraction, narrative synthesis, and configurable parameters for extraction/summarization
 
 ### P1: Core Workflow Components (Week 2)
 
