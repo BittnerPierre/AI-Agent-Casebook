@@ -12,30 +12,27 @@ Author: Claude Code - Sprint 1 Week 4
 Reference: US-009 End-to-End CLI Integration (Issue #57)
 """
 
-import sys
-import os
 import asyncio
-import logging
-from pathlib import Path
-from typing import Dict, Any, Optional
 import json
+import logging
+import os
+import sys
 import yaml
 from datetime import datetime
+from typing import Any
 
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
-from rich.text import Text
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
 
-from transcript_generator.workflow_orchestrator import WorkflowOrchestrator, WorkflowConfig, WorkflowResult
-from transcript_generator.tools.syllabus_loader import load_syllabus
 from knowledge_bridge.mcp_interface import create_knowledge_mcp_server
-from training_manager.content_accessor import ContentAccessor
+from transcript_generator.tools.syllabus_loader import load_syllabus
+from transcript_generator.workflow_orchestrator import WorkflowConfig, WorkflowOrchestrator, WorkflowResult
 
 
 class CLIFormatter:
@@ -142,10 +139,10 @@ class TranscriptGeneratorCLI:
             return True
             
         except Exception as e:
-            self.formatter.print_error(f"Knowledge base validation failed: {str(e)}")
+            self.formatter.print_error(f"Knowledge base validation failed: {e!s}")
             return False
     
-    def validate_syllabus(self, syllabus_path: str) -> Optional[Dict[str, Any]]:
+    def validate_syllabus(self, syllabus_path: str) -> dict[str, Any] | None:
         """Validate and load syllabus file"""
         self.formatter.print_phase("Syllabus Validation", f"Loading syllabus from {syllabus_path}")
         
@@ -181,10 +178,10 @@ class TranscriptGeneratorCLI:
             return syllabus
             
         except Exception as e:
-            self.formatter.print_error(f"Syllabus validation failed: {str(e)}")
+            self.formatter.print_error(f"Syllabus validation failed: {e!s}")
             return None
     
-    def setup_output_directories(self, base_output_dir: str) -> Dict[str, str]:
+    def setup_output_directories(self, base_output_dir: str) -> dict[str, str]:
         """Setup and create output directories"""
         self.formatter.print_phase("Directory Setup", "Creating output directories...")
         
@@ -202,7 +199,7 @@ class TranscriptGeneratorCLI:
         
         return directories
     
-    async def execute_workflow(self, syllabus: Dict[str, Any], directories: Dict[str, str], config: Dict[str, Any]) -> WorkflowResult:
+    async def execute_workflow(self, syllabus: dict[str, Any], directories: dict[str, str], config: dict[str, Any]) -> WorkflowResult:
         """Execute the complete transcript generation workflow"""
         self.formatter.print_phase("Workflow Execution", "Starting complete transcript generation pipeline...")
         
@@ -240,13 +237,13 @@ class TranscriptGeneratorCLI:
                 return result
                 
             except Exception as e:
-                self.formatter.print_error(f"Workflow execution failed: {str(e)}")
+                self.formatter.print_error(f"Workflow execution failed: {e!s}")
                 return WorkflowResult(
                     success=False,
-                    errors=[str(e)]
+                    errors=[f"{e!s}"]
                 )
     
-    def generate_execution_report(self, workflow_result: WorkflowResult, directories: Dict[str, str], syllabus: Dict[str, Any]):
+    def generate_execution_report(self, workflow_result: WorkflowResult, directories: dict[str, str], syllabus: dict[str, Any]):
         """Generate comprehensive execution report"""
         self.formatter.print_phase("Execution Report", "Generating comprehensive execution report...")
         
@@ -374,7 +371,7 @@ def main(syllabus, output_dir, config, overwrite, max_retries, timeout, continue
             cli.formatter.print_warning("Workflow interrupted by user")
             return False
         except Exception as e:
-            cli.formatter.print_error(f"Unexpected error: {str(e)}")
+            cli.formatter.print_error(f"Unexpected error: {e!s}")
             cli.logger.exception("Unexpected error in workflow execution")
             return False
     
@@ -384,7 +381,7 @@ def main(syllabus, output_dir, config, overwrite, max_retries, timeout, continue
         exit_code = 0 if success else 1
         sys.exit(exit_code)
     except Exception as e:
-        cli.formatter.print_error(f"CLI execution failed: {str(e)}")
+        cli.formatter.print_error(f"CLI execution failed: {e!s}")
         sys.exit(1)
 
 
