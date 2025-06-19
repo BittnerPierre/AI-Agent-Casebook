@@ -67,7 +67,7 @@ OPENAI_API_KEY=your-openai-key
 LANGCHAIN_API_KEY=your-langchain-key
 ```
 
-> ⚠️ We recommend using [LangSmith](https://smith.langchain.com/) to monitor workflows. It’s free for individual developers.
+> ⚠️ We recommend using [LangSmith](https://smith.langchain.com/) to monitor workflows. It's free for individual developers.
 
 ### 3. Install dependencies
 
@@ -81,6 +81,35 @@ To activate the virtual environment:
 
 ```bash
 poetry shell
+```
+
+## 🔒 Security & Vulnerability Scanning
+
+This project includes automated security scanning of dependencies to ensure a secure development environment.
+
+### Vulnerability Audit
+
+The project includes `poetry-audit-plugin` as a development dependency for security scanning:
+
+```bash
+# Scan for vulnerabilities in project dependencies
+poetry audit
+```
+
+This command scans all project dependencies against the Python Packaging Advisory Database and reports any known security vulnerabilities.
+
+### For Team Members
+
+When you clone the project and run `poetry install`, the audit plugin will be automatically available. Run `poetry audit` regularly to ensure your dependencies remain secure.
+
+### CI/CD Integration
+
+Consider adding `poetry audit` to your CI/CD pipeline to catch vulnerabilities early:
+
+```yaml
+# Example GitHub Actions step
+- name: Security Audit
+  run: poetry audit
 ```
 
 ---
