@@ -12,6 +12,10 @@ import sys
 import os
 from pathlib import Path
 
+# Load environment variables from project root
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
@@ -24,22 +28,31 @@ async def main():
     print("🚀 Starting WorkflowOrchestrator Integration Test")
     print("=" * 60)
     
-    # Create test syllabus
+    # Load real syllabus that matches available training data
+    import os
+    from transcript_generator.tools.syllabus_loader import load_syllabus
+    
+    # Load the real syllabus
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    syllabus_path = os.path.join(base_dir, "syllabus.md")
+    modules = load_syllabus(syllabus_path)
+    
+    # Create test syllabus using first module from real data
     test_syllabus = {
-        "course_title": "Introduction to Testing Frameworks",
-        "course_description": "A comprehensive course covering testing frameworks and methodologies",
+        "course_title": "AI Engineer Basic Course",
+        "course_description": "AI engineering fundamentals with practical applications",
         "sections": [
             {
-                "section_id": "testing_fundamentals",
-                "title": "Testing Fundamentals",
+                "section_id": "prompt_engineering_fundamentals",
+                "title": "Prompt Engineering for Developers",
                 "learning_objectives": [
-                    "Understand basic testing principles",
-                    "Learn about different types of testing"
+                    "Master prompt engineering techniques",
+                    "Build effective AI applications"
                 ],
                 "key_topics": [
-                    "unit testing",
-                    "testing principles", 
-                    "test automation"
+                    "Retrieval Augmented Generation",
+                    "RAG", 
+                    "Large Language Model"
                 ],
                 "estimated_duration": "45 minutes"
             }

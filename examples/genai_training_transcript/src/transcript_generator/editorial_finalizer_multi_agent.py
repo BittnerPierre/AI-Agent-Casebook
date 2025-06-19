@@ -25,8 +25,13 @@ Multi-Agent Architecture:
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
+
+# LangSmith tracing support
+from agents import set_trace_processors
+from langsmith.wrappers import OpenAIAgentsTracingProcessor
 
 # Import multi-agent quality assessment system
 try:
@@ -82,6 +87,31 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         # Multi-agent configuration
         self.enable_multi_agent = enable_multi_agent and _MULTI_AGENT_AVAILABLE
         self.model = model
+        
+        # Configure LangSmith tracing for finalizer agents
+        self.langsmith_enabled = False
+        langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
+        langsmith_project = os.getenv('LANGSMITH_PROJECT', 'story-ops')
+        langsmith_tracing = os.getenv('LANGSMITH_TRACING', '').lower() == 'true'
+        
+        if langsmith_api_key and langsmith_tracing:
+            try:
+                # Configure tracing processor for OpenAI Agents SDK
+                os.environ['LANGSMITH_API_KEY'] = langsmith_api_key
+                os.environ['LANGSMITH_PROJECT'] = langsmith_project
+                
+                # Set up trace processors for agents
+                set_trace_processors([OpenAIAgentsTracingProcessor()])
+                
+                self.langsmith_enabled = True
+                logging.getLogger(__name__).info(f"Editorial finalizer LangSmith tracing configured for project: {langsmith_project}")
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"Failed to configure LangSmith tracing: {e}")
+        else:
+            if not langsmith_api_key:
+                logging.getLogger(__name__).debug("LANGSMITH_API_KEY not found. LangSmith tracing disabled.")
+            if not langsmith_tracing:
+                logging.getLogger(__name__).debug("LANGSMITH_TRACING not enabled. LangSmith tracing disabled.")
         
         # Initialize multi-agent orchestrator if available
         if self.enable_multi_agent:

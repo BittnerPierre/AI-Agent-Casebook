@@ -41,3 +41,5 @@ Thumbs.db
 data/training_courses/*.pdf
 data/training_courses/crewai_c1*/
 data/training_courses/CHROMA*/
+
+.env

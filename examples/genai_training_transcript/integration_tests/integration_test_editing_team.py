@@ -25,6 +25,10 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
+# Load environment variables from project root
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
 # Add src to path for imports
 current_dir = Path(__file__).parent
 src_path = current_dir .parent / "src"
