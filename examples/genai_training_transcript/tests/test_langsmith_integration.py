@@ -223,6 +223,45 @@ class TestLangSmithIntegration:
         assert "project_name" in status
         assert "langsmith_available" in status
         assert "integration_version" in status
+    
+    @pytest.mark.asyncio
+    async def test_send_agent_trace_data(self):
+        """Test Agent SDK trace data transmission"""
+        integration = LangSmithIntegration(auto_send_enabled=False)
+        
+        result = await integration.send_agent_trace_data(
+            agent_name="test_agent",
+            trace_data={"inputs": {"test": "input"}, "outputs": {"test": "output"}},
+            parent_run_id="parent_123"
+        )
+        
+        assert result is False  # Disabled
+    
+    def test_story_ops_project_configuration(self):
+        """Test US-012 specific story-ops project configuration"""
+        integration = LangSmithIntegration()
+        
+        # Verify default project name is "story-ops" as specified
+        assert integration.project_name == "story-ops"
+        
+        # Test custom project
+        custom_integration = LangSmithIntegration(project_name="custom-project")
+        assert custom_integration.project_name == "custom-project"
+    
+    def test_agent_sdk_tracing_configuration_us012(self):
+        """Test US-012 Agent SDK built-in tracing configuration"""
+        integration = LangSmithIntegration(auto_send_enabled=True)
+        integration.enabled = True  # Mock as enabled
+        
+        config = integration.configure_agent_sdk_tracing()
+        
+        # Verify US-012 requirements
+        assert config["enabled"] is True
+        assert config["project_name"] == "story-ops"
+        assert config["kebab_case_naming"] is True
+        assert config["auto_trace"] is True
+        assert "batch_size" in config
+        assert "flush_interval" in config
 
 
 class TestWorkflowOrchestratorIntegration:
@@ -239,6 +278,18 @@ class TestWorkflowOrchestratorIntegration:
         assert config.enable_langsmith_logging is True
         assert config.langsmith_project_name == "story-ops"
         assert config.langsmith_auto_send is True
+    
+    def test_us012_automatic_trace_collection(self):
+        """Test US-012 automatic trace collection requirement"""
+        # Test that WorkflowConfig enables automatic metadata sending
+        config = WorkflowConfig()
+        
+        # US-012 requires automatic sending after workflow completion
+        assert config.langsmith_auto_send is True
+        assert config.enable_langsmith_logging is True
+        
+        # Verify the project setup matches US-012 specs
+        assert config.langsmith_project_name == "story-ops"
     
     @patch('src.transcript_generator.workflow_orchestrator.LANGSMITH_INTEGRATION_AVAILABLE', True)
     @patch('src.transcript_generator.workflow_orchestrator.LangSmithIntegration')
