@@ -442,3 +442,114 @@ class TestContentAccessorPerformance:
         
         # Should complete 10 retrievals quickly due to caching (< 0.5 seconds)
         assert elapsed < 0.5, f"Content retrieval performance too slow: {elapsed:.2f} seconds"
+    
+    def test_export_as_markdown_success(self, content_accessor):
+        """Test successful Markdown export with frontmatter"""
+        # Export existing content as Markdown
+        markdown_content = content_accessor.export_as_markdown("TEST_COURSE:test_module_1")
+        
+        assert markdown_content is not None
+        assert isinstance(markdown_content, str)
+        
+        # Verify YAML frontmatter structure
+        assert markdown_content.startswith("---")
+        assert 'title: "Introduction to Testing"' in markdown_content
+        assert 'content_id: "TEST_COURSE:test_module_1"' in markdown_content
+        assert 'course_id: "TEST_COURSE"' in markdown_content
+        assert 'module_id: "test_module_1"' in markdown_content
+        assert 'content_type: "training_transcript"' in markdown_content
+        
+        # Verify keywords and tags are included
+        assert 'keywords: ["testing", "unit tests", "automation"]' in markdown_content
+        assert 'tags: ["programming", "quality assurance"]' in markdown_content
+        
+        # Verify summary is included
+        assert 'summary: "This module covers basic testing concepts and methodologies."' in markdown_content
+        
+        # Verify metadata and content separation
+        frontmatter_end = markdown_content.find("---", 3)  # Find second ---
+        assert frontmatter_end > 0
+        
+        # Content should follow after frontmatter
+        content_start = frontmatter_end + 3
+        content_section = markdown_content[content_start:].strip()
+        assert content_section.startswith("**Introduction to Testing**")
+    
+    def test_export_as_markdown_nonexistent_content(self, content_accessor):
+        """Test Markdown export for non-existent content"""
+        markdown_content = content_accessor.export_as_markdown("NONEXISTENT:module")
+        
+        assert markdown_content is None
+    
+    def test_export_as_markdown_thread_safety(self, content_accessor):
+        """Test thread safety of Markdown export"""
+        results = {}
+        
+        def export_markdown(thread_id):
+            """Export markdown in separate thread"""
+            result = content_accessor.export_as_markdown("TEST_COURSE:test_module_1")
+            results[thread_id] = result
+        
+        # Start multiple threads
+        threads = []
+        for i in range(5):
+            thread = threading.Thread(target=export_markdown, args=(i,))
+            threads.append(thread)
+            thread.start()
+        
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+        
+        # Verify all threads got valid results
+        assert len(results) == 5
+        for thread_id, result in results.items():
+            assert result is not None
+            assert 'title: "Introduction to Testing"' in result
+            assert 'content_id: "TEST_COURSE:test_module_1"' in result
+    
+    def test_export_as_markdown_special_characters(self, temp_output_dir):
+        """Test Markdown export with special characters in content"""
+        # Create content with special characters
+        course_dir = Path(temp_output_dir) / "SPECIAL_COURSE"
+        metadata_dir = course_dir / "metadata"
+        transcripts_dir = course_dir / "cleaned_transcripts"
+        
+        metadata_dir.mkdir(parents=True)
+        transcripts_dir.mkdir(parents=True)
+        
+        # Create index with special characters
+        index_data = {
+            "course_id": "SPECIAL_COURSE",
+            "course_title": "Special Characters Test",
+            "modules": [
+                {
+                    "module_id": "special_module",
+                    "title": 'Testing "Quotes" & Special Characters',
+                    "summary": "This module\nhas multiple lines\nand \"quotes\" to test escaping.",
+                    "keywords": ["special", "characters", "quotes"],
+                    "tags": ["testing"]
+                }
+            ]
+        }
+        
+        with open(metadata_dir / "index.json", "w") as f:
+            json.dump(index_data, f)
+        
+        # Create transcript with special characters
+        transcript_content = 'Content with "quotes" and\nmultiple lines\nand special chars!'
+        with open(transcripts_dir / "special_module.md", "w") as f:
+            f.write(transcript_content)
+        
+        # Test export
+        accessor = ContentAccessor(temp_output_dir)
+        markdown_content = accessor.export_as_markdown("SPECIAL_COURSE:special_module")
+        
+        assert markdown_content is not None
+        
+        # Verify special characters are properly escaped
+        assert 'title: "Testing \\"Quotes\\" & Special Characters"' in markdown_content
+        assert 'summary: "This module\\nhas multiple lines\\nand \\"quotes\\" to test escaping."' in markdown_content
+        
+        # Verify content is preserved
+        assert 'Content with "quotes" and\nmultiple lines\nand special chars!' in markdown_content

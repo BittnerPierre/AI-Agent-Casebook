@@ -350,3 +350,88 @@ class ContentAccessor:
             preview_parts.append(f"Keywords: {', '.join(keywords[:5])}")
         
         return " | ".join(preview_parts)
+    
+    def export_as_markdown(self, content_id: str) -> Optional[str]:
+        """
+        Export content with metadata as Markdown with YAML frontmatter.
+        
+        This method provides structured Markdown output for EditingTeam integration
+        and file_search workflow compatibility as specified by Codex.
+        
+        Args:
+            content_id: Content identifier in format "course_id/module_id"
+            
+        Returns:
+            Formatted Markdown string with YAML frontmatter and content body,
+            or None if content not found
+        """
+        with self._lock:
+            self.logger.info(f"[ContentAccessor] Exporting content as Markdown: {content_id}")
+            
+            try:
+                # Get content and metadata
+                content_data = self.get_content(content_id)
+                if not content_data:
+                    self.logger.warning(f"[ContentAccessor] Content not found for export: {content_id}")
+                    return None
+                
+                # Extract full content and metadata
+                full_content = content_data.get("full_content", "")
+                content_metadata = content_data.get("metadata", {})
+                
+                # Get additional metadata for frontmatter
+                all_content = self._get_all_content_metadata()
+                raw_metadata = all_content.get(content_id, {})
+                
+                # Extract relevant metadata (combine both sources)
+                title = content_metadata.get("title") or raw_metadata.get("title", "Unknown Title")
+                course_id = content_metadata.get("source") or raw_metadata.get("course_id", "unknown")
+                module_id = content_metadata.get("module_id") or raw_metadata.get("module_id", "unknown")
+                keywords = content_metadata.get("keywords") or raw_metadata.get("keywords", [])
+                tags = content_metadata.get("tags") or raw_metadata.get("tags", [])
+                summary = content_metadata.get("summary") or raw_metadata.get("summary", "")
+                word_count = raw_metadata.get("word_count", 0)
+                estimated_duration = raw_metadata.get("estimated_duration_minutes", 0)
+                created_at = content_metadata.get("created_at", datetime.now().isoformat())
+                
+                # Build YAML frontmatter with proper escaping
+                escaped_title = title.replace('"', '\\"')
+                frontmatter_lines = [
+                    "---",
+                    f"title: \"{escaped_title}\"",
+                    f"content_id: \"{content_id}\"",
+                    f"course_id: \"{course_id}\"",
+                    f"module_id: \"{module_id}\"",
+                    f"content_type: \"training_transcript\"",
+                    f"word_count: {word_count}",
+                    f"estimated_duration_minutes: {estimated_duration}",
+                    f"created_at: \"{created_at}\"",
+                ]
+                
+                # Add keywords if available
+                if keywords:
+                    keywords_yaml = "[" + ", ".join(f'"{kw}"' for kw in keywords) + "]"
+                    frontmatter_lines.append(f"keywords: {keywords_yaml}")
+                
+                # Add tags if available
+                if tags:
+                    tags_yaml = "[" + ", ".join(f'"{tag}"' for tag in tags) + "]"
+                    frontmatter_lines.append(f"tags: {tags_yaml}")
+                
+                # Add summary if available
+                if summary:
+                    # Escape quotes and handle multiline
+                    escaped_summary = summary.replace('"', '\\"').replace('\n', '\\n')
+                    frontmatter_lines.append(f"summary: \"{escaped_summary}\"")
+                
+                frontmatter_lines.append("---")
+                
+                # Combine frontmatter and content
+                markdown_content = "\n".join(frontmatter_lines) + "\n\n" + full_content
+                
+                self.logger.info(f"[ContentAccessor] Markdown export completed: {content_id} ({len(markdown_content)} chars)")
+                return markdown_content
+                
+            except Exception as e:
+                self.logger.error(f"[ContentAccessor] Error exporting Markdown for {content_id}: {str(e)}")
+                return None
