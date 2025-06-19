@@ -27,7 +27,7 @@ from datetime import datetime
 
 # Add src to path for imports
 current_dir = Path(__file__).parent
-src_path = current_dir / "src"
+src_path = current_dir .parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 

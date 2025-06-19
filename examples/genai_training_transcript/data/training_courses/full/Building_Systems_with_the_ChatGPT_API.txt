@@ -1,0 +1,1098 @@
+# Building Systems with the ChatGPT API - Complete Training Module
+
+## Introduction to the ChatGPT API
+
+Welcome to Building Systems with the ChatGPT API, where we transform from theoretical understanding to practical implementation of production-ready AI applications. This module covers API fundamentals, function calling, error handling, and architectural patterns for building robust ChatGPT-powered systems.
+
+Modern AI applications require seamless integration with language models through well-designed APIs. Understanding how to effectively use the ChatGPT API is essential for building scalable, reliable, and maintainable AI systems that can handle real-world complexity and user demands.
+
+## ChatGPT API Fundamentals
+
+### Authentication and Setup
+
+**API Key Management:**
+```python
+import openai
+import os
+from typing import Optional
+
+class OpenAIClient:
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        if not self.api_key:
+            raise ValueError("OpenAI API key required")
+        
+        openai.api_key = self.api_key
+        self.client = openai.OpenAI(api_key=self.api_key)
+        
+    def test_connection(self):
+        """Test API connectivity"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=10
+            )
+            return True
+        except Exception as e:
+            print(f"Connection test failed: {e}")
+            return False
+```
+
+**Environment Configuration:**
+```python
+# .env file
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4
+OPENAI_MAX_TOKENS=2000
+OPENAI_TEMPERATURE=0.7
+
+# Load configuration
+from dotenv import load_dotenv
+load_dotenv()
+
+class APIConfig:
+    def __init__(self):
+        self.api_key = os.getenv('OPENAI_API_KEY')
+        self.model = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
+        self.max_tokens = int(os.getenv('OPENAI_MAX_TOKENS', '1000'))
+        self.temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
+```
+
+### Basic API Usage Patterns
+
+**Simple Chat Completion:**
+```python
+def simple_chat_completion(prompt: str, model: str = "gpt-3.5-turbo"):
+    """Basic chat completion with error handling"""
+    try:
+        response = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except openai.RateLimitError:
+        return "Rate limit exceeded. Please try again later."
+    except openai.APIError as e:
+        return f"API error: {e}"
+    except Exception as e:
+        return f"Unexpected error: {e}"
+```
+
+**System Message Configuration:**
+```python
+def chat_with_system_prompt(user_prompt: str, system_prompt: str):
+    """Chat completion with system message"""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=messages,
+        max_tokens=1500,
+        temperature=0.7
+    )
+    
+    return response.choices[0].message.content
+```
+
+**Conversation Management:**
+```python
+class ConversationManager:
+    def __init__(self, system_prompt: str = None):
+        self.messages = []
+        if system_prompt:
+            self.messages.append({"role": "system", "content": system_prompt})
+    
+    def add_user_message(self, content: str):
+        self.messages.append({"role": "user", "content": content})
+    
+    def add_assistant_message(self, content: str):
+        self.messages.append({"role": "assistant", "content": content})
+    
+    def get_completion(self, model: str = "gpt-3.5-turbo"):
+        response = openai.chat.completions.create(
+            model=model,
+            messages=self.messages,
+            max_tokens=1500,
+            temperature=0.7
+        )
+        
+        assistant_message = response.choices[0].message.content
+        self.add_assistant_message(assistant_message)
+        return assistant_message
+    
+    def clear_conversation(self, keep_system: bool = True):
+        if keep_system and self.messages and self.messages[0]["role"] == "system":
+            self.messages = [self.messages[0]]
+        else:
+            self.messages = []
+```
+
+## Function Calling and Tool Integration
+
+### Understanding Function Calling
+
+Function calling allows ChatGPT to interact with external tools and APIs, making it a powerful orchestrator for complex workflows.
+
+**Function Definition Schema:**
+```python
+def create_function_schema():
+    return {
+        "name": "get_weather",
+        "description": "Get current weather information for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name or location"
+                },
+                "units": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature units"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+```
+
+### Implementing Function Calling
+
+**Function Registry Pattern:**
+```python
+import json
+from typing import Dict, Callable, Any
+
+class FunctionRegistry:
+    def __init__(self):
+        self.functions: Dict[str, Callable] = {}
+        self.schemas: Dict[str, Dict] = {}
+    
+    def register(self, name: str, schema: Dict):
+        def decorator(func: Callable):
+            self.functions[name] = func
+            self.schemas[name] = schema
+            return func
+        return decorator
+    
+    def get_function_schemas(self):
+        return list(self.schemas.values())
+    
+    def execute_function(self, name: str, arguments: str):
+        if name not in self.functions:
+            raise ValueError(f"Function {name} not found")
+        
+        try:
+            args = json.loads(arguments)
+            return self.functions[name](**args)
+        except Exception as e:
+            return f"Error executing function: {e}"
+
+# Usage example
+registry = FunctionRegistry()
+
+@registry.register("get_weather", {
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "Location name"},
+            "units": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+})
+def get_weather(location: str, units: str = "celsius"):
+    # Simulate weather API call
+    return {
+        "location": location,
+        "temperature": 22 if units == "celsius" else 72,
+        "condition": "sunny",
+        "units": units
+    }
+```
+
+**Function Calling Workflow:**
+```python
+class FunctionCallingAgent:
+    def __init__(self, function_registry: FunctionRegistry):
+        self.registry = function_registry
+        self.client = openai.OpenAI()
+    
+    def chat_with_functions(self, user_message: str, conversation_history: list = None):
+        messages = conversation_history or []
+        messages.append({"role": "user", "content": user_message})
+        
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            functions=self.registry.get_function_schemas(),
+            function_call="auto"
+        )
+        
+        response_message = response.choices[0].message
+        
+        # Check if function call is needed
+        if response_message.function_call:
+            function_name = response_message.function_call.name
+            function_args = response_message.function_call.arguments
+            
+            # Execute function
+            function_result = self.registry.execute_function(
+                function_name, function_args
+            )
+            
+            # Add function call and result to conversation
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "function_call": {
+                    "name": function_name,
+                    "arguments": function_args
+                }
+            })
+            
+            messages.append({
+                "role": "function",
+                "name": function_name,
+                "content": json.dumps(function_result)
+            })
+            
+            # Get final response
+            final_response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages
+            )
+            
+            return final_response.choices[0].message.content
+        
+        return response_message.content
+```
+
+### Advanced Function Calling Patterns
+
+**Multi-Step Function Execution:**
+```python
+class MultiStepAgent:
+    def __init__(self, function_registry: FunctionRegistry):
+        self.registry = function_registry
+        self.client = openai.OpenAI()
+        self.max_iterations = 10
+    
+    def execute_multi_step_task(self, task_description: str):
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that can use functions to complete tasks. Use multiple function calls if needed to fully complete the user's request."},
+            {"role": "user", "content": task_description}
+        ]
+        
+        for iteration in range(self.max_iterations):
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages,
+                functions=self.registry.get_function_schemas(),
+                function_call="auto"
+            )
+            
+            response_message = response.choices[0].message
+            
+            if response_message.function_call:
+                # Execute function and continue
+                function_name = response_message.function_call.name
+                function_args = response_message.function_call.arguments
+                
+                function_result = self.registry.execute_function(
+                    function_name, function_args
+                )
+                
+                # Add to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": function_name,
+                        "arguments": function_args
+                    }
+                })
+                
+                messages.append({
+                    "role": "function",
+                    "name": function_name,
+                    "content": json.dumps(function_result)
+                })
+            else:
+                # No more function calls needed
+                return response_message.content
+        
+        return "Task execution exceeded maximum iterations"
+```
+
+## Error Handling and Resilience
+
+### API Error Types and Handling
+
+**Comprehensive Error Handling:**
+```python
+import time
+import random
+from typing import Optional, Union
+
+class APIErrorHandler:
+    def __init__(self, max_retries: int = 3, base_delay: float = 1.0):
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+    
+    def with_retry(self, func, *args, **kwargs):
+        """Execute function with exponential backoff retry"""
+        for attempt in range(self.max_retries + 1):
+            try:
+                return func(*args, **kwargs)
+            except openai.RateLimitError as e:
+                if attempt == self.max_retries:
+                    raise e
+                
+                # Extract retry-after header if available
+                retry_after = getattr(e, 'retry_after', None)
+                delay = retry_after if retry_after else (self.base_delay * (2 ** attempt))
+                
+                print(f"Rate limit hit. Retrying in {delay} seconds...")
+                time.sleep(delay)
+                
+            except openai.APIConnectionError as e:
+                if attempt == self.max_retries:
+                    raise e
+                
+                delay = self.base_delay * (2 ** attempt) + random.uniform(0, 1)
+                print(f"Connection error. Retrying in {delay:.2f} seconds...")
+                time.sleep(delay)
+                
+            except openai.APIError as e:
+                # Don't retry on client errors (4xx)
+                if hasattr(e, 'status_code') and 400 <= e.status_code < 500:
+                    raise e
+                
+                if attempt == self.max_retries:
+                    raise e
+                
+                delay = self.base_delay * (2 ** attempt)
+                print(f"API error. Retrying in {delay} seconds...")
+                time.sleep(delay)
+        
+        raise Exception("Max retries exceeded")
+```
+
+**Robust API Client:**
+```python
+class RobustOpenAIClient:
+    def __init__(self, api_key: str, default_model: str = "gpt-3.5-turbo"):
+        self.client = openai.OpenAI(api_key=api_key)
+        self.default_model = default_model
+        self.error_handler = APIErrorHandler()
+    
+    def safe_completion(self, messages: list, **kwargs) -> Optional[str]:
+        """Safe completion with error handling and fallbacks"""
+        try:
+            response = self.error_handler.with_retry(
+                self.client.chat.completions.create,
+                model=kwargs.get('model', self.default_model),
+                messages=messages,
+                **{k: v for k, v in kwargs.items() if k != 'model'}
+            )
+            return response.choices[0].message.content
+        except openai.RateLimitError:
+            return "Service temporarily unavailable due to rate limits. Please try again later."
+        except openai.APIConnectionError:
+            return "Unable to connect to the service. Please check your internet connection."
+        except openai.InvalidRequestError as e:
+            return f"Invalid request: {e}"
+        except Exception as e:
+            return f"An unexpected error occurred: {e}"
+    
+    def streaming_completion(self, messages: list, **kwargs):
+        """Streaming completion with error handling"""
+        try:
+            stream = self.client.chat.completions.create(
+                model=kwargs.get('model', self.default_model),
+                messages=messages,
+                stream=True,
+                **{k: v for k, v in kwargs.items() if k not in ['model', 'stream']}
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            yield f"Error in streaming: {e}"
+```
+
+### Input Validation and Sanitization
+
+**Request Validation:**
+```python
+from pydantic import BaseModel, validator
+from typing import List, Optional
+
+class ChatRequest(BaseModel):
+    message: str
+    max_tokens: Optional[int] = 1000
+    temperature: Optional[float] = 0.7
+    model: Optional[str] = "gpt-3.5-turbo"
+    
+    @validator('message')
+    def validate_message(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Message cannot be empty')
+        if len(v) > 10000:
+            raise ValueError('Message too long (max 10000 characters)')
+        return v.strip()
+    
+    @validator('max_tokens')
+    def validate_max_tokens(cls, v):
+        if v is not None and (v < 1 or v > 4000):
+            raise ValueError('max_tokens must be between 1 and 4000')
+        return v
+    
+    @validator('temperature')
+    def validate_temperature(cls, v):
+        if v is not None and (v < 0 or v > 2):
+            raise ValueError('temperature must be between 0 and 2')
+        return v
+
+class ChatService:
+    def __init__(self, client: RobustOpenAIClient):
+        self.client = client
+    
+    def process_chat_request(self, request: ChatRequest) -> dict:
+        try:
+            # Validate request
+            validated_request = ChatRequest(**request.dict())
+            
+            # Prepare messages
+            messages = [{"role": "user", "content": validated_request.message}]
+            
+            # Get completion
+            response = self.client.safe_completion(
+                messages=messages,
+                max_tokens=validated_request.max_tokens,
+                temperature=validated_request.temperature,
+                model=validated_request.model
+            )
+            
+            return {
+                "success": True,
+                "response": response,
+                "usage": {"prompt_tokens": len(validated_request.message) // 4}  # Rough estimate
+            }
+            
+        except ValueError as e:
+            return {"success": False, "error": f"Validation error: {e}"}
+        except Exception as e:
+            return {"success": False, "error": f"Processing error: {e}"}
+```
+
+## Architecture Patterns for Production Systems
+
+### Service Layer Architecture
+
+**API Service Layer:**
+```python
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+app = FastAPI(title="ChatGPT Integration Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class ChatGPTService:
+    def __init__(self):
+        self.client = RobustOpenAIClient(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        self.function_registry = FunctionRegistry()
+        self._register_functions()
+    
+    def _register_functions(self):
+        # Register available functions
+        self.function_registry.register("get_current_time", {
+            "name": "get_current_time",
+            "description": "Get the current date and time",
+            "parameters": {"type": "object", "properties": {}}
+        })(self.get_current_time)
+    
+    def get_current_time(self):
+        from datetime import datetime
+        return datetime.now().isoformat()
+    
+    async def process_message(self, message: str, use_functions: bool = False):
+        if use_functions:
+            agent = FunctionCallingAgent(self.function_registry)
+            return agent.chat_with_functions(message)
+        else:
+            return self.client.safe_completion([
+                {"role": "user", "content": message}
+            ])
+
+# Initialize service
+chat_service = ChatGPTService()
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    try:
+        response = await chat_service.process_message(
+            request.message,
+            use_functions=False
+        )
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat/functions")
+async def chat_with_functions_endpoint(request: ChatRequest):
+    try:
+        response = await chat_service.process_message(
+            request.message,
+            use_functions=True
+        )
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "ChatGPT Integration"}
+```
+
+### Async and Concurrent Processing
+
+**Async Processing Patterns:**
+```python
+import asyncio
+import aiohttp
+from typing import List, Dict
+
+class AsyncChatGPTClient:
+    def __init__(self, api_key: str, max_concurrent: int = 5):
+        self.api_key = api_key
+        self.semaphore = asyncio.Semaphore(max_concurrent)
+        self.session = None
+    
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
+    
+    async def async_completion(self, messages: List[Dict], **kwargs):
+        async with self.semaphore:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": kwargs.get("model", "gpt-3.5-turbo"),
+                "messages": messages,
+                "max_tokens": kwargs.get("max_tokens", 1000),
+                "temperature": kwargs.get("temperature", 0.7)
+            }
+            
+            async with self.session.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=data
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result["choices"][0]["message"]["content"]
+                else:
+                    error_text = await response.text()
+                    raise Exception(f"API error {response.status}: {error_text}")
+    
+    async def batch_completions(self, message_batches: List[List[Dict]]):
+        """Process multiple completions concurrently"""
+        tasks = [
+            self.async_completion(messages) 
+            for messages in message_batches
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return results
+
+# Usage example
+async def process_multiple_queries():
+    queries = [
+        [{"role": "user", "content": "What is Python?"}],
+        [{"role": "user", "content": "Explain machine learning"}],
+        [{"role": "user", "content": "How do APIs work?"}]
+    ]
+    
+    async with AsyncChatGPTClient(api_key=os.getenv('OPENAI_API_KEY')) as client:
+        results = await client.batch_completions(queries)
+        
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                print(f"Query {i} failed: {result}")
+            else:
+                print(f"Query {i} result: {result}")
+```
+
+### Monitoring and Observability
+
+**Usage Tracking and Monitoring:**
+```python
+import logging
+from dataclasses import dataclass
+from datetime import datetime
+import json
+
+@dataclass
+class APIUsageMetrics:
+    request_id: str
+    timestamp: datetime
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    response_time: float
+    success: bool
+    error_message: str = None
+
+class MonitoredChatGPTClient:
+    def __init__(self, api_key: str):
+        self.client = openai.OpenAI(api_key=api_key)
+        self.metrics = []
+        self.logger = logging.getLogger(__name__)
+    
+    def tracked_completion(self, messages: list, **kwargs):
+        import time
+        import uuid
+        
+        request_id = str(uuid.uuid4())
+        start_time = time.time()
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=kwargs.get('model', 'gpt-3.5-turbo'),
+                messages=messages,
+                **kwargs
+            )
+            
+            end_time = time.time()
+            
+            # Track metrics
+            usage = response.usage
+            metrics = APIUsageMetrics(
+                request_id=request_id,
+                timestamp=datetime.now(),
+                model=kwargs.get('model', 'gpt-3.5-turbo'),
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                response_time=end_time - start_time,
+                success=True
+            )
+            
+            self.metrics.append(metrics)
+            self.logger.info(f"API call successful: {metrics}")
+            
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            end_time = time.time()
+            
+            # Track error metrics
+            error_metrics = APIUsageMetrics(
+                request_id=request_id,
+                timestamp=datetime.now(),
+                model=kwargs.get('model', 'gpt-3.5-turbo'),
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                response_time=end_time - start_time,
+                success=False,
+                error_message=str(e)
+            )
+            
+            self.metrics.append(error_metrics)
+            self.logger.error(f"API call failed: {error_metrics}")
+            
+            raise e
+    
+    def get_usage_summary(self):
+        if not self.metrics:
+            return {"message": "No usage data available"}
+        
+        successful_calls = [m for m in self.metrics if m.success]
+        failed_calls = [m for m in self.metrics if not m.success]
+        
+        return {
+            "total_calls": len(self.metrics),
+            "successful_calls": len(successful_calls),
+            "failed_calls": len(failed_calls),
+            "success_rate": len(successful_calls) / len(self.metrics) * 100,
+            "total_tokens": sum(m.total_tokens for m in successful_calls),
+            "average_response_time": sum(m.response_time for m in successful_calls) / len(successful_calls) if successful_calls else 0,
+            "models_used": list(set(m.model for m in self.metrics))
+        }
+    
+    def export_metrics(self, filename: str):
+        with open(filename, 'w') as f:
+            json.dump([
+                {
+                    "request_id": m.request_id,
+                    "timestamp": m.timestamp.isoformat(),
+                    "model": m.model,
+                    "prompt_tokens": m.prompt_tokens,
+                    "completion_tokens": m.completion_tokens,
+                    "total_tokens": m.total_tokens,
+                    "response_time": m.response_time,
+                    "success": m.success,
+                    "error_message": m.error_message
+                }
+                for m in self.metrics
+            ], f, indent=2)
+```
+
+## Hands-On: Building a ChatGPT-Based Application
+
+### Complete Application Example: AI Code Assistant
+
+```python
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+import asyncio
+import json
+
+class AICodeAssistant:
+    def __init__(self):
+        self.client = MonitoredChatGPTClient(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        self.function_registry = FunctionRegistry()
+        self._setup_functions()
+    
+    def _setup_functions(self):
+        @self.function_registry.register("analyze_code", {
+            "name": "analyze_code",
+            "description": "Analyze code for potential issues and improvements",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Code to analyze"},
+                    "language": {"type": "string", "description": "Programming language"}
+                },
+                "required": ["code", "language"]
+            }
+        })
+        def analyze_code(code: str, language: str):
+            # Simulate code analysis
+            return {
+                "issues": ["Unused variable 'x' at line 5", "Missing error handling"],
+                "suggestions": ["Add type hints", "Use list comprehension"],
+                "complexity_score": 7.5,
+                "maintainability": "Good"
+            }
+        
+        @self.function_registry.register("format_code", {
+            "name": "format_code",
+            "description": "Format code according to language standards",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Code to format"},
+                    "language": {"type": "string", "description": "Programming language"}
+                },
+                "required": ["code", "language"]
+            }
+        })
+        def format_code(code: str, language: str):
+            # Simulate code formatting
+            formatted_code = code.replace('\t', '    ')  # Basic formatting
+            return {
+                "formatted_code": formatted_code,
+                "changes_made": ["Replaced tabs with spaces", "Added line breaks"]
+            }
+    
+    def process_request(self, user_input: str, request_type: str = "general"):
+        system_prompts = {
+            "general": "You are an expert programming assistant. Help with code review, debugging, and best practices.",
+            "debug": "You are a debugging specialist. Focus on identifying and fixing code issues.",
+            "optimize": "You are a performance optimization expert. Focus on improving code efficiency."
+        }
+        
+        system_prompt = system_prompts.get(request_type, system_prompts["general"])
+        
+        if request_type in ["debug", "optimize"]:
+            # Use function calling for specialized tasks
+            agent = FunctionCallingAgent(self.function_registry)
+            return agent.chat_with_functions(
+                user_input,
+                conversation_history=[{"role": "system", "content": system_prompt}]
+            )
+        else:
+            # Regular chat completion
+            return self.client.tracked_completion([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ])
+
+# FastAPI application
+app = FastAPI(title="AI Code Assistant", version="1.0.0")
+assistant = AICodeAssistant()
+
+# WebSocket connection manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+    
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            request_data = json.loads(data)
+            
+            # Process the request
+            response = assistant.process_request(
+                request_data.get("message", ""),
+                request_data.get("type", "general")
+            )
+            
+            # Send response back
+            await manager.send_personal_message(
+                json.dumps({"response": response}),
+                websocket
+            )
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+@app.post("/analyze")
+async def analyze_code_endpoint(request: dict):
+    try:
+        code = request.get("code", "")
+        language = request.get("language", "python")
+        
+        prompt = f"Please analyze this {language} code and provide feedback:\n\n```{language}\n{code}\n```"
+        
+        response = assistant.process_request(prompt, "debug")
+        return {"analysis": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/metrics")
+async def get_metrics():
+    return assistant.client.get_usage_summary()
+
+@app.get("/")
+async def get_homepage():
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AI Code Assistant</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .container { max-width: 800px; margin: 0 auto; }
+            .chat-area { border: 1px solid #ccc; height: 400px; overflow-y: scroll; padding: 10px; margin: 10px 0; }
+            .input-area { display: flex; gap: 10px; }
+            input[type="text"] { flex: 1; padding: 10px; }
+            button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>AI Code Assistant</h1>
+            <div id="chat" class="chat-area"></div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Ask me about your code...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+        
+        <script>
+            const ws = new WebSocket("ws://localhost:8000/ws");
+            const chatArea = document.getElementById('chat');
+            const messageInput = document.getElementById('messageInput');
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                addMessage('Assistant: ' + data.response);
+            };
+            
+            function addMessage(message) {
+                const div = document.createElement('div');
+                div.textContent = message;
+                div.style.margin = '5px 0';
+                chatArea.appendChild(div);
+                chatArea.scrollTop = chatArea.scrollHeight;
+            }
+            
+            function sendMessage() {
+                const message = messageInput.value;
+                if (message) {
+                    addMessage('You: ' + message);
+                    ws.send(JSON.stringify({message: message, type: 'general'}));
+                    messageInput.value = '';
+                }
+            }
+            
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+## Production Deployment Best Practices
+
+### Security Considerations
+
+**API Key Management:**
+- Store API keys in environment variables or secure vaults
+- Rotate keys regularly
+- Use different keys for different environments
+- Implement key-level monitoring and alerting
+
+**Input Validation:**
+- Sanitize all user inputs
+- Implement rate limiting per user/IP
+- Validate request size and complexity
+- Filter potentially harmful content
+
+**Output Safety:**
+- Implement content filtering for responses
+- Monitor for potential data leakage
+- Set appropriate response length limits
+- Log and audit all interactions
+
+### Performance Optimization
+
+**Caching Strategies:**
+```python
+import redis
+import hashlib
+import json
+
+class ResponseCache:
+    def __init__(self, redis_url: str = "redis://localhost:6379"):
+        self.redis_client = redis.from_url(redis_url)
+        self.default_ttl = 3600  # 1 hour
+    
+    def get_cache_key(self, messages: list, **kwargs) -> str:
+        # Create unique key based on messages and parameters
+        content = json.dumps({"messages": messages, "params": kwargs}, sort_keys=True)
+        return hashlib.md5(content.encode()).hexdigest()
+    
+    def get_cached_response(self, messages: list, **kwargs) -> str:
+        cache_key = self.get_cache_key(messages, **kwargs)
+        cached = self.redis_client.get(cache_key)
+        return cached.decode() if cached else None
+    
+    def cache_response(self, messages: list, response: str, **kwargs):
+        cache_key = self.get_cache_key(messages, **kwargs)
+        self.redis_client.setex(cache_key, self.default_ttl, response)
+```
+
+**Connection Pooling:**
+```python
+class OptimizedOpenAIClient:
+    def __init__(self, api_key: str, max_connections: int = 100):
+        self.client = openai.OpenAI(
+            api_key=api_key,
+            max_retries=3,
+            timeout=30.0
+        )
+        self.cache = ResponseCache()
+        self.semaphore = asyncio.Semaphore(max_connections)
+    
+    async def optimized_completion(self, messages: list, **kwargs):
+        # Check cache first
+        cached_response = self.cache.get_cached_response(messages, **kwargs)
+        if cached_response:
+            return cached_response
+        
+        # Use semaphore to limit concurrent requests
+        async with self.semaphore:
+            response = await self.client.chat.completions.create(
+                messages=messages,
+                **kwargs
+            )
+            
+            result = response.choices[0].message.content
+            
+            # Cache the response
+            self.cache.cache_response(messages, result, **kwargs)
+            
+            return result
+```
+
+## Key Takeaways
+
+1. **API fundamentals include authentication, error handling, and rate limiting**
+2. **Function calling enables tool integration and complex workflows**
+3. **Robust error handling is essential for production reliability**
+4. **Async processing improves performance for concurrent requests**
+5. **Monitoring and observability help maintain system health**
+6. **Security and input validation prevent abuse and data leakage**
+7. **Caching and optimization reduce costs and improve response times**
+
+Building production systems with the ChatGPT API requires attention to reliability, security, and performance. The patterns and practices covered in this module provide a solid foundation for creating robust, scalable AI applications that can handle real-world demands.
+
+## Practical Exercises
+
+### Exercise 1: Function Calling System
+Build a function calling system that integrates with external APIs (weather, news, database queries).
+
+### Exercise 2: Error Handling Framework
+Create a comprehensive error handling framework with retry logic, fallbacks, and graceful degradation.
+
+### Exercise 3: Async Chat Application
+Implement a real-time chat application using WebSockets and async processing with proper connection management.
+
+### Exercise 4: Monitoring Dashboard
+Build a monitoring dashboard that tracks API usage, performance metrics, and error rates.
+
+### Exercise 5: Production Deployment
+Deploy your ChatGPT application with proper security, monitoring, and scaling considerations.
+
+The ChatGPT API is a powerful tool for building AI applications. Master these integration patterns to create robust, scalable systems that provide real value to users while maintaining high standards of reliability and security.

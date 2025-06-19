@@ -1,0 +1,481 @@
+# Prompt Engineering for Developers - Chapter 2: Advanced
+
+## Hands-On: Iterative Prompt Optimization
+
+### The Optimization Process
+
+1. **Start Simple**: Begin with a basic prompt
+2. **Test and Evaluate**: Run the prompt with various inputs
+3. **Identify Issues**: Note inconsistencies, errors, or format problems
+4. **Refine Systematically**: Make targeted improvements
+5. **Validate**: Test the improved prompt thoroughly
+
+### Practical Example: Code Documentation Generator
+
+**Initial Prompt (v1):**
+```
+Write documentation for this function:
+[CODE]
+```
+
+**Issues Found:**
+- Inconsistent format
+- Missing parameter descriptions
+- No examples provided
+
+**Improved Prompt (v2):**
+```
+Generate comprehensive documentation for the following Python function. Include:
+- Brief description of purpose
+- Parameter descriptions with types
+- Return value description
+- Usage example
+- Any important notes or warnings
+
+Function to document:
+[CODE]
+```
+
+**Further Refinement (v3):**
+```
+You are a technical documentation specialist. Generate professional API documentation for the following Python function using this exact format:
+
+## Function Name
+Brief one-line description.
+
+### Parameters
+- `param_name` (type): Description of parameter and constraints
+- `param_name` (type): Description of parameter and constraints
+
+### Returns
+`return_type`: Description of return value
+
+### Example Usage
+```python
+# Provide a clear, working example
+result = function_name(example_args)
+print(result)  # Expected output
+```
+
+### Notes
+- Any important implementation details
+- Performance considerations
+- Common pitfalls to avoid
+
+Function to document:
+[CODE]
+```
+
+## Advanced Prompt Engineering Patterns
+
+### Meta-Prompting
+
+**Self-Improving Prompts:**
+```
+You are a prompt engineering expert. Analyze the following prompt and suggest 3 specific improvements:
+
+Original prompt: "{original_prompt}"
+
+For each improvement, explain:
+1. What specific issue it addresses
+2. The proposed change
+3. Why this change will improve results
+
+Focus on clarity, specificity, and output consistency.
+```
+
+**Prompt Generation:**
+```
+Create a prompt for the following task: {task_description}
+
+The prompt should:
+- Be clear and unambiguous
+- Include appropriate examples if needed
+- Specify the desired output format
+- Handle edge cases
+- Be suitable for production use
+
+Task requirements: {requirements}
+Target audience: {audience}
+```
+
+### Dynamic Prompt Assembly
+
+**Context-Aware Prompt Building:**
+```python
+class DynamicPromptBuilder:
+    def __init__(self):
+        self.base_templates = {
+            'analysis': "Analyze the following {data_type}:",
+            'generation': "Generate {output_type} based on:",
+            'classification': "Classify the following into categories:",
+            'summarization': "Summarize the key points from:"
+        }
+        
+    def build_prompt(self, task_type, context, requirements):
+        # Start with base template
+        prompt = self.base_templates.get(task_type, "Process the following:")
+        
+        # Add context-specific instructions
+        if context.get('domain'):
+            prompt += f"\nDomain: {context['domain']}"
+        
+        if context.get('audience'):
+            prompt += f"\nTarget audience: {context['audience']}"
+            
+        # Add requirements
+        if requirements:
+            prompt += "\n\nRequirements:"
+            for req in requirements:
+                prompt += f"\n- {req}"
+                
+        # Add input placeholder
+        prompt += "\n\nInput: {input_data}"
+        
+        # Add output format specification
+        if context.get('output_format'):
+            prompt += f"\n\nProvide output in {context['output_format']} format."
+            
+        return prompt
+```
+
+### Advanced Error Handling and Validation
+
+**Prompt Validation Framework:**
+```python
+class PromptValidator:
+    def __init__(self):
+        self.validation_rules = [
+            self.check_clarity,
+            self.check_completeness,
+            self.check_specificity,
+            self.check_format_consistency
+        ]
+        
+    def validate_prompt(self, prompt):
+        issues = []
+        suggestions = []
+        
+        for rule in self.validation_rules:
+            issue, suggestion = rule(prompt)
+            if issue:
+                issues.append(issue)
+                suggestions.append(suggestion)
+                
+        return {
+            'is_valid': len(issues) == 0,
+            'issues': issues,
+            'suggestions': suggestions
+        }
+        
+    def check_clarity(self, prompt):
+        unclear_words = ['it', 'this', 'that', 'something', 'anything']
+        found_unclear = [word for word in unclear_words if word in prompt.lower()]
+        
+        if found_unclear:
+            return (
+                f"Unclear references found: {found_unclear}",
+                "Replace vague references with specific terms"
+            )
+        return None, None
+        
+    def check_completeness(self, prompt):
+        required_elements = ['task description', 'output format', 'examples']
+        missing = []
+        
+        if 'example' not in prompt.lower():
+            missing.append('examples')
+        if 'format' not in prompt.lower():
+            missing.append('output format')
+            
+        if missing:
+            return (
+                f"Missing elements: {missing}",
+                f"Add {', '.join(missing)} to improve prompt effectiveness"
+            )
+        return None, None
+```
+
+### Production Considerations
+
+### Prompt Security
+
+**Injection Prevention:**
+```python
+class SecurePromptHandler:
+    def __init__(self):
+        self.dangerous_patterns = [
+            r'ignore\s+previous\s+instructions',
+            r'system\s*:\s*',
+            r'\/\*.*\*\/',  # Comments that might be instructions
+            r'<\s*script\s*>',  # Script tags
+        ]
+        
+    def sanitize_input(self, user_input):
+        """Remove potentially dangerous patterns from user input"""
+        sanitized = user_input
+        
+        for pattern in self.dangerous_patterns:
+            sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
+            
+        # Limit length
+        if len(sanitized) > 5000:
+            sanitized = sanitized[:5000] + "..."
+            
+        return sanitized
+        
+    def validate_prompt_structure(self, prompt):
+        """Ensure prompt structure hasn't been compromised"""
+        # Check for system prompt override attempts
+        if 'you are now' in prompt.lower() or 'forget everything' in prompt.lower():
+            raise SecurityError("Potential prompt injection detected")
+            
+        return True
+```
+
+**Content Filtering:**
+```python
+class ContentFilter:
+    def __init__(self):
+        self.prohibited_topics = [
+            'illegal activities',
+            'harmful instructions',
+            'personal information'
+        ]
+        
+    def filter_input(self, text):
+        """Filter input for prohibited content"""
+        # Implement content filtering logic
+        filtered_text = self.remove_sensitive_info(text)
+        filtered_text = self.check_harmful_content(filtered_text)
+        return filtered_text
+        
+    def filter_output(self, response):
+        """Filter model output for safety"""
+        # Check for sensitive information in response
+        if self.contains_sensitive_info(response):
+            return "Response filtered for safety reasons."
+        return response
+```
+
+### Performance Optimization
+
+**Prompt Caching:**
+```python
+class PromptCache:
+    def __init__(self, cache_ttl=3600):
+        self.cache = {}
+        self.cache_ttl = cache_ttl
+        
+    def get_cache_key(self, prompt, parameters):
+        """Generate cache key for prompt and parameters"""
+        content = f"{prompt}:{json.dumps(parameters, sort_keys=True)}"
+        return hashlib.md5(content.encode()).hexdigest()
+        
+    def get_cached_response(self, prompt, parameters):
+        """Retrieve cached response if available"""
+        cache_key = self.get_cache_key(prompt, parameters)
+        
+        if cache_key in self.cache:
+            cached_data = self.cache[cache_key]
+            if time.time() - cached_data['timestamp'] < self.cache_ttl:
+                return cached_data['response']
+            else:
+                del self.cache[cache_key]
+                
+        return None
+        
+    def cache_response(self, prompt, parameters, response):
+        """Cache response for future use"""
+        cache_key = self.get_cache_key(prompt, parameters)
+        self.cache[cache_key] = {
+            'response': response,
+            'timestamp': time.time()
+        }
+```
+
+### Testing and Validation
+
+**Automated Testing Framework:**
+```python
+class PromptTestSuite:
+    def __init__(self):
+        self.test_cases = []
+        self.metrics = {}
+        
+    def add_test_case(self, input_data, expected_output, test_name):
+        """Add a test case to the suite"""
+        self.test_cases.append({
+            'input': input_data,
+            'expected': expected_output,
+            'name': test_name
+        })
+        
+    def run_tests(self, prompt_function):
+        """Run all test cases and collect metrics"""
+        results = []
+        
+        for test_case in self.test_cases:
+            actual_output = prompt_function(test_case['input'])
+            
+            # Calculate similarity score
+            similarity = self.calculate_similarity(
+                test_case['expected'], 
+                actual_output
+            )
+            
+            results.append({
+                'test_name': test_case['name'],
+                'passed': similarity > 0.8,
+                'similarity': similarity,
+                'input': test_case['input'],
+                'expected': test_case['expected'],
+                'actual': actual_output
+            })
+            
+        return self.generate_test_report(results)
+        
+    def calculate_similarity(self, expected, actual):
+        """Calculate semantic similarity between expected and actual output"""
+        # Implement similarity calculation (could use embedding similarity)
+        return 0.85  # Placeholder
+        
+    def generate_test_report(self, results):
+        """Generate comprehensive test report"""
+        total_tests = len(results)
+        passed_tests = sum(1 for r in results if r['passed'])
+        
+        return {
+            'total_tests': total_tests,
+            'passed_tests': passed_tests,
+            'success_rate': passed_tests / total_tests,
+            'detailed_results': results
+        }
+```
+
+**A/B Testing for Prompts:**
+```python
+class PromptABTester:
+    def __init__(self):
+        self.experiments = {}
+        self.results = {}
+        
+    def create_experiment(self, experiment_name, prompt_a, prompt_b, success_metric):
+        """Create a new A/B test experiment"""
+        self.experiments[experiment_name] = {
+            'prompt_a': prompt_a,
+            'prompt_b': prompt_b,
+            'success_metric': success_metric,
+            'results_a': [],
+            'results_b': []
+        }
+        
+    def run_experiment(self, experiment_name, test_inputs):
+        """Run A/B test with given inputs"""
+        experiment = self.experiments[experiment_name]
+        
+        for i, input_data in enumerate(test_inputs):
+            # Alternate between prompt A and B
+            if i % 2 == 0:
+                result = self.execute_prompt(experiment['prompt_a'], input_data)
+                experiment['results_a'].append(result)
+            else:
+                result = self.execute_prompt(experiment['prompt_b'], input_data)
+                experiment['results_b'].append(result)
+                
+        return self.analyze_experiment(experiment_name)
+        
+    def analyze_experiment(self, experiment_name):
+        """Analyze experiment results and determine winner"""
+        experiment = self.experiments[experiment_name]
+        
+        # Calculate success metrics for both prompts
+        success_a = self.calculate_success_rate(
+            experiment['results_a'], 
+            experiment['success_metric']
+        )
+        success_b = self.calculate_success_rate(
+            experiment['results_b'], 
+            experiment['success_metric']
+        )
+        
+        return {
+            'experiment': experiment_name,
+            'prompt_a_success': success_a,
+            'prompt_b_success': success_b,
+            'winner': 'A' if success_a > success_b else 'B',
+            'confidence': abs(success_a - success_b)
+        }
+```
+
+### Enterprise Deployment Patterns
+
+**Prompt Version Management:**
+```python
+class PromptVersionManager:
+    def __init__(self):
+        self.versions = {}
+        self.active_versions = {}
+        
+    def register_prompt_version(self, prompt_name, version, prompt_text, metadata=None):
+        """Register a new version of a prompt"""
+        if prompt_name not in self.versions:
+            self.versions[prompt_name] = {}
+            
+        self.versions[prompt_name][version] = {
+            'prompt': prompt_text,
+            'metadata': metadata or {},
+            'created_at': datetime.now(),
+            'usage_count': 0
+        }
+        
+    def deploy_version(self, prompt_name, version, environment='production'):
+        """Deploy a specific version to an environment"""
+        if prompt_name in self.versions and version in self.versions[prompt_name]:
+            if environment not in self.active_versions:
+                self.active_versions[environment] = {}
+                
+            self.active_versions[environment][prompt_name] = version
+            return True
+        return False
+        
+    def get_active_prompt(self, prompt_name, environment='production'):
+        """Get the currently active version of a prompt"""
+        if (environment in self.active_versions and 
+            prompt_name in self.active_versions[environment]):
+            
+            version = self.active_versions[environment][prompt_name]
+            prompt_data = self.versions[prompt_name][version]
+            prompt_data['usage_count'] += 1
+            
+            return prompt_data['prompt']
+        return None
+```
+
+## Key Takeaways
+
+1. **Iterative refinement is essential** for production-quality prompts
+2. **Meta-prompting enables self-improvement** and automated optimization
+3. **Dynamic prompt assembly adapts** to different contexts and requirements
+4. **Security measures prevent prompt injection** and other vulnerabilities
+5. **Testing and validation ensure reliability** in production environments
+6. **A/B testing optimizes performance** through data-driven decisions
+7. **Version management enables safe deployment** and rollback capabilities
+
+Prompt engineering is both an art and a science. The techniques covered in this module provide a foundation for building robust AI applications, but mastery comes through practice and continuous refinement.
+
+## Practical Exercises
+
+### Exercise 1: Classification Task
+Create a few-shot prompt for classifying programming languages from code snippets.
+
+### Exercise 2: ReAct Implementation
+Design a ReAct prompt for a research assistant that can search for information and synthesize findings.
+
+### Exercise 3: Prompt Optimization
+Take a simple prompt and iterate through three versions, documenting improvements at each stage.
+
+### Exercise 4: Error Handling
+Create a robust prompt that gracefully handles edge cases and invalid inputs.
+
+Remember: effective prompt engineering requires understanding both the technical capabilities of language models and the specific needs of your application domain. Practice these techniques with your own use cases to develop expertise in this critical skill for AI application development.

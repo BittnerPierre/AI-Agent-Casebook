@@ -1,0 +1,1069 @@
+# Multi AI Agent Systems - Complete Training Module
+
+## Introduction to Multi-Agent AI Systems
+
+Welcome to Multi AI Agent Systems, where we'll explore the fascinating world of coordinated artificial intelligence. This module covers agent frameworks, orchestration patterns, and practical implementation of multi-agent workflows that can tackle complex problems through collaborative intelligence.
+
+Modern AI applications increasingly benefit from multiple specialized agents working together, each contributing unique capabilities to solve complex, multi-faceted problems. Understanding how to design, coordinate, and deploy multi-agent systems is essential for building scalable AI solutions that can handle real-world complexity.
+
+## Agent Frameworks and Architectural Patterns
+
+### Understanding AI Agents
+
+An AI agent is an autonomous software entity that perceives its environment, makes decisions, and takes actions to achieve specific goals. In multi-agent systems, individual agents collaborate to accomplish tasks that would be difficult or impossible for a single agent.
+
+**Core Agent Characteristics:**
+- **Autonomy**: Operates independently without constant human control
+- **Reactivity**: Responds to environmental changes and stimuli
+- **Proactivity**: Takes initiative to achieve goals
+- **Social Ability**: Communicates and coordinates with other agents
+- **Learning**: Adapts behavior based on experience and feedback
+
+### Agent Architecture Patterns
+
+**Reactive Agents**
+```python
+class ReactiveAgent:
+    def __init__(self, name, rules):
+        self.name = name
+        self.rules = rules  # condition-action rules
+        
+    def perceive(self, environment):
+        """Observe current environment state"""
+        return environment.get_state()
+        
+    def act(self, perception):
+        """Select action based on current perception"""
+        for condition, action in self.rules:
+            if condition(perception):
+                return action
+        return None  # Default: no action
+```
+
+**Deliberative Agents**
+```python
+class DeliberativeAgent:
+    def __init__(self, name, goals, planner):
+        self.name = name
+        self.goals = goals
+        self.planner = planner
+        self.beliefs = {}
+        self.intentions = []
+        
+    def deliberate(self, perception):
+        """Update beliefs and form intentions"""
+        self.update_beliefs(perception)
+        self.form_intentions()
+        return self.planner.create_plan(self.intentions)
+        
+    def update_beliefs(self, perception):
+        """Update internal model of the world"""
+        self.beliefs.update(perception)
+        
+    def form_intentions(self):
+        """Decide what goals to pursue"""
+        self.intentions = self.planner.select_goals(
+            self.goals, self.beliefs
+        )
+```
+
+**Hybrid Agents (BDI - Belief-Desire-Intention)**
+```python
+class BDIAgent:
+    def __init__(self, name):
+        self.name = name
+        self.beliefs = {}      # What the agent knows
+        self.desires = []      # What the agent wants
+        self.intentions = []   # What the agent commits to do
+        
+    def agent_loop(self, perception):
+        # Update beliefs based on perception
+        self.update_beliefs(perception)
+        
+        # Generate new desires/goals
+        new_desires = self.generate_desires()
+        self.desires.extend(new_desires)
+        
+        # Select intentions from desires
+        self.intentions = self.select_intentions(self.desires)
+        
+        # Execute current intentions
+        return self.execute_intentions()
+        
+    def update_beliefs(self, perception):
+        self.beliefs.update(perception)
+        
+    def generate_desires(self):
+        # Generate new goals based on current beliefs
+        return []
+        
+    def select_intentions(self, desires):
+        # Choose which desires to commit to
+        return desires[:3]  # Simple selection
+        
+    def execute_intentions(self):
+        # Execute the first intention
+        if self.intentions:
+            return self.intentions[0].execute()
+        return None
+```
+
+### Modern Agent Frameworks
+
+**LangChain Agents**
+```python
+from langchain.agents import AgentType, initialize_agent
+from langchain.llms import OpenAI
+from langchain.tools import Tool
+
+class LangChainAgentSystem:
+    def __init__(self):
+        self.llm = OpenAI(temperature=0)
+        self.tools = self.setup_tools()
+        
+    def setup_tools(self):
+        return [
+            Tool(
+                name="Calculator",
+                description="Performs mathematical calculations",
+                func=self.calculate
+            ),
+            Tool(
+                name="WebSearch", 
+                description="Searches the web for information",
+                func=self.web_search
+            )
+        ]
+        
+    def create_agent(self, agent_type="ZERO_SHOT_REACT_DESCRIPTION"):
+        return initialize_agent(
+            tools=self.tools,
+            llm=self.llm,
+            agent=getattr(AgentType, agent_type),
+            verbose=True
+        )
+        
+    def calculate(self, expression):
+        try:
+            return str(eval(expression))
+        except:
+            return "Invalid mathematical expression"
+            
+    def web_search(self, query):
+        # Implement web search functionality
+        return f"Search results for: {query}"
+```
+
+**Agent SDK Pattern**
+```python
+class AgentSDK:
+    def __init__(self):
+        self.agents = {}
+        self.message_bus = MessageBus()
+        
+    def register_agent(self, agent):
+        self.agents[agent.name] = agent
+        agent.set_communication_channel(self.message_bus)
+        
+    def create_workflow(self, workflow_definition):
+        workflow = Workflow(workflow_definition)
+        for step in workflow.steps:
+            agent = self.agents.get(step.agent_name)
+            if agent:
+                step.bind_agent(agent)
+        return workflow
+        
+    def execute_workflow(self, workflow, input_data):
+        return workflow.execute(input_data)
+
+class MessageBus:
+    def __init__(self):
+        self.subscribers = {}
+        
+    def subscribe(self, agent_name, message_type, handler):
+        if message_type not in self.subscribers:
+            self.subscribers[message_type] = []
+        self.subscribers[message_type].append((agent_name, handler))
+        
+    def publish(self, message_type, message, sender=None):
+        if message_type in self.subscribers:
+            for agent_name, handler in self.subscribers[message_type]:
+                if agent_name != sender:  # Don't send to self
+                    handler(message)
+```
+
+## Multi-Agent Planning and Coordination
+
+### Coordination Patterns
+
+**Centralized Coordination**
+```python
+class CentralizedCoordinator:
+    def __init__(self, agents):
+        self.agents = agents
+        self.global_state = {}
+        
+    def coordinate_task(self, task):
+        # Decompose task into subtasks
+        subtasks = self.decompose_task(task)
+        
+        # Assign subtasks to agents
+        assignments = self.assign_subtasks(subtasks)
+        
+        # Monitor execution and handle conflicts
+        results = []
+        for agent, subtask in assignments:
+            result = agent.execute(subtask)
+            results.append(result)
+            self.update_global_state(result)
+            
+        return self.combine_results(results)
+        
+    def decompose_task(self, task):
+        # Break down complex task into smaller pieces
+        return task.subtasks
+        
+    def assign_subtasks(self, subtasks):
+        # Assign subtasks to best-suited agents
+        assignments = []
+        for subtask in subtasks:
+            best_agent = self.find_best_agent(subtask)
+            assignments.append((best_agent, subtask))
+        return assignments
+        
+    def find_best_agent(self, subtask):
+        # Simple capability matching
+        for agent in self.agents:
+            if agent.can_handle(subtask):
+                return agent
+        return self.agents[0]  # Fallback
+```
+
+**Decentralized Coordination (Contract Net Protocol)**
+```python
+class ContractNetAgent:
+    def __init__(self, name, capabilities):
+        self.name = name
+        self.capabilities = capabilities
+        self.current_tasks = []
+        
+    def announce_task(self, task):
+        """Announce task and collect bids"""
+        bids = []
+        for agent in self.get_other_agents():
+            bid = agent.submit_bid(task)
+            if bid:
+                bids.append((agent, bid))
+                
+        # Select best bid and award contract
+        if bids:
+            winner_agent, winning_bid = self.select_winner(bids)
+            return self.award_contract(winner_agent, task)
+        return None
+        
+    def submit_bid(self, task):
+        """Submit bid for announced task"""
+        if self.can_handle(task) and not self.overloaded():
+            return self.calculate_bid(task)
+        return None
+        
+    def can_handle(self, task):
+        return task.required_capability in self.capabilities
+        
+    def calculate_bid(self, task):
+        # Calculate bid based on capability, availability, cost
+        base_cost = task.complexity * 10
+        availability_factor = len(self.current_tasks) * 5
+        return base_cost + availability_factor
+        
+    def select_winner(self, bids):
+        # Select bid with lowest cost
+        return min(bids, key=lambda x: x[1].cost)
+```
+
+**Hierarchical Coordination**
+```python
+class HierarchicalAgentSystem:
+    def __init__(self):
+        self.manager_agents = []
+        self.worker_agents = []
+        
+    def add_manager(self, manager):
+        self.manager_agents.append(manager)
+        
+    def add_worker(self, worker, manager):
+        self.worker_agents.append(worker)
+        manager.add_subordinate(worker)
+        
+class ManagerAgent:
+    def __init__(self, name, domain):
+        self.name = name
+        self.domain = domain
+        self.subordinates = []
+        
+    def add_subordinate(self, agent):
+        self.subordinates.append(agent)
+        
+    def delegate_task(self, task):
+        # Find appropriate subordinate for task
+        for subordinate in self.subordinates:
+            if subordinate.can_handle(task):
+                return subordinate.execute(task)
+        
+        # If no direct subordinate can handle, decompose
+        subtasks = self.decompose_task(task)
+        results = []
+        for subtask in subtasks:
+            result = self.delegate_task(subtask)
+            results.append(result)
+        return self.combine_results(results)
+```
+
+### Communication Protocols
+
+**Message Passing Interface**
+```python
+class AgentMessage:
+    def __init__(self, sender, receiver, message_type, content, timestamp=None):
+        self.sender = sender
+        self.receiver = receiver
+        self.message_type = message_type
+        self.content = content
+        self.timestamp = timestamp or datetime.now()
+        
+class CommunicationProtocol:
+    def __init__(self):
+        self.message_queue = []
+        self.protocols = {
+            'request': self.handle_request,
+            'inform': self.handle_inform,
+            'query': self.handle_query,
+            'propose': self.handle_propose
+        }
+        
+    def send_message(self, message):
+        self.message_queue.append(message)
+        self.process_message(message)
+        
+    def process_message(self, message):
+        handler = self.protocols.get(message.message_type)
+        if handler:
+            return handler(message)
+        
+    def handle_request(self, message):
+        # Handle task requests
+        pass
+        
+    def handle_inform(self, message):
+        # Handle information sharing
+        pass
+        
+    def handle_query(self, message):
+        # Handle information queries
+        pass
+        
+    def handle_propose(self, message):
+        # Handle proposals/negotiations
+        pass
+```
+
+**Blackboard Communication**
+```python
+class Blackboard:
+    def __init__(self):
+        self.knowledge_sources = []
+        self.data = {}
+        self.control_strategy = None
+        
+    def add_knowledge_source(self, ks):
+        self.knowledge_sources.append(ks)
+        
+    def write(self, key, value, author):
+        self.data[key] = {
+            'value': value,
+            'author': author,
+            'timestamp': datetime.now()
+        }
+        self.notify_knowledge_sources(key)
+        
+    def read(self, key):
+        return self.data.get(key, {}).get('value')
+        
+    def notify_knowledge_sources(self, changed_key):
+        for ks in self.knowledge_sources:
+            if ks.is_interested_in(changed_key):
+                ks.activate(self)
+                
+class KnowledgeSource:
+    def __init__(self, name, trigger_patterns, action):
+        self.name = name
+        self.trigger_patterns = trigger_patterns
+        self.action = action
+        
+    def is_interested_in(self, key):
+        return any(pattern in key for pattern in self.trigger_patterns)
+        
+    def activate(self, blackboard):
+        return self.action(blackboard)
+```
+
+## Memory and State Management
+
+### Shared Memory Systems
+
+**Distributed Shared Memory**
+```python
+class DistributedSharedMemory:
+    def __init__(self):
+        self.local_memory = {}
+        self.remote_nodes = []
+        self.consistency_protocol = "eventual"
+        
+    def read(self, key):
+        # Check local memory first
+        if key in self.local_memory:
+            return self.local_memory[key]
+            
+        # Query remote nodes
+        for node in self.remote_nodes:
+            value = node.query(key)
+            if value is not None:
+                # Cache locally
+                self.local_memory[key] = value
+                return value
+        return None
+        
+    def write(self, key, value):
+        # Write to local memory
+        self.local_memory[key] = value
+        
+        # Propagate to remote nodes based on consistency model
+        if self.consistency_protocol == "strong":
+            self.synchronous_write(key, value)
+        else:
+            self.asynchronous_write(key, value)
+            
+    def synchronous_write(self, key, value):
+        # Wait for all nodes to acknowledge write
+        for node in self.remote_nodes:
+            node.write_sync(key, value)
+            
+    def asynchronous_write(self, key, value):
+        # Send write requests without waiting
+        for node in self.remote_nodes:
+            node.write_async(key, value)
+```
+
+**Agent Working Memory**
+```python
+class AgentWorkingMemory:
+    def __init__(self, capacity=1000):
+        self.capacity = capacity
+        self.short_term = {}  # Recent, frequently accessed
+        self.long_term = {}   # Persistent, less frequent
+        self.access_count = defaultdict(int)
+        self.access_time = {}
+        
+    def store(self, key, value, importance=1.0):
+        current_time = time.time()
+        
+        # Store in short-term memory
+        self.short_term[key] = {
+            'value': value,
+            'importance': importance,
+            'created': current_time,
+            'accessed': current_time
+        }
+        
+        self.access_time[key] = current_time
+        self.access_count[key] = 1
+        
+        # Manage memory capacity
+        if len(self.short_term) > self.capacity:
+            self.evict_least_important()
+            
+    def retrieve(self, key):
+        current_time = time.time()
+        
+        # Check short-term memory first
+        if key in self.short_term:
+            item = self.short_term[key]
+            item['accessed'] = current_time
+            self.access_count[key] += 1
+            return item['value']
+            
+        # Check long-term memory
+        if key in self.long_term:
+            item = self.long_term[key]
+            # Promote to short-term if frequently accessed
+            if self.access_count[key] > 5:
+                self.short_term[key] = item
+                del self.long_term[key]
+            return item['value']
+            
+        return None
+        
+    def evict_least_important(self):
+        # Move least important items to long-term memory
+        items = list(self.short_term.items())
+        items.sort(key=lambda x: (
+            x[1]['importance'] * self.access_count[x[0]] / 
+            (time.time() - x[1]['accessed'] + 1)
+        ))
+        
+        # Move bottom 20% to long-term memory
+        num_to_evict = len(items) // 5
+        for key, item in items[:num_to_evict]:
+            self.long_term[key] = item
+            del self.short_term[key]
+```
+
+### Context and State Persistence
+
+**Agent State Serialization**
+```python
+import pickle
+import json
+
+class AgentStateManager:
+    def __init__(self, agent_id):
+        self.agent_id = agent_id
+        self.state_file = f"agent_{agent_id}_state.json"
+        
+    def save_state(self, agent):
+        state = {
+            'beliefs': agent.beliefs,
+            'goals': [goal.serialize() for goal in agent.goals],
+            'memory': agent.memory.serialize(),
+            'performance_metrics': agent.metrics,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        with open(self.state_file, 'w') as f:
+            json.dump(state, f, indent=2)
+            
+    def load_state(self, agent):
+        try:
+            with open(self.state_file, 'r') as f:
+                state = json.load(f)
+                
+            agent.beliefs = state['beliefs']
+            agent.goals = [Goal.deserialize(g) for g in state['goals']]
+            agent.memory.deserialize(state['memory'])
+            agent.metrics = state['performance_metrics']
+            return True
+        except FileNotFoundError:
+            return False
+            
+    def checkpoint(self, agent):
+        """Create periodic checkpoint"""
+        checkpoint_file = f"agent_{self.agent_id}_checkpoint_{int(time.time())}.json"
+        self.save_state(agent)
+        # Keep only last 5 checkpoints
+        self.cleanup_old_checkpoints()
+```
+
+## Hands-On: Building a Multi-Agent Research Assistant
+
+### Complete Multi-Agent Implementation
+
+```python
+import asyncio
+from enum import Enum
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
+
+class AgentRole(Enum):
+    COORDINATOR = "coordinator"
+    RESEARCHER = "researcher"
+    ANALYZER = "analyzer"
+    SYNTHESIZER = "synthesizer"
+    REVIEWER = "reviewer"
+
+@dataclass
+class Task:
+    id: str
+    description: str
+    required_role: AgentRole
+    input_data: Any
+    dependencies: List[str] = None
+    status: str = "pending"
+    result: Any = None
+
+class MultiAgentResearchSystem:
+    def __init__(self):
+        self.agents = {}
+        self.task_queue = asyncio.Queue()
+        self.completed_tasks = {}
+        self.workflow_engine = WorkflowEngine()
+        
+    def register_agent(self, agent):
+        self.agents[agent.role] = agent
+        agent.set_system(self)
+        
+    async def execute_research_workflow(self, research_query):
+        """Execute a complete research workflow"""
+        workflow = self.create_research_workflow(research_query)
+        return await self.workflow_engine.execute(workflow)
+        
+    def create_research_workflow(self, query):
+        return [
+            Task("1", "Initial research planning", AgentRole.COORDINATOR, query),
+            Task("2", "Gather research sources", AgentRole.RESEARCHER, None, ["1"]),
+            Task("3", "Analyze source content", AgentRole.ANALYZER, None, ["2"]),
+            Task("4", "Synthesize findings", AgentRole.SYNTHESIZER, None, ["3"]),
+            Task("5", "Review and validate", AgentRole.REVIEWER, None, ["4"])
+        ]
+
+class BaseAgent:
+    def __init__(self, name: str, role: AgentRole, capabilities: List[str]):
+        self.name = name
+        self.role = role
+        self.capabilities = capabilities
+        self.system = None
+        self.memory = AgentWorkingMemory()
+        
+    def set_system(self, system):
+        self.system = system
+        
+    async def execute_task(self, task: Task):
+        """Execute assigned task"""
+        self.memory.store(f"task_{task.id}", task)
+        result = await self.process_task(task)
+        task.result = result
+        task.status = "completed"
+        return result
+        
+    async def process_task(self, task: Task):
+        """Override in specific agent implementations"""
+        raise NotImplementedError
+
+class CoordinatorAgent(BaseAgent):
+    def __init__(self):
+        super().__init__("Coordinator", AgentRole.COORDINATOR, ["planning", "orchestration"])
+        
+    async def process_task(self, task: Task):
+        query = task.input_data
+        research_plan = {
+            "query": query,
+            "search_terms": self.extract_search_terms(query),
+            "research_scope": self.determine_scope(query),
+            "expected_sources": 5,
+            "deadline": "1 hour"
+        }
+        return research_plan
+        
+    def extract_search_terms(self, query):
+        # Simple keyword extraction (in production, use NLP)
+        keywords = query.lower().split()
+        return [kw for kw in keywords if len(kw) > 3]
+        
+    def determine_scope(self, query):
+        if "recent" in query.lower() or "latest" in query.lower():
+            return "current"
+        return "comprehensive"
+
+class ResearcherAgent(BaseAgent):
+    def __init__(self):
+        super().__init__("Researcher", AgentRole.RESEARCHER, ["web_search", "data_collection"])
+        
+    async def process_task(self, task: Task):
+        # Get research plan from coordinator
+        coordinator_result = self.system.completed_tasks.get("1")
+        if not coordinator_result:
+            return {"error": "No research plan available"}
+            
+        plan = coordinator_result.result
+        sources = []
+        
+        for term in plan["search_terms"]:
+            # Simulate web search
+            search_results = await self.web_search(term)
+            sources.extend(search_results)
+            
+        return {
+            "sources": sources[:plan["expected_sources"]],
+            "search_terms_used": plan["search_terms"],
+            "total_sources_found": len(sources)
+        }
+        
+    async def web_search(self, term):
+        # Simulate asynchronous web search
+        await asyncio.sleep(0.1)  # Simulate network delay
+        return [
+            {"url": f"https://example.com/{term}_1", "title": f"Article about {term}", "snippet": f"Content related to {term}"},
+            {"url": f"https://example.com/{term}_2", "title": f"Research on {term}", "snippet": f"Analysis of {term}"}
+        ]
+
+class AnalyzerAgent(BaseAgent):
+    def __init__(self):
+        super().__init__("Analyzer", AgentRole.ANALYZER, ["content_analysis", "pattern_recognition"])
+        
+    async def process_task(self, task: Task):
+        # Get research sources
+        research_result = self.system.completed_tasks.get("2")
+        if not research_result:
+            return {"error": "No research sources available"}
+            
+        sources = research_result.result["sources"]
+        analysis = {
+            "source_analysis": [],
+            "key_themes": [],
+            "reliability_scores": [],
+            "content_summary": ""
+        }
+        
+        for source in sources:
+            source_analysis = await self.analyze_source(source)
+            analysis["source_analysis"].append(source_analysis)
+            
+        # Extract key themes
+        analysis["key_themes"] = self.extract_themes(analysis["source_analysis"])
+        
+        return analysis
+        
+    async def analyze_source(self, source):
+        await asyncio.sleep(0.05)  # Simulate analysis time
+        return {
+            "url": source["url"],
+            "reliability": 0.8,  # Simulated reliability score
+            "key_points": ["Point 1", "Point 2", "Point 3"],
+            "sentiment": "neutral",
+            "relevance": 0.9
+        }
+        
+    def extract_themes(self, source_analyses):
+        # Simple theme extraction (in production, use advanced NLP)
+        themes = set()
+        for analysis in source_analyses:
+            themes.update(analysis["key_points"])
+        return list(themes)[:5]  # Top 5 themes
+
+class SynthesizerAgent(BaseAgent):
+    def __init__(self):
+        super().__init__("Synthesizer", AgentRole.SYNTHESIZER, ["content_synthesis", "report_generation"])
+        
+    async def process_task(self, task: Task):
+        # Get analysis results
+        analysis_result = self.system.completed_tasks.get("3")
+        if not analysis_result:
+            return {"error": "No analysis available"}
+            
+        analysis = analysis_result.result
+        
+        synthesis = {
+            "executive_summary": self.create_summary(analysis),
+            "detailed_findings": self.organize_findings(analysis),
+            "recommendations": self.generate_recommendations(analysis),
+            "sources_used": len(analysis["source_analysis"]),
+            "confidence_level": self.calculate_confidence(analysis)
+        }
+        
+        return synthesis
+        
+    def create_summary(self, analysis):
+        themes = analysis["key_themes"]
+        return f"Research identified {len(themes)} key themes: {', '.join(themes[:3])}..."
+        
+    def organize_findings(self, analysis):
+        findings = []
+        for i, theme in enumerate(analysis["key_themes"]):
+            findings.append({
+                "theme": theme,
+                "supporting_sources": min(i + 1, 3),
+                "confidence": 0.8 - (i * 0.1)
+            })
+        return findings
+        
+    def generate_recommendations(self, analysis):
+        return [
+            "Further research needed in identified themes",
+            "Validate findings with additional sources",
+            "Consider expert consultation for complex topics"
+        ]
+        
+    def calculate_confidence(self, analysis):
+        if len(analysis["source_analysis"]) >= 3:
+            return 0.8
+        return 0.6
+
+class ReviewerAgent(BaseAgent):
+    def __init__(self):
+        super().__init__("Reviewer", AgentRole.REVIEWER, ["quality_assessment", "validation"])
+        
+    async def process_task(self, task: Task):
+        # Get synthesis results
+        synthesis_result = self.system.completed_tasks.get("4")
+        if not synthesis_result:
+            return {"error": "No synthesis available"}
+            
+        synthesis = synthesis_result.result
+        
+        review = {
+            "quality_score": self.assess_quality(synthesis),
+            "completeness": self.check_completeness(synthesis),
+            "recommendations": self.review_recommendations(synthesis),
+            "approval_status": "approved",
+            "reviewer_notes": "Research workflow completed successfully"
+        }
+        
+        return review
+        
+    def assess_quality(self, synthesis):
+        # Simple quality assessment
+        base_score = 0.7
+        if synthesis["confidence_level"] > 0.7:
+            base_score += 0.1
+        if synthesis["sources_used"] >= 3:
+            base_score += 0.1
+        return min(base_score, 1.0)
+        
+    def check_completeness(self, synthesis):
+        required_sections = ["executive_summary", "detailed_findings", "recommendations"]
+        return all(section in synthesis for section in required_sections)
+        
+    def review_recommendations(self, synthesis):
+        return ["Research meets quality standards", "Results can be used for decision making"]
+
+class WorkflowEngine:
+    async def execute(self, workflow: List[Task]):
+        system = None  # Will be set by the agent system
+        completed_tasks = {}
+        
+        for task in workflow:
+            # Check dependencies
+            if task.dependencies:
+                for dep_id in task.dependencies:
+                    if dep_id not in completed_tasks:
+                        raise ValueError(f"Dependency {dep_id} not completed for task {task.id}")
+            
+            # Find appropriate agent
+            agent = system.agents.get(task.required_role)
+            if not agent:
+                raise ValueError(f"No agent available for role {task.required_role}")
+                
+            # Execute task
+            result = await agent.execute_task(task)
+            completed_tasks[task.id] = task
+            system.completed_tasks[task.id] = task
+            
+        return completed_tasks
+
+# Usage Example
+async def main():
+    # Create multi-agent system
+    research_system = MultiAgentResearchSystem()
+    
+    # Register agents
+    research_system.register_agent(CoordinatorAgent())
+    research_system.register_agent(ResearcherAgent())
+    research_system.register_agent(AnalyzerAgent())
+    research_system.register_agent(SynthesizerAgent())
+    research_system.register_agent(ReviewerAgent())
+    
+    # Execute research workflow
+    query = "What are the latest developments in artificial intelligence safety?"
+    results = await research_system.execute_research_workflow(query)
+    
+    # Print results
+    for task_id, task in results.items():
+        print(f"Task {task_id}: {task.status}")
+        if task.result:
+            print(f"  Result: {task.result}")
+
+# Run the example
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Advanced Multi-Agent Patterns
+
+### Swarm Intelligence
+
+**Particle Swarm Optimization for Agent Coordination**
+```python
+class SwarmAgent:
+    def __init__(self, position, velocity):
+        self.position = position
+        self.velocity = velocity
+        self.best_position = position.copy()
+        self.best_fitness = float('-inf')
+        
+    def update(self, global_best_position, inertia=0.7, cognitive=1.5, social=1.5):
+        # Update velocity based on personal and global best
+        r1, r2 = random.random(), random.random()
+        
+        cognitive_component = cognitive * r1 * (self.best_position - self.position)
+        social_component = social * r2 * (global_best_position - self.position)
+        
+        self.velocity = (inertia * self.velocity + 
+                        cognitive_component + 
+                        social_component)
+        
+        # Update position
+        self.position += self.velocity
+        
+        # Evaluate fitness and update personal best
+        fitness = self.evaluate_fitness()
+        if fitness > self.best_fitness:
+            self.best_fitness = fitness
+            self.best_position = self.position.copy()
+            
+    def evaluate_fitness(self):
+        # Problem-specific fitness function
+        return -sum(x**2 for x in self.position)  # Minimize sum of squares
+```
+
+### Emergence and Self-Organization
+
+**Emergent Behavior System**
+```python
+class EmergentAgentSystem:
+    def __init__(self, num_agents):
+        self.agents = [SimpleAgent(i) for i in range(num_agents)]
+        self.environment = Environment()
+        
+    def simulate_step(self):
+        # All agents observe environment
+        observations = [self.environment.get_local_observation(agent) 
+                       for agent in self.agents]
+        
+        # Agents decide on actions
+        actions = [agent.decide_action(obs) 
+                  for agent, obs in zip(self.agents, observations)]
+        
+        # Execute actions and update environment
+        self.environment.update(actions)
+        
+        # Measure emergent properties
+        return self.measure_emergence()
+        
+    def measure_emergence(self):
+        # Measure system-level properties that emerge from agent interactions
+        return {
+            'clustering_coefficient': self.calculate_clustering(),
+            'information_flow': self.measure_information_flow(),
+            'synchronization': self.measure_synchronization()
+        }
+```
+
+## Production Deployment and Scaling
+
+### Distributed Agent Deployment
+
+**Microservices Agent Architecture**
+```python
+from flask import Flask, request, jsonify
+import requests
+
+class AgentMicroservice:
+    def __init__(self, agent, port):
+        self.agent = agent
+        self.app = Flask(__name__)
+        self.port = port
+        self.setup_routes()
+        
+    def setup_routes(self):
+        @self.app.route('/execute', methods=['POST'])
+        def execute_task():
+            task_data = request.json
+            result = self.agent.execute(task_data)
+            return jsonify(result)
+            
+        @self.app.route('/health', methods=['GET'])
+        def health_check():
+            return jsonify({'status': 'healthy', 'agent': self.agent.name})
+            
+    def run(self):
+        self.app.run(host='0.0.0.0', port=self.port)
+
+class DistributedAgentOrchestrator:
+    def __init__(self):
+        self.agent_registry = {}
+        
+    def register_agent_service(self, agent_type, host, port):
+        self.agent_registry[agent_type] = f"http://{host}:{port}"
+        
+    async def execute_distributed_task(self, task):
+        agent_url = self.agent_registry.get(task.required_agent_type)
+        if not agent_url:
+            raise ValueError(f"No agent service for type {task.required_agent_type}")
+            
+        response = requests.post(f"{agent_url}/execute", json=task.to_dict())
+        return response.json()
+```
+
+### Performance Monitoring and Optimization
+
+**Agent Performance Metrics**
+```python
+class AgentPerformanceMonitor:
+    def __init__(self):
+        self.metrics = defaultdict(list)
+        
+    def record_task_execution(self, agent_id, task_type, execution_time, success):
+        self.metrics[agent_id].append({
+            'task_type': task_type,
+            'execution_time': execution_time,
+            'success': success,
+            'timestamp': datetime.now()
+        })
+        
+    def get_agent_performance(self, agent_id):
+        agent_metrics = self.metrics[agent_id]
+        if not agent_metrics:
+            return None
+            
+        total_tasks = len(agent_metrics)
+        successful_tasks = sum(1 for m in agent_metrics if m['success'])
+        avg_execution_time = sum(m['execution_time'] for m in agent_metrics) / total_tasks
+        
+        return {
+            'agent_id': agent_id,
+            'total_tasks': total_tasks,
+            'success_rate': successful_tasks / total_tasks,
+            'avg_execution_time': avg_execution_time,
+            'tasks_per_hour': self.calculate_throughput(agent_metrics)
+        }
+        
+    def calculate_throughput(self, metrics):
+        if len(metrics) < 2:
+            return 0
+            
+        start_time = metrics[0]['timestamp']
+        end_time = metrics[-1]['timestamp']
+        duration_hours = (end_time - start_time).total_seconds() / 3600
+        
+        return len(metrics) / duration_hours if duration_hours > 0 else 0
+```
+
+## Key Takeaways
+
+1. **Multi-agent systems enable complex problem solving** through collaborative intelligence
+2. **Agent architectures vary** from simple reactive to sophisticated BDI models
+3. **Coordination patterns** include centralized, decentralized, and hierarchical approaches
+4. **Communication protocols** are essential for effective agent collaboration
+5. **Memory and state management** enable agents to learn and adapt over time
+6. **Emergent behaviors** can arise from simple agent interactions
+7. **Production deployment** requires consideration of distributed architectures and monitoring
+
+Multi-agent AI systems represent the future of complex AI applications, enabling sophisticated problem-solving through collaborative intelligence. The patterns and techniques covered in this module provide the foundation for building scalable, robust multi-agent systems that can tackle real-world challenges.
+
+## Practical Exercises
+
+### Exercise 1: Agent Communication Protocol
+Implement a complete communication protocol for agents including message passing, negotiation, and conflict resolution.
+
+### Exercise 2: Swarm Intelligence Application
+Build a swarm intelligence system to solve an optimization problem (e.g., pathfinding, resource allocation).
+
+### Exercise 3: Hierarchical Multi-Agent System
+Design and implement a hierarchical multi-agent system for a complex domain (e.g., supply chain management, smart city).
+
+### Exercise 4: Emergent Behavior Analysis
+Create an agent-based simulation and analyze emergent behaviors that arise from simple interaction rules.
+
+### Exercise 5: Production Multi-Agent Platform
+Build a production-ready multi-agent platform with distributed deployment, monitoring, and scaling capabilities.
+
+The future of AI lies in collaborative intelligence, where multiple specialized agents work together to solve complex problems that no single agent could handle alone. Master these concepts to build the next generation of intelligent systems.

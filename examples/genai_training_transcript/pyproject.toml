@@ -15,7 +15,7 @@ run_training_manager = "training_manager.main:cli_main"
 transcript-generator = "cli.transcript_generator_cli:main"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 pydantic = "^2.0"
 pydantic-ai = "^0.0.13"
 anthropic = "^0.40.0"

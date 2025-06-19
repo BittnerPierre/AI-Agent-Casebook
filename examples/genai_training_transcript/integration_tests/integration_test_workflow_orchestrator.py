@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from transcript_generator.workflow_orchestrator import WorkflowOrchestrator, WorkflowConfig
 
