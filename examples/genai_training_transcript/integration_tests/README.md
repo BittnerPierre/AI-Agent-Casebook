@@ -35,15 +35,21 @@ npx @modelcontextprotocol/server-filesystem data/training_courses/
 
 ### Running Tests
 
+Integration tests are designed as standalone Python scripts, not pytest tests:
+
 ```bash
 # Run all integration tests
-poetry run pytest integration_tests/ -v
+for test in integration_tests/integration_test_*.py; do
+    echo "=== Running $test ==="
+    poetry run python "$test"
+    echo
+done
 
 # Run specific integration test
-poetry run pytest integration_tests/integration_test_workflow_orchestrator.py -v
+poetry run python integration_tests/integration_test_workflow_orchestrator.py
 
-# Run with detailed output
-poetry run pytest integration_tests/ -v -s
+# Run CLI end-to-end test
+poetry run python integration_tests/integration_test_cli_end_to_end.py
 ```
 
 ## Test Data
