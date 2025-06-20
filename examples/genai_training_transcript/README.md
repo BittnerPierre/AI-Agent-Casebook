@@ -43,12 +43,65 @@ export LANGSMITH_PROJECT=story-ops
 
 ### 1. Prepare Training Data
 
-Run the training manager to preprocess raw transcripts:
+The training manager preprocesses raw transcripts into cleaned content and metadata. It supports two input formats:
+
+#### Single File Mode
+Process individual transcript files:
 
 ```bash
-poetry run run_training_manager \
-  --course-path data/training_courses/<course_name> \
-  [--overwrite]
+# Process full course transcripts
+poetry run run_training_manager --course-path data/training_courses/full/Course_Name.txt
+
+# Process smoke test transcripts (smaller, faster)
+poetry run run_training_manager --course-path data/training_courses/smoke_tests/Course_Smoke_Test.txt
+
+# Process individual chapters
+poetry run run_training_manager --course-path data/training_courses/chapters/Course_Chapter1_Topic.txt
+```
+
+#### Multi-Module Directory Mode
+Process courses with multiple transcript files:
+
+```bash
+# Process multi-module courses (expects CourseID - Title/transcripts/*.txt structure)
+poetry run run_training_manager --course-path "data/training_courses/CourseID - Course Title"
+```
+
+#### Options
+- `--overwrite`: Regenerate existing cleaned transcripts and metadata
+- `--mcp-endpoint`: MCP server endpoint (default: stdio://)
+
+#### Input Data Structure
+
+The system expects training data organized as follows:
+
+```
+data/training_courses/
+├── full/                          # Complete course transcripts (single file mode)
+│   ├── Course_Name.txt
+│   └── Another_Course.txt
+├── smoke_tests/                   # Quick test transcripts (single file mode)
+│   ├── Course_Smoke_Test.txt
+│   └── Another_Smoke_Test.txt
+├── chapters/                      # Individual chapter files (single file mode)
+│   ├── Course_Chapter1_Topic.txt
+│   └── Course_Chapter2_Advanced.txt
+└── CourseID - Course Title/       # Multi-module course (directory mode)
+    └── transcripts/
+        └── module1_en - Course - 1 - Introduction.txt
+```
+
+#### Output Structure
+
+The training manager generates:
+
+```
+output/
+└── <CourseID>/
+    ├── cleaned_transcripts/       # Preprocessed Markdown files
+    │   └── <module_id>.md
+    └── metadata/                  # Course metadata and index
+        └── index.json
 ```
 
 ### 2. Generate Training Content

@@ -11,7 +11,7 @@ readme = "README.md"
 packages = [{include = "src"}]
 
 [tool.poetry.scripts]
-run_training_manager = "training_manager.main:cli_main"
+run_training_manager = "src.training_manager.main:cli_main"
 transcript-generator = "cli.transcript_generator_cli:main"
 
 [tool.poetry.dependencies]
