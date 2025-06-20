@@ -29,8 +29,8 @@ class TrainingManager:
             # Handle multi-module directory course
             course_id, course_title, modules, transcripts_dir = self._process_directory_course(course_path)
 
-        # Prepare output directories
-        output_base = os.path.join("output", course_id)
+        # Prepare output directories (use knowledge_db instead of output)
+        output_base = os.path.join("knowledge_db", course_id)
         cleaned_dir = os.path.join(output_base, "cleaned_transcripts")
         metadata_dir = os.path.join(output_base, "metadata")
         

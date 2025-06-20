@@ -19,8 +19,8 @@ class KnowledgeRetriever:
     processed training data without direct coupling to training_manager.
     """
     
-    def __init__(self, output_path: str = "output"):
-        self.bridge = TrainingDataBridge(output_path)
+    def __init__(self, knowledge_db_path: str = "knowledge_db"):
+        self.bridge = TrainingDataBridge(knowledge_db_path)
     
     async def get_related_content(self, topic_keywords: list[str], limit: int = 5) -> list[dict[str, Any]]:
         """Get relevant transcript content for given topics."""
