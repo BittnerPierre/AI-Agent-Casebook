@@ -38,6 +38,10 @@ from transcript_generator.workflow_orchestrator import (
     WorkflowResult,
 )
 
+# Add integration_tests to path for utils
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../integration_tests'))
+from test_utils import transform_syllabus_structure
+
 
 class CLIFormatter:
     """Rich console formatter for CLI output"""
@@ -158,25 +162,33 @@ class TranscriptGeneratorCLI:
             # Load syllabus using existing loader
             syllabus_modules = load_syllabus(syllabus_path)
             
+            # Transform to WorkflowOrchestrator compatible structure
+            sections = transform_syllabus_structure(syllabus_modules)
+            
             # Convert to structured format for WorkflowOrchestrator
             syllabus = {
                 "course_title": "AI Engineer Basic Course",  # Default title
-                "modules": syllabus_modules,
+                "sections": sections,  # Fix: use "sections" instead of "modules"
                 "source_file": syllabus_path
             }
             
-            self.formatter.print_success(f"Syllabus loaded: {len(syllabus_modules)} modules found")
+            self.formatter.print_success(f"Syllabus loaded: {len(sections)} sections found")
             
-            # Display modules
-            table = Table(title="📚 Course Modules")
-            table.add_column("Module", style="cyan")
-            table.add_column("Description", style="white")
+            # Display sections (updated table title and content)
+            table = Table(title="📚 Course Sections")
+            table.add_column("Section", style="cyan")
+            table.add_column("Title", style="white")
+            table.add_column("Section ID", style="magenta")
             
-            for i, module in enumerate(syllabus_modules, 1):
-                if isinstance(module, dict):
-                    table.add_row(f"Module {i}", module.get('title', 'Untitled'))
+            for i, section in enumerate(sections, 1):
+                if isinstance(section, dict):
+                    table.add_row(
+                        f"Section {i}", 
+                        section.get('title', 'Untitled'),
+                        section.get('section_id', 'unknown')
+                    )
                 else:
-                    table.add_row(f"Module {i}", str(module))
+                    table.add_row(f"Section {i}", str(section), "unknown")
             
             self.console.print(table)
             return syllabus
@@ -259,7 +271,7 @@ class TranscriptGeneratorCLI:
                 "execution_time": workflow_result.execution_time,
                 "syllabus_source": syllabus.get("source_file"),
                 "course_title": syllabus.get("course_title"),
-                "module_count": len(syllabus.get("modules", []))
+                "section_count": len(syllabus.get("sections", []))
             },
             "output_files": {
                 "final_transcript": workflow_result.final_transcript_path,

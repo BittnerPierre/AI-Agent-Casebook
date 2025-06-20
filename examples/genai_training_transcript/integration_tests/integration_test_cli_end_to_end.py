@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from test_utils import evaluate_critical_test_success
 
 def run_cli_end_to_end_test():
     """Run complete end-to-end test via CLI"""
@@ -95,103 +96,102 @@ def run_cli_end_to_end_test():
         end_time = time.time()
         execution_time = end_time - start_time
             
-            print(f"\n📊 CLI Execution Results:")
-            print("=" * 40)
-            print(f"Return Code: {result.returncode}")
-            print(f"Execution Time: {execution_time:.2f} seconds")
-            
-            # Show stdout
-            if result.stdout:
-                print(f"\n📄 CLI Output:")
-                print("-" * 30)
-                print(result.stdout[-2000:])  # Last 2000 chars to avoid overflow
-                
-            # Show stderr if there are errors
-            if result.stderr:
-                print(f"\n🚨 CLI Errors/Warnings:")
-                print("-" * 30) 
-                print(result.stderr[-1000:])  # Last 1000 chars
-                
-            # Validate outputs
-            print(f"\n🔍 Validating Outputs...")
+        print(f"\n📊 CLI Execution Results:")
+        print("=" * 40)
+        print(f"Return Code: {result.returncode}")
+        print(f"Execution Time: {execution_time:.2f} seconds")
+        
+        # Show stdout
+        if result.stdout:
+            print(f"\n📄 CLI Output:")
             print("-" * 30)
+            print(result.stdout[-2000:])  # Last 2000 chars to avoid overflow
             
-            success_criteria = {
-                "cli_exit_success": result.returncode == 0,
-                "output_dir_created": output_dir.exists(),
-                "execution_time_reasonable": execution_time < 600,  # 10 minutes max
-            }
+        # Show stderr if there are errors
+        if result.stderr:
+            print(f"\n🚨 CLI Errors/Warnings:")
+            print("-" * 30) 
+            print(result.stderr[-1000:])  # Last 1000 chars
             
-            # Check for expected output files
-            if output_dir.exists():
-                output_files = list(output_dir.rglob("*"))
-                success_criteria["output_files_created"] = len(output_files) > 0
-                print(f"   📁 Output files created: {len(output_files)}")
-                
-                # Look for specific expected outputs
-                expected_outputs = [
-                    "*.md",      # Final transcripts
-                    "*.json",    # Metadata and quality reports
-                    "research_notes",  # Research phase outputs
-                    "quality_issues"   # Quality assessment outputs
-                ]
-                
-                for pattern in expected_outputs:
-                    matches = list(output_dir.rglob(pattern))
-                    if matches:
-                        print(f"   ✅ Found {pattern}: {len(matches)} files")
-                    else:
-                        print(f"   ⚠️  Missing {pattern}")
-                        
-            else:
-                success_criteria["output_files_created"] = False
-                print(f"   ❌ Output directory not created")
-                
-            # Check for LangSmith integration evidence
-            langsmith_evidence = False
-            if result.stdout and ("langsmith" in result.stdout.lower() or "evaluation" in result.stdout.lower()):
-                langsmith_evidence = True
-                print(f"   ✅ LangSmith integration evidence found in output")
-            else:
-                print(f"   ⚠️  No LangSmith integration evidence in output")
-                
-            success_criteria["langsmith_integration"] = langsmith_evidence
-                
-            # Calculate success rate
-            passed_criteria = sum(success_criteria.values())
-            total_criteria = len(success_criteria)
-            success_rate = (passed_criteria / total_criteria) * 100
+        # Validate outputs
+        print(f"\n🔍 Validating Outputs...")
+        print("-" * 30)
+        
+        success_criteria = {
+            "cli_exit_success": result.returncode == 0,
+            "core_functionality": result.returncode == 0,  # Critical: CLI must work
+            "output_dir_created": output_dir.exists(),
+            "execution_time_reasonable": execution_time < 600,  # 10 minutes max
+        }
+        
+        # Check for expected output files
+        if output_dir.exists():
+            output_files = list(output_dir.rglob("*"))
+            success_criteria["output_files_created"] = len(output_files) > 0
+            print(f"   📁 Output files created: {len(output_files)}")
             
-            print(f"\n📈 Success Criteria: {passed_criteria}/{total_criteria} passed ({success_rate:.1f}%)")
-            for criterion, passed in success_criteria.items():
-                status = "✅" if passed else "❌"
-                print(f"   {status} {criterion.replace('_', ' ').title()}")
-                
-            # Overall result
-            print(f"\n" + "=" * 60)
-            if success_rate >= 80:
-                print(f"🎉 END-TO-END CLI TEST PASSED ({success_rate:.1f}%)")
-                print(f"✅ System ready for production use")
-                return True
-            elif success_rate >= 60:
-                print(f"⚠️  END-TO-END CLI TEST PARTIAL ({success_rate:.1f}%)")
-                print(f"🔧 Some issues detected - review before UAT")
-                return True
-            else:
-                print(f"❌ END-TO-END CLI TEST FAILED ({success_rate:.1f}%)")
-                print(f"🚨 Critical issues detected - requires fixes")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            print(f"\n⏰ CLI test timed out after 10 minutes")
-            print(f"❌ This may indicate performance issues or hanging processes")
+            # Look for specific expected outputs
+            expected_outputs = [
+                "*.md",      # Final transcripts
+                "*.json",    # Metadata and quality reports
+                "research_notes",  # Research phase outputs
+                "quality_issues"   # Quality assessment outputs
+            ]
+            
+            for pattern in expected_outputs:
+                matches = list(output_dir.rglob(pattern))
+                if matches:
+                    print(f"   ✅ Found {pattern}: {len(matches)} files")
+                else:
+                    print(f"   ⚠️  Missing {pattern}")
+                    
+        else:
+            success_criteria["output_files_created"] = False
+            print(f"   ❌ Output directory not created")
+            
+        # Check for LangSmith integration evidence
+        langsmith_evidence = False
+        if result.stdout and ("langsmith" in result.stdout.lower() or "evaluation" in result.stdout.lower()):
+            langsmith_evidence = True
+            print(f"   ✅ LangSmith integration evidence found in output")
+        else:
+            print(f"   ⚠️  No LangSmith integration evidence in output")
+            
+        success_criteria["langsmith_integration"] = langsmith_evidence
+        
+        # Use strict evaluation criteria from test_utils
+        is_success, message = evaluate_critical_test_success(
+            result, 
+            success_criteria, 
+            critical_keys=["cli_exit_success", "core_functionality"]
+        )
+        
+        print(f"\n📈 Evaluation Result: {message}")
+        for criterion, passed in success_criteria.items():
+            status = "✅" if passed else "❌"
+            print(f"   {status} {criterion.replace('_', ' ').title()}")
+            
+        # Overall result
+        print(f"\n" + "=" * 60)
+        if is_success:
+            print(f"🎉 END-TO-END CLI TEST PASSED")
+            print(f"✅ System ready for production use")
+            return True
+        else:
+            print(f"❌ END-TO-END CLI TEST FAILED")
+            print(f"🚨 Critical issues detected - requires fixes")
             return False
             
-        except Exception as e:
-            print(f"\n💥 CLI test crashed: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
+    except subprocess.TimeoutExpired:
+        print(f"\n⏰ CLI test timed out after 10 minutes")
+        print(f"❌ This may indicate performance issues or hanging processes")
+        return False
+        
+    except Exception as e:
+        print(f"\n💥 CLI test crashed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
     print("🧪 End-to-End CLI Integration Test")
