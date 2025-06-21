@@ -125,8 +125,9 @@ class TranscriptGeneratorCLI:
         self.formatter.print_phase("Knowledge Base Validation", "Checking knowledge base availability...")
         
         try:
-            # Check Knowledge Bridge MCP Server
-            knowledge_mcp_server = create_knowledge_mcp_server(output_dir)
+            # Check Knowledge Bridge MCP Server (use knowledge_db, not output_dir)
+            knowledge_db_dir = "knowledge_db"  # Separate from output_dir
+            knowledge_mcp_server = create_knowledge_mcp_server(knowledge_db_dir)
             health = knowledge_mcp_server.health_check()
             
             if health.get("server_status") != "healthy":

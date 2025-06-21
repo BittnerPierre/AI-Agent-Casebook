@@ -6,6 +6,31 @@ import re
 from typing import Any, Dict, List, Tuple
 
 
+def extract_keywords_from_title(title: str) -> list[str]:
+    """Extract relevant keywords from module title for content search."""
+    # Remove common stop words and extract meaningful terms
+    stop_words = {"for", "with", "the", "and", "or", "to", "in", "on", "at", "by", "from"}
+    
+    # Clean and split title
+    words = re.sub(r'[^\w\s]', '', title.lower()).split()
+    
+    # Filter out stop words and short words
+    keywords = [word for word in words if len(word) > 2 and word not in stop_words]
+    
+    # Also include meaningful phrases
+    phrases = []
+    if "prompt engineering" in title.lower():
+        phrases.append("prompt engineering")
+    if "retrieval" in title.lower() and "ai" in title.lower():
+        phrases.append("retrieval")
+    if "multi" in title.lower() and "agent" in title.lower():
+        phrases.append("multi agent")
+    if "chatgpt" in title.lower() or "api" in title.lower():
+        phrases.append("chatgpt api")
+    
+    return keywords + phrases
+
+
 def evaluate_critical_test_success(result: Any, success_criteria: Dict[str, bool], critical_keys: List[str] = None) -> Tuple[bool, str]:
     """
     Strict evaluation with mandatory critical criteria
@@ -84,7 +109,7 @@ def transform_syllabus_structure(syllabus_modules: List[Dict[str, Any]]) -> List
             "section_id": section_id,
             "title": module["title"],
             "learning_objectives": module.get("objectives", []),  # mapping: objectives → learning_objectives
-            "key_topics": [],  # TODO: extract from syllabus if available
+            "key_topics": extract_keywords_from_title(module["title"]),
             "estimated_duration": "45 minutes"  # reasonable default value
         }
         
