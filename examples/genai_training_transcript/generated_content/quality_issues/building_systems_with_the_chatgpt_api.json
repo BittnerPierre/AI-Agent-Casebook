@@ -1,0 +1,18 @@
+{
+  "section_id": "building_systems_with_the_chatgpt_api",
+  "issues": [
+    {
+      "description": "Learning objectives not clearly addressed: `Prompt_Engineering_for_Developers.txt`, `Advanced_Retrieval_for_AI.txt`...",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Key topics not adequately covered: building, systems, chatgpt...",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Content is too short (30 words)",
+      "severity": "ERROR"
+    }
+  ],
+  "approved": false
+}
