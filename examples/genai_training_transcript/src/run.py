@@ -41,8 +41,8 @@ async def main(config_path: str):
 
     # Initialize Knowledge Bridge MCP Server for US-001
     print("🔗 Initializing Knowledge Bridge MCP interface...")
-    output_base_path = config.get("output_dir", "output")
-    knowledge_mcp_server = create_knowledge_mcp_server(output_base_path)
+    knowledge_db_path = config.get("knowledge_db_dir", "knowledge_db")
+    knowledge_mcp_server = create_knowledge_mcp_server(knowledge_db_path)
     
     # Check knowledge availability
     health = knowledge_mcp_server.health_check()

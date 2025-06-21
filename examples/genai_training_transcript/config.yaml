@@ -9,7 +9,9 @@ preprocessed_dir: data/preprocessed
 course_agenda_path: research_agenda/course_agenda.md
 research_notes_dir: research_notes
 drafts_dir: drafts
-# Final output directory for generated module scripts
-output_dir: output
+# Knowledge database directory (training manager outputs)
+knowledge_db_dir: knowledge_db
+# Generated content directory (transcript generator outputs)
+output_dir: generated_content
 # Maximum number of editing revisions per chapter (stub setting)
 max_revisions: 2

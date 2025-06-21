@@ -20,9 +20,9 @@ def run_cli_end_to_end_test():
     print("🚀 Starting End-to-End CLI Integration Test")
     print("=" * 60)
     
-    # Use existing output directory with preprocessed data
+    # Use generated_content directory for transcript generator outputs
     base_dir = Path(__file__).parent.parent
-    output_dir = base_dir / "output"
+    output_dir = base_dir / "generated_content"
     
     print(f"📁 Using output directory: {output_dir}")
     
