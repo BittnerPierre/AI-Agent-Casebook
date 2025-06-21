@@ -27,6 +27,14 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file for OPENAI_API_KEY and other environment variables
+except ImportError:
+    # dotenv not available, environment variables must be set manually
+    pass
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
 
@@ -119,6 +127,27 @@ class TranscriptGeneratorCLI:
             ]
         )
         self.logger = logging.getLogger(__name__)
+    
+    def validate_environment(self) -> bool:
+        """Validate required environment variables"""
+        self.formatter.print_phase("Environment Validation", "Checking required environment variables...")
+        
+        required_vars = ["OPENAI_API_KEY"]
+        missing_vars = []
+        
+        for var in required_vars:
+            if not os.getenv(var):
+                missing_vars.append(var)
+        
+        if missing_vars:
+            self.formatter.print_error(f"Missing environment variables: {', '.join(missing_vars)}")
+            self.formatter.print_info("Create a .env file with required variables or set them manually")
+            self.formatter.print_info("Example .env content:")
+            self.formatter.print_info("OPENAI_API_KEY=your_openai_api_key_here")
+            return False
+        
+        self.formatter.print_success("All required environment variables are set")
+        return True
     
     async def validate_knowledge_base(self, output_dir: str) -> bool:
         """Validate knowledge base availability and health"""
@@ -347,28 +376,33 @@ def main(syllabus, output_dir, config, overwrite, max_retries, timeout, continue
     async def run_workflow():
         """Async workflow execution"""
         try:
-            # 1. Validate knowledge base
+            # 1. Validate environment variables
+            if not cli.validate_environment():
+                cli.formatter.print_error("Environment validation failed. Aborting.")
+                return False
+            
+            # 2. Validate knowledge base
             if not await cli.validate_knowledge_base(output_dir):
                 cli.formatter.print_error("Knowledge base validation failed. Aborting.")
                 return False
             
-            # 2. Validate syllabus
+            # 3. Validate syllabus
             syllabus_data = cli.validate_syllabus(syllabus)
             if not syllabus_data:
                 cli.formatter.print_error("Syllabus validation failed. Aborting.")
                 return False
             
-            # 3. Setup directories
+            # 4. Setup directories
             directories = cli.setup_output_directories(output_dir)
             
             if dry_run:
                 cli.formatter.print_success("Dry run completed successfully. All validations passed.")
                 return True
             
-            # 4. Execute workflow
+            # 5. Execute workflow
             workflow_result = await cli.execute_workflow(syllabus_data, directories, cli_config)
             
-            # 5. Generate report
+            # 6. Generate report
             report_path = cli.generate_execution_report(workflow_result, directories, syllabus_data)
             
             if workflow_result.success:

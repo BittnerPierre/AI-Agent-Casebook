@@ -1,0 +1,28 @@
+{
+  "execution_metadata": {
+    "timestamp": "2025-06-21T09:55:49.282078",
+    "success": true,
+    "execution_time": 1.018104,
+    "syllabus_source": "/Users/pierrebittner/Documents/GitHub/Agents/cursor/AI-Agent-Casebook/examples/genai_training_transcript/syllabus.md",
+    "course_title": "AI Engineer Basic Course",
+    "section_count": 4
+  },
+  "output_files": {
+    "final_transcript": "/Users/pierrebittner/Documents/GitHub/Agents/cursor/AI-Agent-Casebook/examples/genai_training_transcript/generated_content/final_transcript.md",
+    "quality_summary": "/Users/pierrebittner/Documents/GitHub/Agents/cursor/AI-Agent-Casebook/examples/genai_training_transcript/generated_content/quality_issues/quality_summary.json",
+    "research_notes_dir": "/Users/pierrebittner/Documents/GitHub/Agents/cursor/AI-Agent-Casebook/examples/genai_training_transcript/generated_content/research_notes",
+    "quality_issues_dir": "/Users/pierrebittner/Documents/GitHub/Agents/cursor/AI-Agent-Casebook/examples/genai_training_transcript/generated_content/quality_issues"
+  },
+  "quality_metrics": {
+    "total_issues": 12,
+    "error_count": 4,
+    "warning_count": 8,
+    "sections_with_errors": 4,
+    "misconduct_categories": {
+      "content_syllabus_alignment": 8,
+      "inadequate_level": 4
+    },
+    "quality_score": 0.0
+  },
+  "errors": []
+}
