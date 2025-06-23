@@ -1,0 +1,25 @@
+{
+  "course_id": "advanced_retrieval_for_ai",
+  "course_title": "Advanced Retrieval For Ai",
+  "description": "Integration test course for advanced_retrieval_for_ai",
+  "modules": [
+    {
+      "module_id": "advanced_retrieval_for_ai",
+      "title": "Advanced Retrieval For Ai",
+      "summary": "Test module for advanced_retrieval_for_ai",
+      "keywords": [
+        "advanced retrieval for ai"
+      ],
+      "tags": [
+        "integration-test",
+        "smoke-test"
+      ],
+      "word_count": 270,
+      "estimated_duration_minutes": 10,
+      "transcript_path": "knowledge_db/advanced_retrieval_for_ai/cleaned_transcripts/advanced_retrieval_for_ai.md"
+    }
+  ],
+  "created_at": "2025-06-20T23:00:00Z",
+  "total_modules": 1,
+  "total_duration_minutes": 10
+}
