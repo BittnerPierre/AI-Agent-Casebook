@@ -48,11 +48,36 @@ Every feature implementation MUST follow this sequence:
 - Test backward compatibility - existing code must continue working
 - Integration testing is NOT optional - it's mandatory
 
+### Architecture Compliance (MANDATORY)
+
+**API Governance - NO EXCEPTIONS**
+
+Prohibited APIs (ZERO TOLERANCE):
+- OpenAI Assistant API (`client.beta.assistants.*`)
+- OpenAI Threads API (`client.beta.threads.*`)
+- Any legacy OpenAI APIs not explicitly approved
+
+Required APIs for Agentic Workflows:
+- OpenAI Agents SDK (`agents.Agent`, `agents.Runner`)
+- FileSearchTool (`agents.FileSearchTool`) for file search functionality
+- Approved vector store APIs (`client.vector_stores.*`)
+
+**Architecture Review Checklist**:
+- [ ] Uses only approved APIs (Agents SDK for agentic workflows)
+- [ ] No Assistant API calls (`client.beta.assistants`)
+- [ ] No Thread API calls (`client.beta.threads`)
+- [ ] File search uses `FileSearchTool` class
+- [ ] Vector store management follows approved patterns
+- [ ] Integration tests validate architectural compliance
+
+**Enforcement**: CI/CD will automatically reject PRs containing prohibited API usage.
+
 ### AI Developer Accountability
 
 - No "tunnel vision" - think holistically about system impact
 - No "it works on my machine" - verify in actual application context
 - No shortcuts on testing - quality is non-negotiable
 - Document any breaking changes or migration requirements
+- **Architecture compliance is mandatory** - verify API usage aligns with standards
 
-**Violation of testing standards is unacceptable in production development.**
+**Violation of testing standards OR architecture compliance is unacceptable in production development.**
