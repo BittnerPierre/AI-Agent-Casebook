@@ -1,0 +1,18 @@
+{
+  "section_id": "multi_ai_agent_systems",
+  "issues": [
+    {
+      "description": "Learning objectives not clearly addressed: Explore multi-agent planning and memory workflows",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Key topics not adequately covered: multi, agent, systems...",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Content is too short (30 words)",
+      "severity": "ERROR"
+    }
+  ],
+  "approved": false
+}

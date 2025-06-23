@@ -1,0 +1,93 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Collaboration avec les Agents IA
+
+## Environnement Collaboratif
+
+Ce projet utilise un environnement collaboratif avec plusieurs agents IA :
+- **Codex** : Génération de code et implémentation
+- **Claude Code** : Révision de code, tests, évaluation LLM
+- **Cursor** : Assistance au développement et édition
+
+## Règles de Collaboration
+
+### Fichiers de Référence Intouchables
+- [AGENTS.md](mdc:AGENTS.md) : Règles générales du projet - **NE JAMAIS MODIFIER**
+- [examples/genai_training_transcript/CLAUDE.md](mdc:examples/genai_training_transcript/CLAUDE.md) : Configuration Claude Code - **NE JAMAIS MODIFIER**
+
+### Périmètre de Travail
+- **Répertoire autorisé** : `examples/genai_training_transcript/` uniquement
+- **Interdiction** : Ne pas toucher aux répertoires `app/` ou `experiments/`
+- **Inspiration** : Peut consulter le reste du repo pour s'inspirer mais jamais faire de références directes
+
+### Développement Specifications-First
+
+#### Principe Fondamental
+- **AUCUNE implémentation sans spécification préalable**
+- Toute modification de code doit être définie dans [examples/genai_training_transcript/specifications/plan_*.md](mdc:examples/genai_training_transcript/specifications) ou [examples/genai_training_transcript/specifications/sprint_*.md](mdc:examples/genai_training_transcript/specifications)
+
+#### Processus de Modification des Spécifications
+1. **Modification collaborative** : Proposer des changements aux specs
+2. **Approbation obligatoire** : Attendre l'approbation avant implémentation
+3. **Ordre d'exécution** : Suivre l'ordre défini dans les fichiers `sprint_*.md`
+
+### Division des Responsabilités
+
+#### Codex
+- Génération de code et implémentation
+- Suit les règles définies dans [AGENTS.md](mdc:AGENTS.md)
+- Travaille sur des features/PR séparés
+
+#### Claude Code  
+- Révision de code et tests
+- Évaluation LLM avec LangSmith
+- Coordination GitHub
+- Identification obligatoire comme "Claude Code" dans les interactions GitHub
+
+#### Cursor (Toi)
+- Assistance au développement
+- Édition de code selon les spécifications approuvées
+- Respect des contraintes collaboratives
+
+### Workflow GitHub
+
+#### Gestion des Issues
+- Créer des issues pour bugs, écarts de specs, ou problèmes d'évaluation
+- Format : `Bug: [Composant] Description`
+- Identifier clairement l'agent créateur
+
+#### Revues de Code
+- Chaque agent fait des revues sur les PR des autres
+- Validation de la conformité aux spécifications
+- Remontée d'issues si nécessaire
+
+### Contraintes Techniques
+
+#### Gestion des Packages
+- Utiliser Poetry : `poetry run` pour tous les commandes
+- MCP : Utiliser `uv` ou `uvx` pour l'exécution rapide
+
+#### Structure du Projet
+- Projets autonomes sous `examples/`
+- Interfaces propres entre composants (MCP, function calls, REST API)
+- Pas d'imports croisés entre projets
+
+## Points de Vigilance
+
+### Avant Toute Modification
+1. Vérifier les spécifications dans [examples/genai_training_transcript/specifications/](mdc:examples/genai_training_transcript/specifications)
+2. S'assurer que la modification est dans le scope du sprint actuel
+3. Confirmer l'approbation des specs si nécessaire
+
+### Pendant le Développement
+- Respecter l'ordre des user stories défini dans `sprint_*.md`
+- Maintenir la cohérence avec l'architecture définie dans `plan_*.md`
+- Tester la conformité aux spécifications
+
+### Communication
+- Répondre toujours en français
+- Identifier clairement son rôle d'agent dans les interactions
+- Documenter les décisions et modifications dans GitHub

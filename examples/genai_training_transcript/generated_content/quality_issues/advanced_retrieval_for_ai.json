@@ -1,0 +1,18 @@
+{
+  "section_id": "advanced_retrieval_for_ai",
+  "issues": [
+    {
+      "description": "Learning objectives not clearly addressed: Understand embeddings and vector search fundamentals, Explore RAG workflows with ChromaDB",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Key topics not adequately covered: advanced, retrieval, retrieval",
+      "severity": "WARNING"
+    },
+    {
+      "description": "Content is too short (30 words)",
+      "severity": "ERROR"
+    }
+  ],
+  "approved": false
+}

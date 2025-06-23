@@ -10,7 +10,8 @@
 
 ### P0: Foundation Dependencies (Week 1)
 
-**US-000: Training Course Narrative Signature** *(All developers collaboration)*
+**US-000: Training Course Narrative Signature** _(All developers collaboration)_
+
 - **Module:** `transcript_generator/guidelines/training_course_guidelines.md`
 - **Interface:** Guidelines document + few-shot prompt templates
 - **As a** Content Creator
@@ -22,7 +23,8 @@
 
 ### P0: Foundation Dependencies (Week 1) - Core Infrastructure
 
-**US-001: Knowledge Database MCP Interface** *(Claude Code)*
+**US-001: Knowledge Database MCP Interface** _(Claude Code)_
+
 - **Module:** `knowledge_bridge/mcp_interface.py`
 - **Interface:** `KnowledgeMCPServer` class
 - **As a** Research Agent
@@ -31,7 +33,8 @@
 - **Acceptance:** MCP server exposes `lookup_content()`, `read_content()` methods with proper schemas
 - **Integration Point:** Exports `KnowledgeMCPServer` for training_manager connection
 
-**US-002: Operational Training Manager Content Access** *(Claude Code)*  
+**US-002: Operational Training Manager Content Access** _(Claude Code)_
+
 - **Module:** `training_manager/content_accessor.py`
 - **Interface:** `ContentAccessor` class with `get_by_keywords()`, `get_content()` methods
 - **As a** Knowledge Bridge
@@ -40,8 +43,9 @@
 - **Acceptance:** Training manager content indexed and accessible via ContentAccessor API
 - **Integration Point:** ContentAccessor used by KnowledgeMCPServer
 
-**US-003: Research Team Knowledge Integration** *(Codex)*
-- **Module:** `transcript_generator/research_team.py` 
+**US-003: Research Team Knowledge Integration** _(Codex)_
+
+- **Module:** `transcript_generator/research_team.py`
 - **Interface:** `ResearchTeam` class with `research_topic(syllabus_section)` method
 - **As a** Content Creator
 - **I want** Research Team to query Knowledge Bridge and produce structured research notes
@@ -52,7 +56,8 @@
 
 ### P1: Core Workflow Components (Week 2)
 
-**US-011: Response API File_Search Integration Pattern** *(Codex)*
+**US-011: Response API File_Search Integration Pattern** _(Codex)_
+
 - **Module:** `examples/response_api_file_search_example.py`
 - **Interface:** Working example of Response API file_search usage
 - **As a** Developer
@@ -63,16 +68,18 @@
 
 ### P1: Core Workflow Components (Week 2) - Main Pipeline
 
-**US-004: Response API Content Synthesis** *(Codex)*
+**US-004: Response API Content Synthesis** _(Codex)_
+
 - **Module:** `transcript_generator/editing_team.py`
-- **Interface:** `EditingTeam` class with `synthesize_chapter(research_notes)` method  
+- **Interface:** `EditingTeam` class with `synthesize_chapter(research_notes)` method
 - **As a** Content Creator
 - **I want** Editing Team to use Response API file_search on research notes for chapter synthesis
 - **So that** content generation leverages structured research effectively
 - **Acceptance:** EditingTeam uses Response API file_search on research_notes/ and outputs draft chapters
 - **Integration Point:** Consumes `research_notes/` from Research Team, outputs to `chapter_drafts/`
 
-**US-005: Editorial Finalizer Misconduct Tracking** *(Cursor)*
+**US-005: Editorial Finalizer Misconduct Tracking** _(Cursor)_
+
 - **Module:** `transcript_generator/editorial_finalizer.py`
 - **Interface:** `EditorialFinalizer` class with `finalize_content(chapters)`, `track_issues()` methods
 - **As a** Quality Manager
@@ -81,10 +88,11 @@
 - **Acceptance:** EditorialFinalizer outputs `final_transcript.md` + `quality_issues.json` with misconduct tracking
 - **Integration Point:** Consumes `chapter_drafts/`, exports quality metadata for evaluation module
 
-**US-006: Component Integration Orchestrator** *(Claude Code)*
+**US-006: Component Integration Orchestrator** _(Claude Code)_
+
 - **Module:** `transcript_generator/workflow_orchestrator.py`
 - **Interface:** `WorkflowOrchestrator` class with `execute_pipeline(syllabus)` method
-- **As a** System Administrator  
+- **As a** System Administrator
 - **I want** orchestrated execution of Research Team → Editing Team → Editorial Finalizer
 - **So that** components interact seamlessly with proper error handling
 - **Acceptance:** Single orchestrator manages component lifecycle and data flow
@@ -92,7 +100,8 @@
 
 ### P2: Evaluation & Enhancement (Week 3)
 
-**US-012: LangSmith Post-Execution Metadata Integration** *(Cursor)*
+**US-012: LangSmith Post-Execution Metadata Integration** _(Cursor)_
+
 - **Module:** `evaluation/langsmith_integration.py`
 - **Interface:** `LangSmithIntegration` class with `send_execution_metadata()` method
 - **As a** Quality Manager
@@ -104,16 +113,18 @@
 
 ### P2: Evaluation & Enhancement (Week 3) - Quality Systems
 
-**US-007: LangSmith Evaluation Logging** *(Cursor)*
+**US-007: LangSmith Evaluation Logging** _(Cursor)_
+
 - **Module:** `evaluation/langsmith_logger.py`
 - **Interface:** `EvaluationLogger` class with `log_workflow()`, `collect_metrics()` methods
 - **As a** Quality Manager
-- **I want** agent conversations and quality metadata logged to LangSmith  
+- **I want** agent conversations and quality metadata logged to LangSmith
 - **So that** I can perform post-execution evaluation and analysis
 - **Acceptance:** All agent interactions + quality_issues.json logged with execution metadata
 - **Integration Point:** Used by WorkflowOrchestrator and EditorialFinalizer
 
-**US-008: RAG Triad Knowledge Evaluation** *(Cursor)*
+**US-008: RAG Triad Knowledge Evaluation** _(Cursor)_
+
 - **Module:** `evaluation/rag_evaluator.py`
 - **Interface:** `RAGEvaluator` class with `evaluate_knowledge_usage()` method
 - **As a** Quality Manager
@@ -123,7 +134,8 @@
 - **Integration Point:** Consumes knowledge query logs from Research Team via EvaluationLogger
 - **Sprint 1 Scope:** Context relevance only, Answer relevance and Grounding deferred to Sprint 2
 
-**US-012: LangSmith Post-Execution Metadata Integration** *(Cursor)*
+**US-012: LangSmith Post-Execution Metadata Integration** _(Cursor)_
+
 - **Module:** `evaluation/langsmith_integration.py`
 - **Interface:** `LangSmithIntegration` class with `send_execution_metadata()` method
 - **As a** Quality Manager
@@ -133,15 +145,17 @@
 - **Integration Point:** Used by WorkflowOrchestrator for automatic trace collection
 - **LangSmith Setup:** Project "story-ops", kebab-case naming, Agent SDK built-in tracing
 
-**US-013: Answer Relevance RAG Evaluation** *(Future - Sprint 2)*
+**US-013: Answer Relevance RAG Evaluation** _(Future - Sprint 2)_
+
 - **Module:** `evaluation/rag_evaluator.py` (extension)
 - **As a** Quality Manager
 - **I want** Answer relevance evaluation for generated content
 - **So that** I can measure how well content answers the learning objectives
 - **Dependencies:** US-008 completion
 
-**US-014: Grounding RAG Evaluation** *(Future - Sprint 2)*
-- **Module:** `evaluation/rag_evaluator.py` (extension)  
+**US-014: Grounding RAG Evaluation** _(Future - Sprint 2)_
+
+- **Module:** `evaluation/rag_evaluator.py` (extension)
 - **As a** Quality Manager
 - **I want** Grounding evaluation to ensure content is based on source knowledge
 - **So that** I can measure factual accuracy and source attribution
@@ -149,7 +163,8 @@
 
 ### P3: Integration & Testing (Week 4)
 
-**US-009: End-to-End CLI Integration** *(All developers)*
+**US-009: End-to-End CLI Integration** _(All developers)_
+
 - **Module:** `cli/transcript_generator_cli.py`
 - **Interface:** CLI command `transcript-generator --syllabus <file>`
 - **As a** Content Creator
@@ -158,11 +173,12 @@
 - **Acceptance:** CLI command produces final transcript with all evaluation metadata
 - **Integration Point:** Uses WorkflowOrchestrator as main pipeline
 
-**US-010: Example Syllabus Validation** *(All developers)*
+**US-010: Example Syllabus Validation** _(All developers)_
+
 - **Module:** `tests/integration_test.py`
 - **Interface:** Test suite validating example syllabus processing
 - **As a** Developer
-- **I want** shared example syllabus to process successfully through entire pipeline  
+- **I want** shared example syllabus to process successfully through entire pipeline
 - **So that** V1 demonstrates working end-to-end generation
 - **Acceptance:** Example syllabus produces complete transcript with evaluation metrics
 - **Integration Point:** End-to-end validation of all module interfaces
@@ -180,6 +196,7 @@ WorkflowOrchestrator → CLI
 ```
 
 **Key Architecture Principles:**
+
 - **Agent SDK:** Multi-agent coordination and communication
 - **MCP Protocol:** ALL file and data access operations (research_notes/, chapter_drafts/, quality_issues.json)
 - **Response API:** Content synthesis with file_search capabilities
@@ -195,12 +212,14 @@ WorkflowOrchestrator → CLI
 ## Architecture Decisions (Claude Code Responses)
 
 ### ContentMatch/ContentData Schemas (US-001)
+
 - **Status:** Not implemented yet in current knowledge_bridge.py
 - **Sprint 1 Implementation:**
+
 ```python
 class ContentMatch(TypedDict):
     content_id: str
-    title: str  
+    title: str
     relevance_score: float
     preview: str
 
@@ -211,46 +230,56 @@ class ContentData(TypedDict):
 ```
 
 ### Concurrent Access Strategy (US-002)
+
 - **Decision:** Single workflow execution, READ-ONLY knowledge access
 - **Rationale:** Authoring domain is read-only during content creation phases
 - **Implementation:** No concurrent access controls needed for Sprint 1
 
-### Orchestrator Resilience (US-006)  
+### Orchestrator Resilience (US-006)
+
 - **Decision:** Simple Agent SDK coordination with basic retry logic
 - **Implementation:** Agent SDK error handling patterns, no complex state management needed
 - **Retry Strategy:** MCP operation retries and graceful degradation on failures
 
 ### US-000 Narrative Signature Strategy
+
 - **Decision:** Implement basic version (not mock)
 - **Deliverable:** `transcript_generator/guidelines/training_course_guidelines.md`
 - **Pedagogical Patterns:** Learning scaffolding, active learning, knowledge anchoring, engagement patterns
 - **Reference:** Adapt from existing `app/video_script/storytelling_guidebook.md` for educational content
 
-### Editorial Finalizer Misconduct Categories  
+### Editorial Finalizer Misconduct Categories
+
 **Critical Issues:**
+
 - Content ↔ Syllabus alignment (missing modules, off-topic content, missing syllabus details)
 - Inadequate level (content too difficult/simple for target audience)
 
 **High Priority Issues:**
+
 - Duration violations (generated content timing vs syllabus requirements)
 - Groundedness violations (content not based on provided knowledge base)
 - Training course principles violations (tone, style, structure)
 
 **Medium Priority Issues:**
+
 - Content repetition (topics addressed twice without new angle/deep dive)
 
 ### LangSmith Configuration
-- **Project:** "story-ops" 
+
+- **Project:** "story-ops"
 - **Naming Convention:** kebab-case
 - **Platform:** Free tier with dataset download capability
 - **Integration:** Agent SDK built-in tracing
 
 ### Response API Configuration
+
 - **Environment:** `OPENAI_API_KEY` environment variable
 - **Project ID:** `proj_UWuOPp9MOKrOCtZABSCTY4Um`
 - **Requirements:** Fully functional end-to-end implementation
 
 ### Test Syllabus
+
 - **Source:** `examples/genai_training_transcript/syllabus.md` - "AI Engineer Basic Course Syllabus"
 - **Content Files:** Mock for Week 1-2, full content needed for final integration testing
 - **Required Files:** Prompt_Engineering_for_Developers.txt, Advanced_Retrieval_for_AI.txt, Multi_AI_Agent_Systems.txt, Building_Systems_with_the_ChatGPT_API.txt
@@ -258,18 +287,20 @@ class ContentData(TypedDict):
 ## Sub-iteration Integration Tests
 
 - **Week 1 end:** Knowledge Bridge → Research Team integration + Training course guidelines established
-- **Week 2 end:** Research Team → Editing Team → Editorial Finalizer pipeline + Response API patterns working  
+- **Week 2 end:** Research Team → Editing Team → Editorial Finalizer pipeline + Response API patterns working
 - **Week 3 end:** Evaluation logging capturing complete workflow + Automatic LangSmith metadata sending
 - **Week 4:** Full end-to-end validation with narrative signature
 
 ## Critical References for Developers
 
 **Existing Patterns to Study:**
+
 - **`app/video_script/`** - Working LangGraph multi-agent pipeline with narrative signature implementation
 - **`tests/`** - LangSmith evaluation patterns and dataset management
 - **`storytelling_guidebook.md`** and **`script_guidelines.md`** - Narrative signature examples in video_script
 
 **New Integration Patterns Needed:**
+
 - Training course pedagogical guidelines (different from video script guidelines)
 - Response API file_search for research note synthesis
 - Automatic LangSmith trace collection during execution (not just evaluation)
@@ -278,14 +309,16 @@ This structure eliminates blocking dependencies and provides clear interface con
 
 ## Detailed Architecture & Data Contracts
 
-**📋 See `Inter_Module_Architecture.md` for:**
+**📋 See `../Inter_Module_Architecture.md` for:**
+
 - Complete sequence diagram of inter-module interactions
 - JSON schemas for all data exchange between business domains
 - MCP operations specification for Knowledge_Management and File_Operations
 - Clear separation of Business Domains: Knowledge_Management, Authoring_Content, Evaluation_Optimization
 
 **Key Integration Points:**
+
 - All file operations (research_notes/, chapter_drafts/, quality_issues.json) via MCP
-- Knowledge queries via Knowledge_Bridge MCP interface  
+- Knowledge queries via Knowledge_Bridge MCP interface
 - Agent SDK for intra-domain component coordination
 - Clean API contracts for MCP Evernote migration readiness
