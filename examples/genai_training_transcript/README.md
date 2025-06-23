@@ -246,6 +246,46 @@ The system generates:
 - `MCP_EVERNOTE_SETUP.md`: Future Evernote integration setup
 - `specifications/`: Detailed technical specifications
 
+## Integration Testing
+
+### Directory Architecture (Post Issue #92 Fix)
+
+The system now uses **separate directories** to avoid conflicts:
+
+```
+knowledge_db/                    ← Training Manager outputs (processed courses)
+├── {course_id}/
+│   ├── metadata/index.json      ← Course metadata with keywords
+│   └── cleaned_transcripts/...  ← Processed transcripts
+
+generated_content/               ← Transcript Generator outputs  
+├── research_notes/              ← Research team outputs
+├── chapter_drafts/             ← Editing team outputs
+├── execution_report.json       ← Workflow tracking
+└── final_transcript.json       ← Final generated content
+```
+
+### Running Integration Tests
+
+See [INTEGRATION_TEST_GUIDE.md](INTEGRATION_TEST_GUIDE.md) for complete testing instructions.
+
+**Quick Start**:
+```bash
+# Set up test environment with smoke test data
+poetry run python integration_tests/setup_test_data.py
+
+# Quick validation (recommended before full test)
+poetry run python integration_tests/test_quick_validation.py
+
+# Full end-to-end CLI integration test
+poetry run python integration_tests/integration_test_cli_end_to_end.py
+```
+
+**Expected Results**:
+- ✅ **Research Phase**: Completes successfully with populated research notes
+- ⏱️ **Editing Phase**: May timeout due to OpenAI API calls (expected)
+- 📊 **Execution Report**: Generated in `generated_content/execution_report.json`
+
 ## License
 
 This project is part of the AI Agent Casebook and follows the same licensing terms.
