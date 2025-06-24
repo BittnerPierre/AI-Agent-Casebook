@@ -18,12 +18,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-# Multi-agent import check
-try:
-    from .editorial_finalizer_multi_agent import MultiAgentEditorialFinalizer
-    _MULTI_AGENT_AVAILABLE = True
-except ImportError:
-    _MULTI_AGENT_AVAILABLE = False
+# Import centralized environment configuration
+from ..common.environment import env_config
+
+# Import multi-agent implementation (direct import - dependency in poetry.lock)
+from .editorial_finalizer_multi_agent import MultiAgentEditorialFinalizer
 
 class IssueSeverity(Enum):
     """Issue severity levels for misconduct tracking"""
@@ -88,7 +87,7 @@ class EditorialFinalizer:
             model: Model to use for multi-agent assessment
         """
         # Check if we should use multi-agent version
-        if enable_multi_agent and _MULTI_AGENT_AVAILABLE:
+        if enable_multi_agent and env_config.openai_api_key:
             # Delegate to multi-agent implementation
             self._delegate = MultiAgentEditorialFinalizer(
                 output_dir=output_dir,
@@ -111,8 +110,8 @@ class EditorialFinalizer:
             self.logger = logging.getLogger(__name__)
             if not enable_multi_agent:
                 self.logger.info("Multi-agent assessment disabled by configuration")
-            elif not _MULTI_AGENT_AVAILABLE:
-                self.logger.warning("Multi-agent assessment not available - using basic pattern matching")
+            elif not env_config.openai_api_key:
+                self.logger.warning("Multi-agent assessment requested but OpenAI API key not configured")
             else:
                 self.logger.info("✅ Multi-agent quality assessment enabled with OpenAI Agents SDK")
         
