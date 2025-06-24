@@ -113,6 +113,8 @@ class EditorialFinalizer:
                 self.logger.info("Multi-agent assessment disabled by configuration")
             elif not _MULTI_AGENT_AVAILABLE:
                 self.logger.warning("Multi-agent assessment not available - using basic pattern matching")
+            else:
+                self.logger.info("✅ Multi-agent quality assessment enabled with OpenAI Agents SDK")
         
         # Quality thresholds - configurable for different content types
         self.quality_thresholds = {
