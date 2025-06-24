@@ -86,9 +86,8 @@ class EditorialFinalizer:
             enable_multi_agent: Use sophisticated multi-agent assessment if available
             model: Model to use for multi-agent assessment
         """
-        # Check if we should use multi-agent version
-        if enable_multi_agent and env_config.openai_api_key:
-            # Delegate to multi-agent implementation
+        # Always delegate to multi-agent implementation  
+        if enable_multi_agent:
             self._delegate = MultiAgentEditorialFinalizer(
                 output_dir=output_dir,
                 quality_dir=quality_dir, 
@@ -108,12 +107,7 @@ class EditorialFinalizer:
             
             # Setup logging
             self.logger = logging.getLogger(__name__)
-            if not enable_multi_agent:
-                self.logger.info("Multi-agent assessment disabled by configuration")
-            elif not env_config.openai_api_key:
-                self.logger.warning("Multi-agent assessment requested but OpenAI API key not configured")
-            else:
-                self.logger.info("✅ Multi-agent quality assessment enabled with OpenAI Agents SDK")
+            self.logger.info("Multi-agent assessment disabled by configuration")
         
         # Quality thresholds - configurable for different content types
         self.quality_thresholds = {
