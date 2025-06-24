@@ -75,6 +75,7 @@ litellm = ">=1.67.2"
 mcp = {extras = ["cli"], version = "^1.7.1"}
 langgraph-cli = {extras = ["inmem"], version = "^0.2.10"}
 ipykernel = "^6.29.5"
+dotenv = "^0.9.9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

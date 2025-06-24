@@ -24,6 +24,7 @@ openai-agents = "^0.0.17"
 langsmith = {version = ">=0.3.15", extras = ["openai-agents"]}
 pyyaml = "^6.0"
 rich = "^13.0"
+dotenv = "^0.9.9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
