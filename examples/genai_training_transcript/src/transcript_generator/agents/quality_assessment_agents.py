@@ -174,10 +174,6 @@ class SemanticAlignmentAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform semantic alignment assessment"""
-        if not env_config.openai_api_key:
-            # Fallback when OpenAI API key is not configured
-            return self._fallback_assessment(chapter)
-        
         self.agent = self._create_agent(
             name="SemanticAlignmentAgent",
             instructions=self.instructions,
@@ -195,7 +191,7 @@ class SemanticAlignmentAgent(QualityAssessmentAgent):
             return result.final_output_as(AgentAssessment)
         except Exception as e:
             logger.error(f"Semantic alignment assessment failed: {e}")
-            return self._fallback_assessment(chapter)
+            raise
     
     def _prepare_semantic_context(self, chapter: ChapterContent) -> str:
         """Prepare context for semantic alignment assessment"""
@@ -287,9 +283,6 @@ class PedagogicalQualityAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform pedagogical quality assessment"""
-        if not env_config.openai_api_key:
-            return self._fallback_pedagogical_assessment(chapter)
-        
         self.agent = self._create_agent(
             name="PedagogicalQualityAgent", 
             instructions=self.instructions,
@@ -306,7 +299,7 @@ class PedagogicalQualityAgent(QualityAssessmentAgent):
             return result.final_output_as(AgentAssessment)
         except Exception as e:
             logger.error(f"Pedagogical quality assessment failed: {e}")
-            return self._fallback_pedagogical_assessment(chapter)
+            raise
     
     def _prepare_pedagogical_context(self, chapter: ChapterContent) -> str:
         """Prepare context for pedagogical assessment"""
@@ -415,9 +408,6 @@ class GroundednessAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform groundedness assessment"""
-        if not env_config.openai_api_key:
-            return self._fallback_groundedness_assessment(chapter)
-        
         self.agent = self._create_agent(
             name="GroundednessAgent",
             instructions=self.instructions, 
@@ -448,7 +438,7 @@ class GroundednessAgent(QualityAssessmentAgent):
             return result.final_output_as(AgentAssessment)
         except Exception as e:
             logger.error(f"Groundedness assessment failed: {e}")
-            return self._fallback_groundedness_assessment(chapter)
+            raise
     
     def _fallback_groundedness_assessment(self, chapter: ChapterContent) -> AgentAssessment:
         """Fallback groundedness assessment"""
@@ -508,9 +498,6 @@ class ContentDepthAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform content depth assessment"""
-        if not env_config.openai_api_key:
-            return self._fallback_depth_assessment(chapter)
-        
         self.agent = self._create_agent(
             name="ContentDepthAgent",
             instructions=self.instructions,
@@ -527,7 +514,7 @@ class ContentDepthAgent(QualityAssessmentAgent):
             return result.final_output_as(AgentAssessment)
         except Exception as e:
             logger.error(f"Content depth assessment failed: {e}")
-            return self._fallback_depth_assessment(chapter)
+            raise
     
     def _prepare_depth_context(self, chapter: ChapterContent) -> str:
         """Prepare context for depth assessment"""
@@ -618,9 +605,6 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform guidelines compliance assessment"""
-        if not env_config.openai_api_key:
-            return self._fallback_compliance_assessment(chapter)
-        
         self.agent = self._create_agent(
             name="GuidelinesComplianceAgent",
             instructions=self.instructions,
@@ -655,7 +639,7 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
             return result.final_output_as(AgentAssessment)
         except Exception as e:
             logger.error(f"Guidelines compliance assessment failed: {e}")
-            return self._fallback_compliance_assessment(chapter)
+            raise
     
     def _load_training_guidelines(self) -> str:
         """Load training course guidelines"""
