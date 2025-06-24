@@ -29,22 +29,20 @@ import os
 from pathlib import Path
 from typing import Any
 
+# Import centralized environment configuration
+from ..common.environment import env_config
+
 # LangSmith tracing support
 from agents import set_trace_processors
 from langsmith.wrappers import OpenAIAgentsTracingProcessor
 
 # Import multi-agent quality assessment system
-try:
-    from .agents import (
-        AssessmentConfidence,
-        ChapterContent,
-        QualityConsensusOrchestrator,
-        QualityDimension,
-    )
-    _MULTI_AGENT_AVAILABLE = True
-except ImportError as e:
-    logging.getLogger(__name__).warning(f"Multi-agent system not available: {e}")
-    _MULTI_AGENT_AVAILABLE = False
+from .agents import (
+    AssessmentConfidence,
+    ChapterContent,
+    QualityConsensusOrchestrator,
+    QualityDimension,
+)
 
 # Import base classes from original implementation
 from .editorial_finalizer import ChapterDraft, EditorialFinalizer, IssueSeverity, QualityIssue
@@ -84,15 +82,20 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         # Initialize base class
         super().__init__(output_dir, quality_dir)
         
-        # Multi-agent configuration
-        self.enable_multi_agent = enable_multi_agent and _MULTI_AGENT_AVAILABLE
+        # Multi-agent configuration - check OpenAI API key availability
+        if enable_multi_agent and not env_config.openai_api_key:
+            self.logger.warning("Multi-agent assessment requested but OpenAI API key not configured")
+            self.enable_multi_agent = False
+        else:
+            self.enable_multi_agent = enable_multi_agent
+        
         self.model = model
         
         # Configure LangSmith tracing for finalizer agents
         self.langsmith_enabled = False
-        langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
-        langsmith_project = os.getenv('LANGSMITH_PROJECT', 'story-ops')
-        langsmith_tracing = os.getenv('LANGSMITH_TRACING', '').lower() == 'true'
+        langsmith_api_key = env_config.langsmith_api_key
+        langsmith_project = env_config.langsmith_project
+        langsmith_tracing = env_config.langsmith_tracing_enabled
         
         if langsmith_api_key and langsmith_tracing:
             try:
