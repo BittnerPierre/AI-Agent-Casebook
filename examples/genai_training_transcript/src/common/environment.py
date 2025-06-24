@@ -64,47 +64,11 @@ class EnvironmentConfig:
         """Check if LangSmith tracing is enabled"""
         return os.environ.get('LANGSMITH_TRACING', '').lower() == 'true'
     
-    @property
-    def is_openai_available(self) -> bool:
-        """Check if OpenAI configuration is available"""
-        return bool(self.openai_api_key)
-    
-    @property
-    def is_langsmith_available(self) -> bool:
-        """Check if LangSmith configuration is available"""
-        return bool(self.langsmith_api_key)
-    
-    @property
-    def is_openai_agents_available(self) -> bool:
-        """
-        Check if OpenAI Agents SDK is available and properly configured.
-        
-        This replaces the fragile _AGENTS_SDK_AVAILABLE pattern by checking:
-        1. OpenAI Agents SDK is importable
-        2. OpenAI API key is configured  
-        3. Runner.run is a coroutine function (expected API)
-        """
-        if not self.is_openai_available:
-            return False
-            
-        try:
-            from agents import Agent, Runner
-            # Verify the expected API interface
-            run_method = getattr(Runner, 'run', None)
-            return inspect.iscoroutinefunction(run_method)
-        except ImportError:
-            return False
-    
     def get_debug_info(self) -> dict:
         """Get debug information about current configuration"""
         return {
-            'openai_available': self.is_openai_available,
-            'langsmith_available': self.is_langsmith_available,
-            'agents_available': self.is_openai_agents_available,
             'langsmith_tracing': self.langsmith_tracing_enabled,
-            'langsmith_project': self.langsmith_project,
-            'openai_api_key': '✅ Set' if self.openai_api_key else '❌ Missing',
-            'langsmith_api_key': '✅ Set' if self.langsmith_api_key else '❌ Missing'
+            'langsmith_project': self.langsmith_project
         }
 
 

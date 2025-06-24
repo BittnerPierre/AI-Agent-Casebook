@@ -28,12 +28,8 @@ from pydantic import BaseModel, Field
 # Import centralized environment configuration
 from ...common.environment import env_config
 
-# Import Agents SDK with fallback handling
-try:
-    from agents import Agent, Runner
-except ImportError:
-    Agent = None
-    Runner = None
+# Import Agents SDK directly - dependencies are in poetry.lock
+from agents import Agent, Runner
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +141,8 @@ class QualityAssessmentAgent:
     
     def _create_agent(self, name: str, instructions: str, output_type: type):
         """Create an Agents SDK agent with specified configuration"""
-        if not env_config.is_openai_agents_available:
-            raise RuntimeError("Agents SDK not available or not properly configured")
+        if not env_config.openai_api_key:
+            raise RuntimeError("OpenAI API key not configured")
         
         return Agent(
             name=name,
@@ -178,8 +174,8 @@ class SemanticAlignmentAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform semantic alignment assessment"""
-        if not env_config.is_openai_agents_available:
-            # Fallback for when Agents SDK is not available
+        if not env_config.openai_api_key:
+            # Fallback when OpenAI API key is not configured
             return self._fallback_assessment(chapter)
         
         self.agent = self._create_agent(
@@ -291,7 +287,7 @@ class PedagogicalQualityAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform pedagogical quality assessment"""
-        if not env_config.is_openai_agents_available:
+        if not env_config.openai_api_key:
             return self._fallback_pedagogical_assessment(chapter)
         
         self.agent = self._create_agent(
@@ -419,7 +415,7 @@ class GroundednessAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform groundedness assessment"""
-        if not env_config.is_openai_agents_available:
+        if not env_config.openai_api_key:
             return self._fallback_groundedness_assessment(chapter)
         
         self.agent = self._create_agent(
@@ -512,7 +508,7 @@ class ContentDepthAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform content depth assessment"""
-        if not env_config.is_openai_agents_available:
+        if not env_config.openai_api_key:
             return self._fallback_depth_assessment(chapter)
         
         self.agent = self._create_agent(
@@ -622,7 +618,7 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
         """Perform guidelines compliance assessment"""
-        if not env_config.is_openai_agents_available:
+        if not env_config.openai_api_key:
             return self._fallback_compliance_assessment(chapter)
         
         self.agent = self._create_agent(
