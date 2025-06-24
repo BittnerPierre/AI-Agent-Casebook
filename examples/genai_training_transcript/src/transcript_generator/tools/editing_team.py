@@ -20,8 +20,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 from openai import OpenAI
-from agents import set_trace_processors
-from langsmith.wrappers import OpenAIAgentsTracingProcessor
+from langsmith.wrappers import wrap_openai
 
 # Setup structured logging according to professional standards
 logger = logging.getLogger(__name__)
@@ -100,38 +99,25 @@ class EditingTeam:
             logger.error("OPENAI_API_KEY environment variable not set")
             raise ValueError("OPENAI_API_KEY environment variable required")
             
-        # Configure LangSmith tracing for agents using OpenAI Agents SDK
-        self.langsmith_enabled = False
-        langsmith_api_key = os.getenv('LANGSMITH_API_KEY')
-        langsmith_project = os.getenv('LANGSMITH_PROJECT', 'story-ops')
-        langsmith_tracing = os.getenv('LANGSMITH_TRACING', '').lower() == 'true'
+        # Configure LangSmith tracing using wrap_openai for standard OpenAI client
+        # Configuration automatique via variables d'environnement LANGSMITH_*
+        self.langsmith_enabled = bool(os.getenv('LANGSMITH_API_KEY') and 
+                                    os.getenv('LANGSMITH_TRACING', '').lower() == 'true')
         
-        if langsmith_api_key and langsmith_tracing:
-            try:
-                # Configure tracing processor for OpenAI Agents SDK
-                os.environ['LANGSMITH_API_KEY'] = langsmith_api_key
-                os.environ['LANGSMITH_PROJECT'] = langsmith_project
-                
-                # Set up trace processors for agents
-                set_trace_processors([OpenAIAgentsTracingProcessor()])
-                
-                self.langsmith_enabled = True
-                logger.info(f"LangSmith tracing configured for project: {langsmith_project}")
-            except Exception as e:
-                logger.warning(f"Failed to configure LangSmith tracing: {e}")
-                self.langsmith_enabled = False
+        if self.langsmith_enabled:
+            logger.info(f"LangSmith tracing enabled via environment variables")
         else:
-            if not langsmith_api_key:
-                logger.debug("LANGSMITH_API_KEY not found. LangSmith tracing disabled.")
-            if not langsmith_tracing:
-                logger.debug("LANGSMITH_TRACING not enabled. LangSmith tracing disabled.")
+            logger.debug("LangSmith tracing disabled - check LANGSMITH_API_KEY and LANGSMITH_TRACING")
         
-        # Initialize OpenAI client
-        self.client = OpenAI(
+        # Initialize OpenAI client with LangSmith wrapper
+        base_client = OpenAI(
             api_key=self.api_key,
             organization=None,
             project=self.project_id
         )
+        
+        # Apply LangSmith wrapper if tracing is enabled
+        self.client = wrap_openai(base_client) if self.langsmith_enabled else base_client
         
         # Track created resources for cleanup
         self.vector_store_id = None
