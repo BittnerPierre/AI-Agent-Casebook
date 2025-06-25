@@ -47,12 +47,17 @@ Phase 3: Cleanup
 ```python
 @dataclass
 class EditorialContext:
+    """Context partagé entre agents avec gestion d'état conversation"""
     research_notes: Dict[str, Any]
     target_section: str
     vector_store_id: str | None = None
     documented_content: str | None = None
     draft_content: str | None = None
     review_feedback: str | None = None
+    
+    # Gestion état conversation pour Agents SDK
+    conversation_history: list[Dict[str, str]] = field(default_factory=list)
+    last_agent_result: Any = None  # Résultat du dernier agent pour continuité
 ```
 
 #### 1.2 Créer `EditingTeamWorkflow` (Interface)
@@ -193,34 +198,76 @@ class AgentsSDKEditingTeam(BaseEditingTeam):
         )
 ```
 
-#### 3.2 Workflow Execution avec Agents SDK
+#### 3.2 Workflow Execution avec Agents SDK et Context Management
 ```python
 def _execute_documentalist_step(self, context: EditorialContext) -> None:
-    """Documentalist via Agents SDK"""
+    """Documentalist via Agents SDK avec context management"""
     query = self._create_documentalist_query(context.target_section, context.research_notes)
-    result = Runner.run_sync(self.documentalist, query)
+    
+    # Utilisation du context management pour état conversation
+    input_messages = self._build_input_from_context(context, query)
+    
+    # Exécution asynchrone recommandée
+    result = await Runner.run(self.documentalist, input_messages)
+    
+    # Mise à jour context avec résultat
     context.documented_content = self._extract_content(result)
+    context.last_agent_result = result
+    self._update_conversation_context(context, query, result)
 
 def _execute_writer_step(self, context: EditorialContext) -> None:
-    """Writer via Agents SDK avec handoff potentiel"""
+    """Writer via Agents SDK avec continuité conversation"""
     query = self._create_writer_query(
         context.target_section, 
         context.documented_content, 
         context.research_notes
     )
-    result = Runner.run_sync(self.writer, query)
+    
+    # Continuité avec résultat agent précédent
+    input_messages = self._build_input_from_context(context, query)
+    
+    result = await Runner.run(self.writer, input_messages)
+    
     context.draft_content = self._extract_content(result)
+    context.last_agent_result = result
+    self._update_conversation_context(context, query, result)
 
 # Pattern similaire pour reviewer et strategist
 ```
 
-#### 3.3 State Management Manuel
+#### 3.3 Context Management Implementation
 ```python
-def _maintain_conversation_state(self, previous_result, new_query: str) -> list:
-    """Gestion manuelle de l'état conversation"""
-    conversation_history = previous_result.to_input_list() if previous_result else []
+def _build_input_from_context(self, context: EditorialContext, new_query: str) -> list:
+    """Construction input avec état conversation via context management"""
+    # Si premier agent, commencer nouvelle conversation
+    if not context.last_agent_result:
+        return [{"role": "user", "content": new_query}]
+    
+    # Utiliser result.to_input_list() pour continuité (recommandation OpenAI)
+    conversation_history = context.last_agent_result.to_input_list()
     conversation_history.append({"role": "user", "content": new_query})
     return conversation_history
+
+def _update_conversation_context(self, context: EditorialContext, query: str, result) -> None:
+    """Mise à jour contexte conversation pour agent suivant"""
+    # Ajouter échange dans l'historique local pour debugging
+    context.conversation_history.extend([
+        {"role": "user", "content": query},
+        {"role": "assistant", "content": self._extract_content(result)}
+    ])
+    
+    # Le result.to_input_list() sera utilisé pour l'agent suivant
+    context.last_agent_result = result
+
+def _extract_content(self, result) -> str:
+    """Extraction contenu du résultat agent"""
+    # Adaptation selon structure retour Agents SDK
+    if hasattr(result, 'content'):
+        return result.content
+    elif hasattr(result, 'text'):
+        return result.text
+    else:
+        return str(result)
 ```
 
 ### Étape 4: Factory Implementation
@@ -243,27 +290,60 @@ editing_team = EditingTeamFactory.create("agents_sdk")
 chapter = editing_team.synthesize_chapter(research_notes)
 ```
 
-#### 4.2 Configuration Switch
-```python
-# Config basé pour choisir l'implémentation
-config = {
-    "editing_team_implementation": "agents_sdk",  # ou "assistant_api"
-    "max_revisions": 2,
-    # ... autres configs
-}
+#### 4.2 Configuration YAML (Fonction Masquée de Transition)
+```yaml
+# config.yaml - Configuration editing team (NOT exposed in CLI)
+editing_team:
+  # Paramètre masqué pour transition - pas d'auto-fallback
+  implementation: "agents_sdk"  # ou "assistant_api" - YAML config only
+  
+  # Paramètres visibles (configuration métier)
+  max_revisions: 2  # Paramètre visible dans config métier
+  poll_interval_secs: 1.0
+  expires_after_days: 1
+  
+  # Agents SDK specific config
+  agents_sdk:
+    use_async: true
+    context_management: true
+    
+  # Assistant API specific config  
+  assistant_api:
+    model: "gpt-4o-mini"
+    project_id: "proj_UWuOPp9MOKrOCtZABSCTY4Um"
+```
 
-editing_team = EditingTeamFactory.create(
-    implementation=config["editing_team_implementation"],
-    max_revisions=config["max_revisions"]
-)
+```python
+# Utilisation avec config YAML
+def load_editing_team_from_config(config_path: str) -> EditingTeamWorkflow:
+    """Chargement depuis config YAML - pas de fallback automatique"""
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    
+    implementation = config['editing_team']['implementation']
+    team_config = config['editing_team']
+    
+    try:
+        return EditingTeamFactory.create(
+            implementation=implementation,
+            **team_config
+        )
+    except Exception as e:
+        # PAS de fallback - arrêt si échec selon config
+        logger.error(f"Failed to create EditingTeam with {implementation}: {e}")
+        raise RuntimeError(f"EditingTeam creation failed for {implementation}. Check configuration.") from e
+
+# Usage
+editing_team = load_editing_team_from_config("../config.yaml")
 ```
 
 ### Étape 5: Integration et Tests
 
-#### 5.1 Tests A/B
-- Exécution parallèle des deux implémentations
-- Comparaison des résultats
-- Métriques de performance et qualité
+#### 5.1 Tests Configuration-Based (Pas de Tests A/B Automatiques)
+- Test d'une implémentation selon config YAML
+- Validation fonctionnelle pour implementation configurée
+- Métriques de performance spécifiques à l'implementation active
+- **Pas d'exécution parallèle automatique** - choix via configuration
 
 #### 5.2 Backward Compatibility
 - Fonction legacy `edit_chapters()` maintenue
@@ -300,10 +380,12 @@ editing_team = EditingTeamFactory.create(
 ## Risques et Mitigation
 
 ### Risques Techniques
-- **State Management Complexity**: Implémentation manuelle de la gestion d'état
-  - *Mitigation*: Tests extensifs, logging détaillé
+- **State Management Complexity**: Context management manuel avec `result.to_input_list()`
+  - *Mitigation*: Tests extensifs, logging détaillé, validation avec exemples OpenAI
 - **API Maturity**: Agents SDK relativement nouveau
-  - *Mitigation*: Validation avec exemples OpenAI, fallback vers Assistant API
+  - *Mitigation*: Validation avec exemples OpenAI, tests robustes
+- **Configuration Errors**: Échec selon implementation choisie dans YAML
+  - *Mitigation*: Validation config au démarrage, messages d'erreur clairs
 
 ### Risques Opérationnels  
 - **Breaking Changes**: Risque de casser l'existant
@@ -327,10 +409,11 @@ editing_team = EditingTeamFactory.create(
 
 ## Post-Migration
 
-### Deprecation Path
-- Maintenir Assistant API version pour période de transition
-- Configuration par défaut basculée vers Agents SDK
-- Documentation migration pour utilisateurs
+### Transition Path (Fonction Masquée)
+- Maintenir Assistant API version comme option YAML (fonction masquée)
+- Configuration par défaut basculée vers Agents SDK dans YAML
+- **Pas d'exposition CLI** du choix d'implémentation - configuration interne uniquement
+- Documentation interne pour équipe de développement
 
 ### Monitoring
 - Métriques d'usage des deux implémentations
