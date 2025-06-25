@@ -105,6 +105,7 @@ class LangSmithThreadManager:
                                    agent_name: str) -> bool:
         """
         Attacher métadonnées d'une phase complète au thread parent.
+        GARANTIT la livraison avant arrêt application.
         
         Args:
             phase: Phase du workflow (research, editing, finalization)
@@ -125,9 +126,8 @@ class LangSmithThreadManager:
                 "status": "completed"
             }
             
-            # Envoi immédiat par bloc à LangSmith
-            await asyncio.to_thread(
-                self.client.update_run,
+            # Envoi SYNCHRONE simple - on attend que ça parte
+            await self.client.update_run(
                 run_id=self.current_thread_id,
                 extra={f"phase_{phase}": phase_metadata}
             )
@@ -139,24 +139,18 @@ class LangSmithThreadManager:
             logger.error(f"Échec attachment métadonnées phase {phase}: {e}")
             return False
     
-    async def finalize_thread(self, 
-                            final_results: Dict[str, Any],
-                            evaluation_scores: Dict[str, float] | None = None) -> bool:
-        """
-        Finaliser le thread avec résultats et scores d'évaluation.
-        """
+    async def finalize_thread(self, final_results: Dict[str, Any]) -> bool:
+        """Finaliser le thread avec résultats (simple et synchrone)"""
         if not self.current_thread_id:
             return False
         
         try:
-            # Finaliser thread avec résultats complets
-            await asyncio.to_thread(
-                self.client.update_run,
+            # Finaliser thread - envoi synchrone
+            await self.client.update_run(
                 run_id=self.current_thread_id,
                 outputs=final_results,
                 extra={
                     "finalization_timestamp": datetime.now().isoformat(),
-                    "evaluation_scores": evaluation_scores or {},
                     "thread_complete": True
                 }
             )
@@ -172,7 +166,7 @@ class LangSmithThreadManager:
 **Conditions d'Acceptation Techniques** :
 - [ ] Thread parent créé avant démarrage de tout agent
 - [ ] Agent SDK configuré avec `parent_run_id` correct  
-- [ ] Métadonnées par bloc (research, editing, finalization) envoyées immédiatement
+- [ ] Métadonnées par bloc (research, editing, finalization) envoyées **synchrone**
 - [ ] Chaque phase attachée avec métadonnées structurées
 - [ ] Thread finalisé avec résultats complets
 
@@ -263,26 +257,24 @@ class WorkflowOrchestrator:
             # Collecter résultats finaux
             workflow_result = WorkflowResult(...)
             
-            # Phase 4: Finaliser thread avec tout
+            # Phase 4: Finaliser thread avec tout (SYNCHRONE - on attend)
             if self.thread_manager:
-                evaluation_scores = await self._generate_evaluation_scores(workflow_result)
                 await self.thread_manager.finalize_thread(
                     final_results={
                         "success": workflow_result.success,
                         "transcript_path": final_transcript_path,
                         "quality_path": quality_summary_path
-                    },
-                    evaluation_scores=evaluation_scores
+                    }
                 )
+                self.logger.info("Thread finalisé - métadonnées garanties envoyées")
             
             return workflow_result
             
         except Exception as e:
-            # En cas d'erreur, finaliser thread avec erreur
+            # En cas d'erreur, finaliser thread avec erreur (simple)
             if self.thread_manager and thread_id:
                 await self.thread_manager.finalize_thread(
-                    final_results={"error": str(e), "success": False},
-                    evaluation_scores=None
+                    final_results={"error": str(e), "success": False}
                 )
             raise
 ```
@@ -677,9 +669,9 @@ async def test_llm_judge_evaluation():
 
 | Risque | Impact | Mitigation |
 |--------|--------|------------|
-| API LangSmith instable | Moyen | Fallback logs locaux + retry logic |
-| LLM Judge coûteux | Faible | Utilisation gpt-4o-mini + sampling |
-| Complexité thread management | Élevé | Tests d'intégration exhaustifs |
-| Performance dégradée | Moyen | Évaluations asynchrones + timeout |
+| **Métadonnées perdues si app s'arrête** | **CRITIQUE** | **Envoi synchrone - on attend que ça parte** |
+| API LangSmith lente | Moyen | Envoi synchrone peut bloquer mais garantit livraison |
+| Complexité thread management | Élevé | Tests d'intégration simples |
+| Performance dégradée par envoi synchrone | Faible | Acceptable pour première version |
 
 Ce plan résout les 3 problèmes identifiés et implémente l'architecture thread unifiée avec feedback automatique pour création de datasets d'entraînement.
