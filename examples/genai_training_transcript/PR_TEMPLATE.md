@@ -144,7 +144,7 @@ This PR resolves a **critical production issue** affecting monitoring and debugg
 
 ---
 
-**Closes**: #[ISSUE_NUMBER] - LangSmith Tracing Broken Due to Non-Strict JSON Schema
+**Closes**: #119 - LangSmith Tracing Broken Due to Non-Strict JSON Schema
 **Type**: 🐛 Bug Fix
 **Priority**: High
 **Component**: Multi-Agent Quality Assessment / LangSmith Integration
