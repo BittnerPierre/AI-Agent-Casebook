@@ -15,7 +15,8 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from transcript_generator.editorial_finalizer import EditorialFinalizer, ChapterDraft
+from transcript_generator.editorial_finalizer_multi_agent import MultiAgentEditorialFinalizer
+from transcript_generator.editorial_finalizer import ChapterDraft
 
 
 def create_sample_data():
@@ -126,8 +127,8 @@ def run_integration_test():
         
         print(f"📁 Using temporary directory: {temp_dir}")
         
-        # Initialize Editorial Finalizer
-        finalizer = EditorialFinalizer(
+        # Initialize Multi-Agent Editorial Finalizer directly to avoid recursion
+        finalizer = MultiAgentEditorialFinalizer(
             output_dir=str(output_dir),
             quality_dir=str(quality_dir)
         )

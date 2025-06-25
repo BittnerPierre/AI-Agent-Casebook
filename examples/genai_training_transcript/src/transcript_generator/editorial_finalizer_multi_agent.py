@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 # Import centralized environment configuration
-from ..common.environment import env_config
+from common.environment import env_config
 
 # LangSmith tracing support
 from agents import set_trace_processors
@@ -44,8 +44,11 @@ from .agents import (
     QualityDimension,
 )
 
-# Import base classes from original implementation
-from .editorial_finalizer import ChapterDraft, EditorialFinalizer, IssueSeverity, QualityIssue
+# Import common types
+from .types import ChapterDraft, IssueSeverity, QualityIssue
+
+# Import base class from original implementation  
+from .editorial_finalizer import EditorialFinalizer
 
 # LangSmith integration for US-007 evaluation logging
 try:
@@ -79,8 +82,8 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
             enable_multi_agent: Enable sophisticated multi-agent assessment
             model: Model to use for multi-agent assessment
         """
-        # Initialize base class
-        super().__init__(output_dir, quality_dir)
+        # Initialize base class with multi-agent disabled to prevent recursion
+        super().__init__(output_dir, quality_dir, enable_multi_agent=False, model=model)
         
         # Multi-agent configuration - check OpenAI API key availability
         if enable_multi_agent and not env_config.openai_api_key:

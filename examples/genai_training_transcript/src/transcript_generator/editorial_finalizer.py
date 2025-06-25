@@ -19,44 +19,10 @@ from pathlib import Path
 from typing import Any
 
 # Import centralized environment configuration
-from ..common.environment import env_config
+from common.environment import env_config
 
-# Import multi-agent implementation (direct import - dependency in poetry.lock)
-from .editorial_finalizer_multi_agent import MultiAgentEditorialFinalizer
-
-class IssueSeverity(Enum):
-    """Issue severity levels for misconduct tracking"""
-    INFO = "INFO"
-    WARNING = "WARNING" 
-    ERROR = "ERROR"
-
-@dataclass
-class QualityIssue:
-    """Represents a quality issue detected in content"""
-    description: str
-    severity: IssueSeverity
-    section_id: str | None = None
-    misconduct_category: str | None = None
-
-@dataclass
-class ChapterDraft:
-    """Chapter draft data structure"""
-    section_id: str
-    content: str
-    title: str | None = None
-
-@dataclass
-class QualityIssues:
-    """Quality issues data structure for JSON export"""
-    section_id: str
-    issues: list[dict[str, str]]
-    approved: bool
-
-@dataclass
-class FinalTranscript:
-    """Final transcript data structure"""
-    course_title: str
-    sections: list[dict[str, str]]
+# Import common types
+from .types import ChapterDraft, FinalTranscript, IssueSeverity, QualityIssue, QualityIssues
 
 class EditorialFinalizer:
     """
@@ -86,28 +52,20 @@ class EditorialFinalizer:
             enable_multi_agent: Use sophisticated multi-agent assessment if available
             model: Model to use for multi-agent assessment
         """
-        # Always delegate to multi-agent implementation  
-        if enable_multi_agent:
-            self._delegate = MultiAgentEditorialFinalizer(
-                output_dir=output_dir,
-                quality_dir=quality_dir, 
-                enable_multi_agent=enable_multi_agent,
-                model=model
-            )
-            self._using_multi_agent = True
-        else:
-            self._delegate = None
-            self._using_multi_agent = False
-            
-            # Initialize basic implementation
-            self.output_dir = Path(output_dir)
-            self.quality_dir = Path(quality_dir)
-            self.output_dir.mkdir(exist_ok=True)
-            self.quality_dir.mkdir(exist_ok=True)
-            
-            # Setup logging
-            self.logger = logging.getLogger(__name__)
-            self.logger.info("Multi-agent assessment disabled by configuration")
+        # Remove delegation logic to prevent infinite recursion
+        # Use MultiAgentEditorialFinalizer directly for advanced features
+        self._delegate = None
+        self._using_multi_agent = False
+        
+        # Initialize basic implementation
+        self.output_dir = Path(output_dir)
+        self.quality_dir = Path(quality_dir)
+        self.output_dir.mkdir(exist_ok=True)
+        self.quality_dir.mkdir(exist_ok=True)
+        
+        # Setup logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("Basic Editorial Finalizer initialized (use MultiAgentEditorialFinalizer for advanced features)")
         
         # Quality thresholds - configurable for different content types
         self.quality_thresholds = {
