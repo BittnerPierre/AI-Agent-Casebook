@@ -26,7 +26,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 # Import centralized environment configuration
-from ...common.environment import env_config
+from common.environment import env_config
 
 # Import Agents SDK directly - dependencies are in poetry.lock
 from agents import Agent, Runner
