@@ -51,12 +51,7 @@ from .types import ChapterDraft, IssueSeverity, QualityIssue
 from .editorial_finalizer import EditorialFinalizer
 
 # LangSmith integration for US-007 evaluation logging
-try:
-    from ..evaluation import EvaluationLogger
-    LANGSMITH_EVALUATION_AVAILABLE = True
-except ImportError:
-    EvaluationLogger = None
-    LANGSMITH_EVALUATION_AVAILABLE = False
+from evaluation import EvaluationLogger
 
 
 class MultiAgentEditorialFinalizer(EditorialFinalizer):
@@ -72,7 +67,8 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
                  output_dir: str = "output", 
                  quality_dir: str = "quality_issues",
                  enable_multi_agent: bool = True,
-                 model: str = "gpt-4o-mini"):
+                 model: str = "gpt-4o-mini",
+                 strict_mode: bool = True):
         """
         Initialize the Multi-Agent Editorial Finalizer.
         
@@ -81,6 +77,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
             quality_dir: Directory to write quality issues JSON files
             enable_multi_agent: Enable sophisticated multi-agent assessment
             model: Model to use for multi-agent assessment
+            strict_mode: Enable strict JSON schema mode for reliable outputs
         """
         # Initialize base class with multi-agent disabled to prevent recursion
         super().__init__(output_dir, quality_dir, enable_multi_agent=False, model=model)
@@ -93,6 +90,7 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
             self.enable_multi_agent = enable_multi_agent
         
         self.model = model
+        self.strict_mode = strict_mode
         
         # Configure LangSmith tracing for finalizer agents
         self.langsmith_enabled = False
@@ -121,8 +119,9 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         
         # Initialize multi-agent orchestrator if available
         if self.enable_multi_agent:
-            self.quality_orchestrator = QualityConsensusOrchestrator(model=self.model)
-            self.logger.info(f"Multi-agent quality assessment enabled with model: {self.model}")
+            self.quality_orchestrator = QualityConsensusOrchestrator(model=self.model, strict_mode=self.strict_mode)
+            mode_info = "strict JSON schema" if self.strict_mode else "flexible schema"
+            self.logger.info(f"Multi-agent quality assessment enabled with model: {self.model} ({mode_info})")
         else:
             self.quality_orchestrator = None
             self.logger.warning("Multi-agent assessment disabled - using fallback pattern matching")
@@ -131,19 +130,17 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         self.agent_assessments_cache = {}
         
         # Initialize LangSmith evaluation logger for US-007
-        self._evaluation_logger: EvaluationLogger | None = None
-        if LANGSMITH_EVALUATION_AVAILABLE:
-            try:
-                self._evaluation_logger = EvaluationLogger(
-                    project_name="story-ops",
-                    enabled=True
-                )
-                self.logger.info("LangSmith evaluation logging enabled for EditorialFinalizer")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize LangSmith evaluation logger: {e}")
-                self._evaluation_logger = None
-        else:
-            self.logger.info("LangSmith evaluation logging not available")
+        # self._evaluation_logger: EvaluationLogger | None = None
+        self._evaluation_logger = EvaluationLogger(
+            project_name="story-ops",
+            enabled=True
+        )
+        # self.logger.info("LangSmith evaluation logging enabled for EditorialFinalizer")
+        #     except Exception as e:
+        #         self.logger.warning(f"Failed to initialize LangSmith evaluation logger: {e}")
+        #         self._evaluation_logger = None
+        # else:
+        #     self.logger.info("LangSmith evaluation logging not available")
 
     def finalize_content(self, chapters: list[ChapterDraft], syllabus: dict[str, Any] | None = None) -> tuple[str, str]:
         """
@@ -266,12 +263,29 @@ class MultiAgentEditorialFinalizer(EditorialFinalizer):
         # Extract findings from all agent assessments
         for dimension, assessment_data in agent_assessment.get("agent_assessments", {}).items():
             for finding in assessment_data.get("findings", []):
+                # Handle both strict mode (Pydantic objects) and flexible mode (dicts)
+                if hasattr(finding, 'description'):
+                    # Strict mode: Pydantic QualityFindingStrict object
+                    description = finding.description
+                    severity_str = finding.severity.value if hasattr(finding.severity, 'value') else str(finding.severity)
+                    category = finding.category
+                elif isinstance(finding, dict):
+                    # Flexible mode: Dictionary format
+                    description = finding.get("description", "Quality issue detected")
+                    severity_str = finding.get("severity", "INFO")
+                    category = finding.get("category", "")
+                else:
+                    # Fallback
+                    description = "Quality issue detected"
+                    severity_str = "INFO"
+                    category = ""
+                
                 # Map agent findings to QualityIssue format
-                severity = self._map_severity(finding.get("severity", "INFO"))
-                misconduct_category = self._map_misconduct_category(dimension, finding.get("category", ""))
+                severity = self._map_severity(severity_str)
+                misconduct_category = self._map_misconduct_category(dimension, category)
                 
                 quality_issue = QualityIssue(
-                    description=finding.get("description", "Quality issue detected"),
+                    description=description,
                     severity=severity,
                     section_id=section_id,
                     misconduct_category=misconduct_category
