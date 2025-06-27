@@ -161,7 +161,7 @@ To support more complex course authoring workflows, we will adopt a hierarchical
 
 | Stage                   | Role                            | Responsibilities                                                                                                                                                                                                          |
 | ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Research Team**       | Planner, ResearchDocumentalist | Ingest syllabus; refine session outline (titles, bullets, objectives); lookup cross-course content via metadata/folder patterns; produce a detailed course agenda (`research_agenda/course_agenda.md`).                   |
+| **Research Team**       | ResearchSupervisor, Dynamic Subagents | Ingest syllabus; refine session outline (titles, bullets, objectives); lookup cross-course content via metadata/folder patterns; produce a detailed course agenda (`research_agenda/course_agenda.md`).                   |
 | **Research Supervisor** | Research Supervisor             | Monitor the Research Team’s iteration budget, ensure agenda completeness, and persist agendas/notes via MCP filesystem |
 | **Editing Team**        | Documentalist, Writer, Reviewer | For each chapter (parallelizable):<br>• _Documentalist_: retrieve detailed content based on agenda queries<br>• _Writer_: draft chapter transcript following style guidelines<br>• _Reviewer_: provide feedback on drafts |
 | **Editing Supervisor**  | Editing Supervisor              | Enforce iteration limits for the Editing Team and maintain cost efficiency                                                                                                                                                |
@@ -183,7 +183,7 @@ To support more complex course authoring workflows, we will adopt a hierarchical
 | Sprint                | Goal & Description                                                                          | Key Tasks                                                                                                                                                                                                                                                                                                         |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Sprint 1 (MVP v1)** | Scaffold & basic workflow with FileClient (no RAG/MCP), including transcript preprocessing. | • Preprocess raw `.txt` transcripts into `.md` + manifest.json (US0)<br>• Ingest syllabus `.md`<br>• Load preprocessed transcripts via FileClient<br>• Run Planning Team→Editing Team→Supervisors→Course Authoring<br>• Persist `research_agenda/`, `research_notes/`, `drafts/`, and per-chapter `output/` files |
-| **Sprint 2 (MVP v2)** | Swap FileClient for Completions API file-search (RAG).                                      | • Index `data/training_courses/**/*.md`<br>• ResearchDocumentalist uses file-search tool<br>• Validate transcript quality vs. v1 output                                                                                                                                                                                      |
+| **Sprint 2 (MVP v2)** | Swap FileClient for Completions API file-search (RAG).                                      | • Index `data/training_courses/**/*.md`<br>• Dynamic subagents use file-search tool<br>• Validate transcript quality vs. v1 output                                                                                                                                                                                      |
 | **Sprint 3 (MVP v3)** | Summary indices & manifest metadata for cross-course retrieval.                             | • Agent generates `manifest.json` for each course<br>• Implement summary-index & vector-store tool<br>• Enable metadata-based filtering                                                                                                                                                                           |
 | **Sprint 4 (MCP v1)** | Evernote integration for syllabus import & transcript export.                               | • Build Evernote MCP client<br>• Integrate import/export into agentic workflow                                                                                                                                                                                                                                    |
 | **Sprint 5+**         | Global quality pass & refinements (dedupe, CLI flags, advanced styling).                    | • Final flow-and-style agent<br>• CLI configuration options<br>• Additional enhancements                                                                                                                                                                                                                          |
@@ -213,13 +213,13 @@ flowchart LR
         TranscriptGenerator["transcript_generator"]
         EvernoteClient["EvernoteClient (MCP)"]
         MCPFS["MCP Filesystem"]
+        MCPKnowledge["MCP KnowledgeBridge"]
     end
 
     subgraph Agent
         subgraph ResearchTeam
-            Planner["Planner"]
-            ResearchDocumentalist["ResearchDocumentalist"]
-            ResearchSupervisor["Research Supervisor"]
+            ResearchSupervisor["ResearchSupervisor (Lead)"]
+            DynamicSubagents["Dynamic Subagents<br/>(ResearchDocumentalist, Analyst, Synthesizer)"]
         end
         subgraph EditingTeam
             Documentalist["Documentalist"]
@@ -239,15 +239,13 @@ flowchart LR
         Evernote["Evernote Notebook"]
     end
 
-    SyllabusFile --> Planner
-    Planner --> ResearchDocumentalist
-    ResearchDocumentalist --> FileClient
-    FileClient --> ResearchDocumentalist
-    ResearchDocumentalist --> ResearchSupervisor
-    Planner <--> ResearchSupervisor
-    ResearchSupervisor --> MCPFS["MCP Filesystem"]
+    SyllabusFile --> ResearchSupervisor
+    ResearchSupervisor <--> MCPFS
+    ResearchSupervisor --> DynamicSubagents
+    DynamicSubagents <--> MCPKnowledge
+    DynamicSubagents --> ResearchSupervisor
     ResearchSupervisor --> AgendaReview{Agenda complete?}
-    AgendaReview -- "no" --> Planner
+    AgendaReview -- "no" --> DynamicSubagents
     AgendaReview -- "yes" --> CourseAgenda
 
     CourseAgenda --> EditingSupervisor
