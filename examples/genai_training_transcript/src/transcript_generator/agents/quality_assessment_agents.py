@@ -51,6 +51,21 @@ class QualityDimension(Enum):
     GUIDELINES_COMPLIANCE = "guidelines_compliance"
 
 
+class FindingSeverity(Enum):
+    """Severity levels for quality findings - Strict JSON compatible"""
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+
+
+class ConfidenceLevel(Enum):
+    """Confidence levels - Strict JSON compatible"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    VERY_HIGH = "very_high"
+
+
 @dataclass
 class ChapterContent:
     """Chapter content data for agent assessment"""
@@ -60,9 +75,19 @@ class ChapterContent:
     syllabus_section: dict[str, Any] | None = None
 
 
+class QualityFindingStrict(BaseModel):
+    """Structured quality finding - STRICT JSON Schema compatible"""
+    description: str = Field(description="Detailed description of the quality issue")
+    severity: FindingSeverity = Field(description="Severity level of the finding")
+    confidence: ConfidenceLevel = Field(description="Confidence level of the assessment")
+    category: str = Field(description="Category classification of the finding")
+    evidence: list[str] = Field(description="Evidence supporting this finding")
+    recommendations: list[str] = Field(description="Specific improvement recommendations")
+
+
 @dataclass
 class QualityFinding:
-    """Individual quality finding from an agent"""
+    """Individual quality finding from an agent - Legacy format for compatibility"""
     description: str
     severity: str  # "INFO", "WARNING", "ERROR"
     confidence: AssessmentConfidence
@@ -72,11 +97,11 @@ class QualityFinding:
 
 
 class AgentAssessment(BaseModel):
-    """Structured assessment output from quality agents"""
+    """Structured assessment output from quality agents - STRICT JSON Schema compatible"""
     dimension: str = Field(description="Quality dimension being assessed")
     overall_score: float = Field(description="Overall quality score (0-1)", ge=0, le=1)
-    confidence: str = Field(description="Confidence level of assessment")
-    findings: list[dict[str, Any]] = Field(description="Specific quality findings")
+    confidence: ConfidenceLevel = Field(description="Confidence level of assessment")
+    findings: list[QualityFindingStrict] = Field(description="Specific quality findings with structured format")
     recommendations: list[str] = Field(description="Improvement recommendations")
     evidence_summary: str = Field(description="Summary of evidence considered")
 
@@ -131,8 +156,9 @@ class GuidelinesComplianceAssessment(BaseModel):
 class QualityAssessmentAgent:
     """Base class for quality assessment agents"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
         self.model = model
+        self.strict_mode = strict_mode
         self.agent = None
         
     async def assess(self, chapter: ChapterContent) -> AgentAssessment:
@@ -144,6 +170,8 @@ class QualityAssessmentAgent:
         if not env_config.openai_api_key:
             raise RuntimeError("OpenAI API key not configured")
         
+        # Configure agent - Note: output_schema_strict is not yet supported in current SDK version
+        # The structured models we've created are already strict-compatible for future use
         return Agent(
             name=name,
             instructions=instructions,
@@ -155,8 +183,8 @@ class QualityAssessmentAgent:
 class SemanticAlignmentAgent(QualityAssessmentAgent):
     """Agent specialized in semantic content-syllabus alignment assessment"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
-        super().__init__(model)
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
+        super().__init__(model, strict_mode)
         self.instructions = """
         You are a Semantic Alignment Specialist responsible for evaluating how well chapter content 
         aligns with syllabus requirements. Your expertise is in:
@@ -241,20 +269,20 @@ class SemanticAlignmentAgent(QualityAssessmentAgent):
             # Basic checks that can be done without LLM
             objectives = chapter.syllabus_section.get('learning_objectives', [])
             if objectives and not any(obj.lower() in chapter.content.lower() for obj in objectives):
-                findings.append({
-                    "description": "Learning objectives not clearly addressed in content",
-                    "severity": "WARNING",
-                    "confidence": "medium",
-                    "category": "content_syllabus_alignment",
-                    "evidence": ["No clear reference to stated learning objectives"],
-                    "recommendations": ["Add explicit coverage of learning objectives"]
-                })
+                findings.append(QualityFindingStrict(
+                    description="Learning objectives not clearly addressed in content",
+                    severity=FindingSeverity.WARNING,
+                    confidence=ConfidenceLevel.MEDIUM,
+                    category="content_syllabus_alignment",
+                    evidence=["No clear reference to stated learning objectives"],
+                    recommendations=["Add explicit coverage of learning objectives"]
+                ))
                 score -= 0.2
         
         return AgentAssessment(
             dimension="semantic_alignment",
             overall_score=score,
-            confidence="medium",
+            confidence=ConfidenceLevel.MEDIUM,
             findings=findings,
             recommendations=["Enable Agents SDK for sophisticated semantic analysis"],
             evidence_summary="Basic pattern matching assessment performed"
@@ -264,8 +292,8 @@ class SemanticAlignmentAgent(QualityAssessmentAgent):
 class PedagogicalQualityAgent(QualityAssessmentAgent):
     """Agent specialized in pedagogical quality and learning design assessment"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
-        super().__init__(model)
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
+        super().__init__(model, strict_mode)
         self.instructions = """
         You are a Pedagogical Quality Specialist with expertise in instructional design and learning theory.
         Your role is to evaluate the educational effectiveness of training content across these dimensions:
@@ -355,31 +383,31 @@ class PedagogicalQualityAgent(QualityAssessmentAgent):
         has_structure = any(word in content_lower for word in ['introduction', 'summary', 'conclusion'])
         
         if not has_questions:
-            findings.append({
-                "description": "Content lacks engagement through questions",
-                "severity": "WARNING", 
-                "confidence": "high",
-                "category": "training_principles_violations",
-                "evidence": ["No questions found in content"],
-                "recommendations": ["Add thought-provoking questions to engage learners"]
-            })
+            findings.append(QualityFindingStrict(
+                description="Content lacks engagement through questions",
+                severity=FindingSeverity.WARNING,
+                confidence=ConfidenceLevel.HIGH,
+                category="training_principles_violations",
+                evidence=["No questions found in content"],
+                recommendations=["Add thought-provoking questions to engage learners"]
+            ))
             score -= 0.1
             
         if not has_examples:
-            findings.append({
-                "description": "Limited knowledge anchoring through examples",
-                "severity": "INFO",
-                "confidence": "medium", 
-                "category": "training_principles_violations",
-                "evidence": ["Few concrete examples provided"],
-                "recommendations": ["Include more real-world examples and analogies"]
-            })
+            findings.append(QualityFindingStrict(
+                description="Limited knowledge anchoring through examples",
+                severity=FindingSeverity.INFO,
+                confidence=ConfidenceLevel.MEDIUM,
+                category="training_principles_violations",
+                evidence=["Few concrete examples provided"],
+                recommendations=["Include more real-world examples and analogies"]
+            ))
             score -= 0.1
         
         return AgentAssessment(
             dimension="pedagogical_quality",
             overall_score=score,
-            confidence="medium",
+            confidence=ConfidenceLevel.MEDIUM,
             findings=findings,
             recommendations=["Enable Agents SDK for comprehensive pedagogical analysis"],
             evidence_summary="Basic pedagogical pattern detection performed"
@@ -389,8 +417,8 @@ class PedagogicalQualityAgent(QualityAssessmentAgent):
 class GroundednessAgent(QualityAssessmentAgent):
     """Agent specialized in content groundedness and evidence quality assessment"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
-        super().__init__(model)
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
+        super().__init__(model, strict_mode)
         self.instructions = """
         You are a Groundedness Assessment Specialist focused on evaluating the evidential quality
         and factual foundation of educational content. Your expertise includes:
@@ -456,20 +484,20 @@ class GroundednessAgent(QualityAssessmentAgent):
         
         for phrase in problematic_phrases:
             if phrase in content_lower:
-                findings.append({
-                    "description": f"Potentially unsupported claim: '{phrase}'",
-                    "severity": "WARNING",
-                    "confidence": "high",
-                    "category": "groundedness_violations", 
-                    "evidence": [f"Found phrase '{phrase}' indicating absolute claim"],
-                    "recommendations": ["Qualify statements and provide supporting evidence"]
-                })
+                findings.append(QualityFindingStrict(
+                    description=f"Potentially unsupported claim: '{phrase}'",
+                    severity=FindingSeverity.WARNING,
+                    confidence=ConfidenceLevel.HIGH,
+                    category="groundedness_violations",
+                    evidence=[f"Found phrase '{phrase}' indicating absolute claim"],
+                    recommendations=["Qualify statements and provide supporting evidence"]
+                ))
                 score -= 0.1
         
         return AgentAssessment(
             dimension="groundedness",
             overall_score=max(0.0, score),
-            confidence="medium",
+            confidence=ConfidenceLevel.MEDIUM,
             findings=findings,
             recommendations=["Enable Agents SDK for sophisticated groundedness analysis"],
             evidence_summary="Basic pattern matching for unsupported claims performed"
@@ -479,8 +507,8 @@ class GroundednessAgent(QualityAssessmentAgent):
 class ContentDepthAgent(QualityAssessmentAgent):
     """Agent specialized in content depth and complexity assessment"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
-        super().__init__(model)
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
+        super().__init__(model, strict_mode)
         self.instructions = """
         You are a Content Depth Specialist responsible for evaluating whether content complexity
         and depth are appropriate for the intended audience and learning objectives. Assess:
@@ -558,20 +586,20 @@ class ContentDepthAgent(QualityAssessmentAgent):
         word_count = len(chapter.content.split())
         
         if word_count < 100:
-            findings.append({
-                "description": f"Content appears too shallow ({word_count} words)",
-                "severity": "WARNING",
-                "confidence": "medium",
-                "category": "inadequate_level",
-                "evidence": [f"Word count: {word_count}"],
-                "recommendations": ["Expand content with more detailed explanations and examples"]
-            })
+            findings.append(QualityFindingStrict(
+                description=f"Content appears too shallow ({word_count} words)",
+                severity=FindingSeverity.WARNING,
+                confidence=ConfidenceLevel.MEDIUM,
+                category="inadequate_level",
+                evidence=[f"Word count: {word_count}"],
+                recommendations=["Expand content with more detailed explanations and examples"]
+            ))
             score -= 0.2
         
         return AgentAssessment(
             dimension="content_depth",
             overall_score=score,
-            confidence="low",
+            confidence=ConfidenceLevel.LOW,
             findings=findings,
             recommendations=["Enable Agents SDK for comprehensive depth analysis"],
             evidence_summary="Basic word count and structure analysis performed"
@@ -581,8 +609,8 @@ class ContentDepthAgent(QualityAssessmentAgent):
 class GuidelinesComplianceAgent(QualityAssessmentAgent):
     """Agent specialized in training course guidelines compliance assessment"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
-        super().__init__(model)
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
+        super().__init__(model, strict_mode)
         self.instructions = """
         You are a Training Guidelines Compliance Specialist responsible for ensuring content
         adheres to established training course principles and standards. Evaluate:
@@ -663,20 +691,20 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
         # Check for basic structure
         has_clear_sections = any(marker in content for marker in ['##', '**', 'Introduction', 'Summary'])
         if not has_clear_sections:
-            findings.append({
-                "description": "Content lacks clear structural organization",
-                "severity": "INFO",
-                "confidence": "medium",
-                "category": "training_principles_violations",
-                "evidence": ["No clear section markers found"],
-                "recommendations": ["Add clear section headings and organization"]
-            })
+            findings.append(QualityFindingStrict(
+                description="Content lacks clear structural organization",
+                severity=FindingSeverity.INFO,
+                confidence=ConfidenceLevel.MEDIUM,
+                category="training_principles_violations",
+                evidence=["No clear section markers found"],
+                recommendations=["Add clear section headings and organization"]
+            ))
             score -= 0.1
         
         return AgentAssessment(
             dimension="guidelines_compliance",
             overall_score=score,
-            confidence="medium",
+            confidence=ConfidenceLevel.MEDIUM,
             findings=findings,
             recommendations=["Enable Agents SDK for comprehensive compliance analysis"],
             evidence_summary="Basic structural and formatting analysis performed"
@@ -686,14 +714,15 @@ class GuidelinesComplianceAgent(QualityAssessmentAgent):
 class QualityConsensusOrchestrator:
     """Orchestrates multiple quality assessment agents and builds consensus"""
     
-    def __init__(self, model: str = "gpt-4o-mini"):
+    def __init__(self, model: str = "gpt-4o-mini", strict_mode: bool = True):
         self.model = model
+        self.strict_mode = strict_mode
         self.agents = {
-            QualityDimension.SEMANTIC_ALIGNMENT: SemanticAlignmentAgent(model),
-            QualityDimension.PEDAGOGICAL_QUALITY: PedagogicalQualityAgent(model),
-            QualityDimension.GROUNDEDNESS: GroundednessAgent(model),
-            QualityDimension.CONTENT_DEPTH: ContentDepthAgent(model),
-            QualityDimension.GUIDELINES_COMPLIANCE: GuidelinesComplianceAgent(model)
+            QualityDimension.SEMANTIC_ALIGNMENT: SemanticAlignmentAgent(model, strict_mode),
+            QualityDimension.PEDAGOGICAL_QUALITY: PedagogicalQualityAgent(model, strict_mode),
+            QualityDimension.GROUNDEDNESS: GroundednessAgent(model, strict_mode),
+            QualityDimension.CONTENT_DEPTH: ContentDepthAgent(model, strict_mode),
+            QualityDimension.GUIDELINES_COMPLIANCE: GuidelinesComplianceAgent(model, strict_mode)
         }
         
     async def assess_chapter(self, chapter: ChapterContent) -> dict[str, Any]:
@@ -764,11 +793,29 @@ class QualityConsensusOrchestrator:
         for dim, assessment in agent_assessments.items():
             if hasattr(assessment, '__dict__'):
                 # For AgentAssessment objects, convert to dict manually
+                # Convert enums to their string values for JSON serialization
+                findings_dict = []
+                for finding in assessment.findings:
+                    if hasattr(finding, '__dict__'):
+                        # Pydantic object - convert to dict with enum values
+                        finding_dict = {
+                            "description": finding.description,
+                            "severity": finding.severity.value if hasattr(finding.severity, 'value') else str(finding.severity),
+                            "confidence": finding.confidence.value if hasattr(finding.confidence, 'value') else str(finding.confidence),
+                            "category": finding.category,
+                            "evidence": finding.evidence,
+                            "recommendations": finding.recommendations
+                        }
+                    else:
+                        # Already a dict
+                        finding_dict = finding
+                    findings_dict.append(finding_dict)
+                
                 agent_assessments_dict[dim] = {
                     "dimension": assessment.dimension,
                     "overall_score": assessment.overall_score,
-                    "confidence": assessment.confidence,
-                    "findings": assessment.findings,
+                    "confidence": assessment.confidence.value if hasattr(assessment.confidence, 'value') else str(assessment.confidence),
+                    "findings": findings_dict,
                     "recommendations": assessment.recommendations,
                     "evidence_summary": assessment.evidence_summary
                 }
@@ -795,15 +842,15 @@ class QualityConsensusOrchestrator:
         return AgentAssessment(
             dimension=dimension,
             overall_score=0.5,  # Neutral score
-            confidence="low",
-            findings=[{
-                "description": f"Agent assessment failed for {dimension}",
-                "severity": "WARNING",
-                "confidence": "low",
-                "category": "assessment_failure",
-                "evidence": ["Agent execution error"],
-                "recommendations": ["Review agent configuration and retry assessment"]
-            }],
+            confidence=ConfidenceLevel.LOW,
+            findings=[QualityFindingStrict(
+                description=f"Agent assessment failed for {dimension}",
+                severity=FindingSeverity.WARNING,
+                confidence=ConfidenceLevel.LOW,
+                category="assessment_failure",
+                evidence=["Agent execution error"],
+                recommendations=["Review agent configuration and retry assessment"]
+            )],
             recommendations=[f"Retry {dimension} assessment"],
             evidence_summary="Fallback assessment due to agent failure"
         )
