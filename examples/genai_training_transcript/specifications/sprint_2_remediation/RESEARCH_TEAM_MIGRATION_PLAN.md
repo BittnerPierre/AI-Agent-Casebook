@@ -53,6 +53,56 @@ graph LR
 - Questions ciblées pour identifier bonnes pratiques et pièges fréquents
 - Utilisation optionnelle de `web_search` pour compléter les références internes
 
+### Diagramme de Séquence détaillé
+```mermaid
+sequenceDiagram
+    participant User
+    participant System
+    participant LeadResearcher
+    participant Memory
+    participant Subagent1
+    participant Subagent2
+    participant CitationAgent
+
+    User->>System: send user query
+    System->>LeadResearcher: Create Lead Researcher
+
+    rect rgb(240, 248, 255)
+        Note over LeadResearcher, Subagent2: Iterative Research Process
+
+        LeadResearcher->>LeadResearcher: think (plan approach)
+        LeadResearcher->>Memory: save plan
+        LeadResearcher->>Memory: retrieve context
+
+        LeadResearcher->>Subagent1: create subagent for aspect A
+        LeadResearcher->>Subagent2: create subagent for aspect B
+
+        par Parallel Research
+            Subagent1->>Subagent1: web_search
+            Subagent1->>Subagent1: think (evaluate)
+            Subagent1->>LeadResearcher: complete_task
+        and
+            Subagent2->>Subagent2: web_search
+            Subagent2->>Subagent2: think (evaluate)
+            Subagent2->>LeadResearcher: complete_task
+        end
+
+        LeadResearcher->>LeadResearcher: think (synthesize results)
+
+        alt More research needed?
+            LeadResearcher->>LeadResearcher: Continue loop
+            Note over LeadResearcher: Loop back to planning
+        else Exit loop
+            LeadResearcher->>System: complete_task (research result)
+        end
+    end
+
+    System->>CitationAgent: Process documents + research report to identify locations for citations
+    CitationAgent->>System: Return report with citations inserted
+    System->>System: Persist results
+    System->>User: Return research results with citations
+```
+
 ## Plan de Refactoring
 
 ### Étape 1 : Création des Interfaces
