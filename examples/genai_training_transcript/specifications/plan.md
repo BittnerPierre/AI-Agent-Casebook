@@ -161,8 +161,8 @@ To support more complex course authoring workflows, we will adopt a hierarchical
 
 | Stage                   | Role                            | Responsibilities                                                                                                                                                                                                          |
 | ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Research Team**       | Planner, Researcher             | Ingest syllabus; refine session outline (titles, bullets, objectives); lookup cross-course content via metadata/folder patterns; produce a detailed course agenda (`research_agenda/course_agenda.md`).                   |
-| **Research Supervisor** | Research Supervisor             | Monitor the Research Team’s iteration budget and ensure agenda completeness                                                                                                                                               |
+| **Research Team**       | Planner, Documentalist (research role) | Ingest syllabus; refine session outline (titles, bullets, objectives); lookup cross-course content via metadata/folder patterns; produce a detailed course agenda (`research_agenda/course_agenda.md`).                   |
+| **Research Supervisor** | Research Supervisor             | Monitor the Research Team’s iteration budget, ensure agenda completeness, and persist agendas/notes via MCP filesystem |
 | **Editing Team**        | Documentalist, Writer, Reviewer | For each chapter (parallelizable):<br>• _Documentalist_: retrieve detailed content based on agenda queries<br>• _Writer_: draft chapter transcript following style guidelines<br>• _Reviewer_: provide feedback on drafts |
 | **Editing Supervisor**  | Editing Supervisor              | Enforce iteration limits for the Editing Team and maintain cost efficiency                                                                                                                                                |
 | **Course Authoring**    | Course Authoring Agent          | Perform a global QA pass across all approved chapters: stitch chapters, ensure smooth transitions, avoid repetition, and cover all syllabus objectives                                                                    |
@@ -183,7 +183,7 @@ To support more complex course authoring workflows, we will adopt a hierarchical
 | Sprint                | Goal & Description                                                                          | Key Tasks                                                                                                                                                                                                                                                                                                         |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Sprint 1 (MVP v1)** | Scaffold & basic workflow with FileClient (no RAG/MCP), including transcript preprocessing. | • Preprocess raw `.txt` transcripts into `.md` + manifest.json (US0)<br>• Ingest syllabus `.md`<br>• Load preprocessed transcripts via FileClient<br>• Run Planning Team→Editing Team→Supervisors→Course Authoring<br>• Persist `research_agenda/`, `research_notes/`, `drafts/`, and per-chapter `output/` files |
-| **Sprint 2 (MVP v2)** | Swap FileClient for Completions API file-search (RAG).                                      | • Index `data/training_courses/**/*.md`<br>• Researcher uses file-search tool<br>• Validate transcript quality vs. v1 output                                                                                                                                                                                      |
+| **Sprint 2 (MVP v2)** | Swap FileClient for Completions API file-search (RAG).                                      | • Index `data/training_courses/**/*.md`<br>• Documentalist uses file-search tool<br>• Validate transcript quality vs. v1 output                                                                                                                                                                                      |
 | **Sprint 3 (MVP v3)** | Summary indices & manifest metadata for cross-course retrieval.                             | • Agent generates `manifest.json` for each course<br>• Implement summary-index & vector-store tool<br>• Enable metadata-based filtering                                                                                                                                                                           |
 | **Sprint 4 (MCP v1)** | Evernote integration for syllabus import & transcript export.                               | • Build Evernote MCP client<br>• Integrate import/export into agentic workflow                                                                                                                                                                                                                                    |
 | **Sprint 5+**         | Global quality pass & refinements (dedupe, CLI flags, advanced styling).                    | • Final flow-and-style agent<br>• CLI configuration options<br>• Additional enhancements                                                                                                                                                                                                                          |
@@ -212,12 +212,13 @@ flowchart LR
         FileClient["FileClient (MCP)"]
         TranscriptGenerator["transcript_generator"]
         EvernoteClient["EvernoteClient (MCP)"]
+        MCPFS["MCP Filesystem"]
     end
 
     subgraph Agent
         subgraph ResearchTeam
             Planner["Planner"]
-            Researcher["Researcher"]
+            ResearchDocumentalist["Documentalist"]
             ResearchSupervisor["Research Supervisor"]
         end
         subgraph EditingTeam
@@ -239,10 +240,15 @@ flowchart LR
     end
 
     SyllabusFile --> Planner
+    Planner --> ResearchDocumentalist
+    ResearchDocumentalist --> FileClient
+    FileClient --> ResearchDocumentalist
+    ResearchDocumentalist --> ResearchSupervisor
     Planner <--> ResearchSupervisor
-    Researcher <--> ResearchSupervisor
-    Planner --> Researcher
-    ResearchSupervisor --> CourseAgenda
+    ResearchSupervisor --> MCPFS["MCP Filesystem"]
+    ResearchSupervisor --> AgendaReview{Agenda complete?}
+    AgendaReview -- "no" --> Planner
+    AgendaReview -- "yes" --> CourseAgenda
 
     CourseAgenda --> EditingSupervisor
     TranscriptsFiles --> Documentalist
