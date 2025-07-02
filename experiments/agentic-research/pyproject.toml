@@ -13,7 +13,7 @@ packages = [{include = "src"}]
 [tool.poetry.scripts]
 agentic-research = "src.main:cli_main"
 dataprep = "src.dataprep.core:main"
-mcp-dataprep-workflow = "scripts.mcp_dataprep_workflow:main"
+mcp-dataprep-workflow = "src.dataprep.workflow:run_workflow"
 dataprep_server = "src.mcp.dataprep_server:main"
 
 [tool.poetry.dependencies]

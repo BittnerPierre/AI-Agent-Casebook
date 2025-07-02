@@ -10,6 +10,7 @@ class KnowledgeEntry(BaseModel):
     url: HttpUrl = Field(..., description="URL source du document")
     filename: str = Field(..., description="Nom du fichier .md stocké localement")
     keywords: List[str] = Field(default_factory=list, description="Mots-clés extraits par LLM")
+    summary: Optional[str] = Field(None, description="Résumé du document généré par LLM")
     title: Optional[str] = Field(None, description="Titre du document")
     content_length: int = Field(0, description="Taille du contenu en caractères")
     openai_file_id: Optional[str] = Field(None, description="ID du fichier dans OpenAI Files API")

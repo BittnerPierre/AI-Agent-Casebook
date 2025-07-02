@@ -34,7 +34,8 @@ class TestMCPDataprepIntegration:
             url="https://example.com/test",
             filename="test.md",
             title="Test Article",
-            keywords=["test", "example"]
+            keywords=["test", "example"],
+            summary="Ceci est un résumé de test pour l'article."
         )
         
         db_manager.add_entry(entry)
@@ -44,6 +45,7 @@ class TestMCPDataprepIntegration:
         assert found_entry is not None
         assert found_entry.filename == "test.md"
         assert found_entry.title == "Test Article"
+        assert found_entry.summary == "Ceci est un résumé de test pour l'article."
         
         # Test de recherche par nom
         found_by_name = db_manager.find_by_name("test.md")
@@ -55,6 +57,7 @@ class TestMCPDataprepIntegration:
         assert len(entries_info) == 1
         assert entries_info[0]['filename'] == "test.md"
         assert entries_info[0]['url'] == "https://example.com/test"
+        assert entries_info[0]['summary'] == "Ceci est un résumé de test pour l'article."
     
     def test_get_knowledge_entries_empty(self, temp_config):
         """Test consultation d'une base de connaissances vide."""
@@ -72,13 +75,15 @@ class TestMCPDataprepIntegration:
                 filename="ai_article.md",
                 title="AI Article",
                 keywords=["AI", "Machine Learning"],
+                summary="Un article sur l'intelligence artificielle et ses applications.",
                 openai_file_id="file_123"
             ),
             KnowledgeEntry(
                 url="https://example.com/python-guide",
                 filename="python_guide.md", 
                 title="Python Guide",
-                keywords=["Python", "Programming"]
+                keywords=["Python", "Programming"],
+                summary="Guide complet sur le langage Python et ses fonctionnalités."
             )
         ]
         
@@ -95,17 +100,21 @@ class TestMCPDataprepIntegration:
         assert ai_entry['title'] == "AI Article"
         assert ai_entry['openai_file_id'] == "file_123"
         assert "AI" in ai_entry['keywords']
+        assert ai_entry['summary'] == "Un article sur l'intelligence artificielle et ses applications."
         
         python_entry = next(e for e in entries if e['filename'] == 'python_guide.md')
         assert python_entry['title'] == "Python Guide"
         assert python_entry['openai_file_id'] is None
+        assert python_entry['summary'] == "Guide complet sur le langage Python et ses fonctionnalités."
     
     @patch('src.dataprep.mcp_functions.load_documents_from_urls')
     @patch('src.dataprep.mcp_functions._extract_keywords_with_llm')
-    def test_download_and_store_url_new_document(self, mock_extract_llm, mock_load, temp_config):
+    @patch('src.dataprep.mcp_functions._extract_summary_with_llm')
+    def test_download_and_store_url_new_document(self, mock_extract_summary, mock_extract_llm, mock_load, temp_config):
         """Test téléchargement d'un nouveau document."""
         # Mock de l'extraction LLM
         mock_extract_llm.return_value = ["AI", "Machine Learning", "Neural Networks"]
+        mock_extract_summary.return_value = "Cet article présente les concepts fondamentaux de l'intelligence artificielle."
         
         # Mock du téléchargement
         mock_doc = Mock()
@@ -137,6 +146,7 @@ class TestMCPDataprepIntegration:
         assert entry.title == "Test AI Article"
         assert "AI" in entry.keywords
         assert "Machine Learning" in entry.keywords
+        assert entry.summary == "Cet article présente les concepts fondamentaux de l'intelligence artificielle."
     
     @patch('src.dataprep.mcp_functions.load_documents_from_urls')
     def test_download_and_store_url_existing_document(self, mock_load, temp_config):
@@ -149,6 +159,7 @@ class TestMCPDataprepIntegration:
             url=url,
             filename="existing_article.md",
             keywords=["test"],
+            summary="Résumé de l'article existant.",
             title="Existing Article"
         )
         db_manager.add_entry(existing_entry)
@@ -171,11 +182,13 @@ class TestMCPDataprepIntegration:
         entry = KnowledgeEntry(
             url="https://example.com/test",
             filename="test.md",
-            keywords=["test"]
+            keywords=["test"],
+            summary="Résumé de test."
         )
         assert str(entry.url) == "https://example.com/test"
         assert entry.filename == "test.md"
         assert entry.keywords == ["test"]
+        assert entry.summary == "Résumé de test."
         
         # Test KnowledgeEntry avec URL invalide
         with pytest.raises(ValidationError):
@@ -196,10 +209,12 @@ class TestMCPDataprepIntegration:
         found = db.find_by_url("https://example.com/test")
         assert found is not None
         assert found.filename == "test.md"
+        assert found.summary == "Résumé de test."
         
         found_by_name = db.find_by_name("test.md")
         assert found_by_name is not None
         assert str(found_by_name.url) == "https://example.com/test"
+        assert found_by_name.summary == "Résumé de test."
 
 
 if __name__ == "__main__":

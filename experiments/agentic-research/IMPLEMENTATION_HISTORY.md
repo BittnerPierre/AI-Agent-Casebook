@@ -851,3 +851,67 @@ Cette approche peut être **directement répliquée** pour d'autres modules MCP 
 
 _Document généré automatiquement lors de l'implémentation du Module MCP DataPrep_  
 _Peut servir de template pour futurs projets similaires_
+
+## Améliorations du module DataPrep (2024-11-21)
+
+Suite aux retours d'utilisation, plusieurs améliorations ont été apportées au module DataPrep:
+
+### 1. Ajout du résumé des documents
+
+- Ajout du champ `summary` à `KnowledgeEntry` pour stocker un résumé généré par LLM
+- Implémentation de la fonction `_extract_summary_with_llm` qui utilise l'API OpenAI pour générer un résumé concis (max 200 mots)
+- Ajout d'une fonction de fallback `_extract_basic_summary` en cas d'échec de l'appel LLM
+
+Le résumé permet au planner de mieux comprendre le contenu des documents au-delà des simples mots-clés, facilitant ainsi la sélection des documents pertinents pour une recherche donnée.
+
+### 2. Optimisation du KnowledgeDBManager
+
+- Implémentation du pattern Singleton pour éviter de recréer l'instance à chaque appel
+- Ajout d'index transients (non sauvegardés) par URL et par nom de fichier pour accélérer les recherches
+- Mise à jour automatique des index lors des opérations d'ajout/modification
+- Correction de la création des répertoires parents lors de l'initialisation
+
+Ces optimisations permettent d'améliorer les performances en évitant de relire le fichier JSON à chaque recherche.
+
+### 3. Réorganisation des fichiers
+
+- Déplacement du workflow de `scripts/mcp_dataprep_workflow.py` vers `src/dataprep/workflow.py`
+- Mise à jour des imports pour utiliser des chemins relatifs
+- Mise à jour du point d'entrée dans `pyproject.toml`
+
+Cette réorganisation permet une meilleure cohérence du code et évite l'utilisation du répertoire `scripts/` qui était un vestige d'une ancienne organisation.
+
+### 4. Mise à jour des tests
+
+- Ajout de tests pour vérifier le champ `summary`
+- Mise à jour des mocks pour prendre en compte la génération de résumés
+- Correction de la création des répertoires temporaires pour les tests
+
+### Diagramme de l'architecture
+
+```mermaid
+flowchart TD
+    A[Agent] -->|appelle| B[MCP Server]
+    B -->|utilise| C[KnowledgeDBManager]
+    B -->|appelle| D[download_and_store_url]
+    B -->|appelle| E[upload_files_to_vectorstore]
+
+    D -->|génère| F[Mots-clés LLM]
+    D -->|génère| G[Résumé LLM]
+    D -->|stocke| H[Fichier Markdown]
+    D -->|met à jour| C
+
+    E -->|utilise| C
+    E -->|upload| I[OpenAI Files API]
+    E -->|attache| J[OpenAI Vector Store]
+
+    C -->|stocke/lit| K[knowledge_db.json]
+    C -->|utilise| L[Index URL]
+    C -->|utilise| M[Index Nom]
+
+    subgraph "Singleton KnowledgeDBManager"
+        C
+        L
+        M
+    end
+```

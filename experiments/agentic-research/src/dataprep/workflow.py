@@ -1,14 +1,14 @@
 """
-Script utilisant le MCP DataPrep pour reproduire la fonctionnalité de src.dataprep.core:main
+Module de workflow pour le traitement des données avec les fonctions MCP DataPrep.
 """
 import logging
 from pathlib import Path
 from typing import List
 
-# Import direct des fonctions (pas via MCP pour ce script)
-from src.dataprep.mcp_functions import download_and_store_url, upload_files_to_vectorstore, get_knowledge_entries
-from src.dataprep.knowledge_db import KnowledgeDBManager
-from src.config import get_config
+# Import direct des fonctions MCP
+from .mcp_functions import download_and_store_url, upload_files_to_vectorstore, get_knowledge_entries
+from .knowledge_db import KnowledgeDBManager
+from ..config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def load_urls_from_file(config) -> List[str]:
     """Charge les URLs depuis le fichier configuré."""
     urls_file_path = config.data.urls_file
-    current_dir = Path(__file__).parent.parent
+    current_dir = Path(__file__).parent.parent.parent  # src/dataprep -> src -> experiments/agentic-research
     urls_file = current_dir / urls_file_path
     
     if not urls_file.exists():
@@ -78,18 +78,22 @@ def analyze_knowledge_base(config):
             status_str = " ".join(status_icons)
             title = entry.get('title', 'Titre non disponible')
             logger.info(f"{status_str} {entry['filename']} - {title}")
+            
+            # Afficher le résumé s'il existe
+            if entry.get('summary'):
+                summary_preview = entry['summary'][:100] + "..." if len(entry['summary']) > 100 else entry['summary']
+                logger.info(f"  📝 Résumé: {summary_preview}")
     
     return entries
 
 
-def main():
+def run_workflow():
     """
-    Fonction principale reproduisant le comportement de dataprep.core:main
-    mais utilisant les nouvelles fonctions MCP optimisées.
+    Fonction principale exécutant le workflow de traitement des données.
     """
     config = get_config()
     
-    # Configuration du logging selon les mémoires [[memory:2246951870861751190]]
+    # Configuration du logging
     logging.basicConfig(
         level=getattr(logging, config.logging.level),
         format=config.logging.format
@@ -132,6 +136,8 @@ def main():
                 keywords = entry.get('keywords', [])
                 if keywords:
                     logger.info(f"🏷️  Mots-clés LLM: {', '.join(keywords[:5])}")
+                if entry.get('summary'):
+                    logger.info(f"📝 Résumé: {entry['summary'][:150]}...")
                 if entry.get('openai_file_id'):
                     logger.info(f"🆔 OpenAI File ID: {entry['openai_file_id']}")
                 logger.info("---")
@@ -180,4 +186,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    run_workflow() 

@@ -74,11 +74,15 @@ def download_and_store_url(url: str, config) -> str:
     # 5. Extraire mots-clés avec LLM
     keywords = _extract_keywords_with_llm(doc, config)
     
-    # 6. Ajouter à la base de connaissances
+    # 6. Générer un résumé avec LLM
+    summary = _extract_summary_with_llm(doc, config)
+    
+    # 7. Ajouter à la base de connaissances
     entry = KnowledgeEntry(
         url=url,
         filename=filename,
         keywords=keywords,
+        summary=summary,  # Ajout du résumé
         title=doc.metadata.get('title'),
         content_length=len(doc.page_content)
         # openai_file_id sera ajouté lors de l'upload
@@ -304,6 +308,55 @@ Concentre-toi sur les concepts techniques, les noms propres, et les thèmes prin
         logger.error(f"Erreur extraction mots-clés LLM: {e}")
         # Fallback sur extraction basique
         return _extract_keywords_basic(doc)
+
+
+def _extract_summary_with_llm(doc, config) -> str:
+    """Génération d'un résumé avec LLM."""
+    client = OpenAI()
+    
+    # Limiter le contenu pour l'analyse
+    content_preview = doc.page_content[:4000] + "..." if len(doc.page_content) > 4000 else doc.page_content
+    title = doc.metadata.get('title', 'Document sans titre')
+    
+    prompt = f"""Génère un résumé concis (maximum 200 mots) de ce document qui capture les points essentiels.
+    
+Titre: {title}
+
+Contenu:
+{content_preview}
+
+Ton résumé doit être factuel, objectif et couvrir les informations principales du document."""
+    
+    try:
+        response = client.chat.completions.create(
+            model=config.openai.model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=300
+        )
+        
+        summary = response.choices[0].message.content.strip()
+        logger.info(f"Résumé généré par LLM: {len(summary)} caractères")
+        return summary
+        
+    except Exception as e:
+        logger.error(f"Erreur génération résumé LLM: {e}")
+        # Fallback sur résumé basique
+        return _extract_basic_summary(doc)
+
+
+def _extract_basic_summary(doc) -> str:
+    """Génération basique d'un résumé (fallback)."""
+    title = doc.metadata.get('title', 'Document sans titre')
+    content = doc.page_content
+    
+    # Prendre les premiers caractères comme résumé
+    max_length = 200
+    summary = content[:max_length] + "..." if len(content) > max_length else content
+    
+    return f"{title} - {summary}"
 
 
 def _extract_keywords_basic(doc) -> List[str]:
