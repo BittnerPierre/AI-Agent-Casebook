@@ -1,0 +1,74 @@
+"""Gestionnaire intelligent pour les vector stores OpenAI."""
+
+import logging
+from typing import Optional
+from openai import OpenAI
+from .config import get_config, VectorStoreConfig
+
+logger = logging.getLogger(__name__)
+
+
+class VectorStoreManager:
+    """Gère automatiquement les vector stores par nom."""
+    
+    def __init__(self, client: OpenAI, config: Optional[VectorStoreConfig] = None):
+        self.client = client
+        self.config = config or get_config().vector_store
+        self._vector_store_id: Optional[str] = None
+    
+    def get_or_create_vector_store(self) -> str:
+        """
+        Trouve un vector store existant par nom ou en crée un nouveau.
+        
+        Returns:
+            str: L'ID du vector store
+        """
+        if self._vector_store_id:
+            return self._vector_store_id
+        
+        # 1. Chercher un vector store existant avec ce nom
+        existing_id = self._find_existing_vector_store()
+        if existing_id:
+            logger.info(f"Vector store trouvé: {existing_id}")
+            self._vector_store_id = existing_id
+            return existing_id
+        
+        # 2. Créer un nouveau vector store si aucun trouvé
+        new_id = self._create_new_vector_store()
+        logger.info(f"Nouveau vector store créé: {new_id}")
+        self._vector_store_id = new_id
+        return new_id
+    
+    def _find_existing_vector_store(self) -> Optional[str]:
+        """Cherche un vector store existant par nom."""
+        try:
+            # Lister tous les vector stores
+            response = self.client.vector_stores.list(limit=100)
+            
+            target_name = self.config.name
+            for vs in response.data:
+                if vs.name == target_name:
+                    logger.info(f"Vector store existant trouvé: {vs.id}")
+                    return vs.id
+            
+            logger.info(f"Aucun vector store trouvé avec le nom: {target_name}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la recherche: {e}")
+            return None
+    
+    def _create_new_vector_store(self) -> str:
+        """Crée un nouveau vector store."""
+        try:
+            logger.info(f"Création d'un nouveau vector store: {self.config.name}")
+            response = self.client.vector_stores.create(
+                name=self.config.name,
+                expires_after={"anchor": "last_active_at", "days": self.config.expires_after_days}
+            )
+            logger.info(f"Vector store créé avec succès: {response.id}")
+            return response.id
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la création: {e}")
+            raise

@@ -19,8 +19,8 @@ Ce projet utilise un environnement collaboratif avec plusieurs agents IA :
 - [examples/genai_training_transcript/CLAUDE.md](mdc:examples/genai_training_transcript/CLAUDE.md) : Configuration Claude Code - **NE JAMAIS MODIFIER**
 
 ### Périmètre de Travail
-- **Répertoire autorisé** : `examples/genai_training_transcript/` uniquement
-- **Interdiction** : Ne pas toucher aux répertoires `app/` ou `experiments/`
+- **Répertoire autorisé** : `examples/genai_training_transcript/` et `experiments/` uniquement
+- **Interdiction** : Ne pas toucher aux répertoires `app/`
 - **Inspiration** : Peut consulter le reste du repo pour s'inspirer mais jamais faire de références directes
 
 ### Développement Specifications-First
