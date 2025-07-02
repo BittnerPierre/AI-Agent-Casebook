@@ -13,6 +13,8 @@ packages = [{include = "src"}]
 [tool.poetry.scripts]
 agentic-research = "src.main:cli_main"
 dataprep = "src.dataprep.core:main"
+mcp-dataprep-workflow = "scripts.mcp_dataprep_workflow:main"
+dataprep_server = "src.mcp.dataprep_server:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -27,6 +29,7 @@ beautifulsoup4 = "^4.13.4"
 html2text = "^2025.4.15"
 lxml = "^6.0.0"
 chardet = "^5.2.0"
+portalocker = "^2.8.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"

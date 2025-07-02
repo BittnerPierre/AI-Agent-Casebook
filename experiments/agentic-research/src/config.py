@@ -24,6 +24,8 @@ class VectorStoreConfig(BaseModel):
 class DataConfig(BaseModel):
     """Configuration for data sources."""
     urls_file: str = Field(default="urls.txt")
+    knowledge_db_path: str = Field(default="data/knowledge_db.json")
+    local_storage_dir: str = Field(default="data/")
 
 
 class DebugConfig(BaseModel):
