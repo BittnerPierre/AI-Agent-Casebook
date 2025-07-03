@@ -1,19 +1,83 @@
 import asyncio
 import logging
+import argparse
+import importlib
+import os.path
+from pathlib import Path
 
-from .agentic_manager import ResearchManager
+from .agentic_manager import ResearchManager as AgenticResearchManager
+from .manager import ResearchManager as StandardResearchManager
 from .config import get_config
+from agents import Agent, Runner, gen_trace_id, trace
+from agents.mcp import MCPServer, MCPServerSse
+from agents.model_settings import ModelSettings
 
+def get_manager_class(manager_path: str):
+    """Dynamically import and return a manager class from a path string."""
+    if not manager_path or "." not in manager_path:
+        # Default managers
+        if manager_path == "agentic_manager":
+            return AgenticResearchManager
+        elif manager_path == "manager":
+            return StandardResearchManager
+        else:
+            raise ValueError(f"Unknown manager: {manager_path}")
+    
+    # For custom managers with format like "module.ClassName"
+    module_path, class_name = manager_path.rsplit(".", 1)
+    module = importlib.import_module(f".{module_path}", package="src")
+    return getattr(module, class_name)
 
-config = get_config()
-logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
-logger = logging.getLogger(__name__)
 
 async def main() -> None:
-    query = input("What would you like to research? ")
-    await ResearchManager().run(query)
+    # Configure logging and get config first
+    config = get_config()
+    logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
+    logger = logging.getLogger(__name__)
+    
+    # Get default manager from config
+    default_manager = config.manager.default_manager
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Agentic Research CLI")
+    parser.add_argument("--syllabus", type=str, help="Path to a syllabus file")
+    parser.add_argument("--manager", type=str, default=default_manager, 
+                        help=f"Manager implementation to use (default: {default_manager})")
+    parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
+    args = parser.parse_args()
+
+    # Get the appropriate manager class
+    manager_class = get_manager_class(args.manager)
+    
+    # Get input: either from syllabus file, command line argument, or interactive input
+    if args.syllabus:
+        syllabus_path = Path(args.syllabus)
+        if not syllabus_path.exists():
+            logger.error(f"Syllabus file not found: {args.syllabus}")
+            return
+        
+        with open(syllabus_path, 'r', encoding='utf-8') as f:
+            query = f.read()
+        logger.info(f"Using syllabus from file: {args.syllabus}")
+    elif args.query:
+        query = args.query
+    else:
+        query = input("What would you like to research? ")
+
+    async with MCPServerSse(
+        name="SSE Dataprep Server",
+        params={
+            "url": "http://localhost:8001/sse",
+        },
+    ) as server:
+        trace_id = gen_trace_id()
+        with trace(workflow_name="SSE Example", trace_id=trace_id):
+            print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
+            await manager_class().run(server, query)
 
 
+    
+   
 def cli_main():
     """Sync entrypoint for Poetry scripts."""
     asyncio.run(main())

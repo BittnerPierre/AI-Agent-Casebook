@@ -46,6 +46,11 @@ class OpenAIConfig(BaseModel):
     model: str = Field(default="gpt-4o")
 
 
+class ManagerConfig(BaseModel):
+    """Configuration for manager selection."""
+    default_manager: str = Field(default="agentic_manager")
+
+
 class Config(BaseModel):
     """Main configuration class."""
     vector_store: VectorStoreConfig
@@ -53,6 +58,7 @@ class Config(BaseModel):
     debug: DebugConfig = Field(default_factory=DebugConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+    manager: ManagerConfig = Field(default_factory=ManagerConfig)
 
 
 class ConfigManager:
@@ -105,6 +111,13 @@ class ConfigManager:
             if "debug" not in config_data:
                 config_data["debug"] = {}
             config_data["debug"]["enabled"] = debug_enabled.lower() in ("true", "1", "yes", "on")
+        
+        # Override du manager par défaut via variable d'environnement
+        default_manager = os.getenv("DEFAULT_MANAGER")
+        if default_manager:
+            if "manager" not in config_data:
+                config_data["manager"] = {}
+            config_data["manager"]["default_manager"] = default_manager
         
         return config_data
     

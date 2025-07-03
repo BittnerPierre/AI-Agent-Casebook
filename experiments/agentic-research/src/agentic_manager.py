@@ -6,20 +6,23 @@ import time
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
+from agents.mcp import MCPServer
 
 # from .agents.file_planner_agent import file_planner_agent
 from .agents.file_search_agent import file_search_agent
 from .agents.writer_agent import ReportData, writer_agent
 from .agents.schemas import FileSearchPlan, FileSearchItem
 from .printer import Printer
-from .agents.agentic_research_agent import research_agent
+from .agents.agentic_research_agent import create_research_supervisor_agent
 
 class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
+        self.mcp_server = None
 
-    async def run(self, query: str) -> None:
+    async def run(self, mcp_server: MCPServer, query: str) -> None:
+        self.mcp_server = mcp_server
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             self.printer.update_item(
@@ -35,6 +38,8 @@ class ResearchManager:
                 is_done=True,
                 hide_checkmark=True,
             )
+
+            self.research_supervisor_agent = create_research_supervisor_agent(self.mcp_server)
             report = await self._agentic_research(query)
             # report = await self._write_report(query, search_results)
 
@@ -56,7 +61,7 @@ class ResearchManager:
         run_config = RunConfig(tracing_disabled=False)
         
         result = await Runner.run(
-            research_agent,
+            self.research_supervisor_agent,
             f"Requête: {query}",
             run_config=run_config
         )
@@ -65,7 +70,7 @@ class ResearchManager:
             f"Doing Agentic Research",
             is_done=True,
         )
-        return result.final_output_as(FileSearchPlan)
+        return result.final_output_as(ReportData)
 
     # async def _perform_file_searches(self, search_plan: FileSearchPlan) -> list[str]:
     #     with custom_span("Recherche dans les fichiers"):

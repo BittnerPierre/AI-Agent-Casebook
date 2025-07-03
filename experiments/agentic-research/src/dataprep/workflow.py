@@ -150,7 +150,7 @@ def run_workflow():
                 result = upload_files_to_vectorstore(
                     inputs=urls,  # Utiliser les URLs qui seront résolues
                     config=config,
-                    vectorstore_name="agentic-research-batch"
+                    vectorstore_name="agentic-research-vector-store"
                 )
                 
                 logger.info("\n=== RAPPORT D'UPLOAD OPTIMISÉ ===")

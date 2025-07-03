@@ -33,3 +33,7 @@ logging:
 # Configuration OpenAI
 openai:
   model: "gpt-4o"
+
+# Configuration du manager
+manager:
+  default_manager: "manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager

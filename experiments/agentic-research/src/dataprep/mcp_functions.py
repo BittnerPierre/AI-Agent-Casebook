@@ -213,26 +213,16 @@ def upload_files_to_vectorstore(
                 file_id=file_id
             )
             
-            # Attendre traitement
-            while vector_store_file.status == 'in_progress':
-                import time
-                time.sleep(1)
-                vector_store_file = client.vector_stores.files.retrieve(
-                    vector_store_id=vectorstore_id,
-                    file_id=file_id
-                )
-            
-            if vector_store_file.status == 'completed':
-                files_attached.append({
-                    'filename': filename,
-                    'file_id': file_id,
-                    'vector_store_file_id': vector_store_file.id,
-                    'status': 'attached'
-                })
-                attach_success_count += 1
-                logger.info(f"Fichier attaché avec succès: {filename}")
-            else:
-                raise Exception(f"Échec de l'attachement. Status: {vector_store_file.status}")
+            # On n'attend plus le traitement complet pour éviter le timeout
+            # On retourne simplement le statut actuel du fichier
+            files_attached.append({
+                'filename': filename,
+                'file_id': file_id,
+                'vector_store_file_id': vector_store_file.id,
+                'status': vector_store_file.status
+            })
+            attach_success_count += 1
+            logger.info(f"Fichier attaché au vector store: {filename} (status: {vector_store_file.status})")
                 
         except Exception as e:
             logger.error(f"Erreur attachement {filename}: {e}")

@@ -6,8 +6,8 @@ import time
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
-
-from .agents.file_planner_agent import file_planner_agent
+from agents.mcp import MCPServer
+from .agents.file_planner_agent import create_file_planner_agent
 from .agents.file_search_agent import file_search_agent
 from .agents.writer_agent import ReportData, writer_agent
 from .agents.schemas import FileSearchPlan, FileSearchItem
@@ -19,7 +19,8 @@ class ResearchManager:
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, query: str) -> None:
+    async def run(self, mcp_server: MCPServer, query: str) -> None:
+        self.mcp_server = mcp_server
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             self.printer.update_item(
@@ -56,6 +57,8 @@ class ResearchManager:
         # Désactiver le tracing automatique pour cet appel
         run_config = RunConfig(tracing_disabled=False)
         
+        file_planner_agent = create_file_planner_agent(self.mcp_server)
+
         result = await Runner.run(
             file_planner_agent,
             f"Requête: {query}",

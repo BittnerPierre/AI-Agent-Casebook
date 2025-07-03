@@ -5,7 +5,10 @@ from ..config import get_config
 from ..vector_store_manager import VectorStoreManager
 from openai import OpenAI
 
+from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+
 INSTRUCTIONS = (
+    f"{RECOMMENDED_PROMPT_PREFIX}"
     "You are a research assistant. Given a search topic, you search through vectorized files "
     "and produce a concise summary of the results. The summary must be 2-3 paragraphs and less than 300 "
     "words. Capture the main points. Write concisely, no need for complete sentences or perfect "

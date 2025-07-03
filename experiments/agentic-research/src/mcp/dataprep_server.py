@@ -3,6 +3,7 @@
 import logging
 from typing import List, Dict, Any
 from fastmcp import FastMCP
+from openai import OpenAI
 
 from ..dataprep.mcp_functions import download_and_store_url, upload_files_to_vectorstore, get_knowledge_entries
 from ..config import get_config
@@ -22,6 +23,7 @@ def create_dataprep_server() -> FastMCP:
         - download_and_store_url: Télécharge et stocke une URL dans le système local
         - upload_files_to_vectorstore: Upload des fichiers vers un vector store OpenAI
         - get_knowledge_entries: Liste les entrées de la base de connaissances
+        - check_vectorstore_file_status: Vérifie l'état des fichiers dans un vector store
         """
     )
     
@@ -68,6 +70,44 @@ def create_dataprep_server() -> FastMCP:
         """
         config = get_config()
         return get_knowledge_entries(config)
+    
+    @mcp.tool()
+    def check_vectorstore_file_status(
+        vectorstore_id: str,
+        file_ids: List[str]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Vérifie l'état de traitement des fichiers dans un vector store.
+        
+        Args:
+            vectorstore_id: ID du vector store
+            file_ids: Liste des IDs de fichiers à vérifier
+            
+        Returns:
+            Dict avec statut de chaque fichier
+        """
+        client = OpenAI()
+        results = []
+        
+        for file_id in file_ids:
+            try:
+                vector_store_file = client.vector_stores.files.retrieve(
+                    vector_store_id=vectorstore_id,
+                    file_id=file_id
+                )
+                results.append({
+                    'file_id': file_id,
+                    'status': vector_store_file.status,
+                    'last_error': vector_store_file.last_error
+                })
+            except Exception as e:
+                results.append({
+                    'file_id': file_id,
+                    'status': 'error',
+                    'error': str(e)
+                })
+        
+        return {'files': results}
     
     return mcp
 
