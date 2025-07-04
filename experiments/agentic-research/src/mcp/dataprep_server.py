@@ -10,7 +10,7 @@ from ..dataprep.vector_store import initialize_vector_store
 from ..dataprep.mcp_functions import (
     download_and_store_url,
     upload_files_to_vectorstore,
-    search_vector_store
+    get_knowledge_entries
 )
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def main():
         functions=[
             download_and_store_url,
             upload_files_to_vectorstore,
-            search_vector_store
+            get_knowledge_entries
         ]
     )
     
