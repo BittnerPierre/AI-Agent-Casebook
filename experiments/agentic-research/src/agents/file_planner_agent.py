@@ -8,8 +8,6 @@ from openai import OpenAI
 
 config = get_config()
 client = OpenAI()
-# manager = VectorStoreManager(client, config.vector_store)
-#vector_store_id = manager.get_or_create_vector_store()
 model = config.openai.model
 
 
@@ -18,8 +16,8 @@ PROMPT = (
     "You are a helpful research assistant. Given a query and a list of knowledge entries, generate a set of "
     "semantic searches to perform in vectorized files to better answer the query. "
     "Generate between 3 and 5 searches per domain identified in the query."
-    "Prepare a FileSearchPlan with the `query`, the `filename` and the `reason` why you think this file is relevant."
-    "Look at the knowledge entries summary and keywords to identify the reason why you think this file is relevant for the query."
+    "Prepare a FileSearchPlan with the `query` (what you are looking for) and the `reason` (why it is important and what you expect to find)."
+    "Look at the knowledge entries summary and keywords to frame your query based on the topics and research areas identified in the query."
 
     "Use the tools to achieve the task."
 )
@@ -27,7 +25,7 @@ PROMPT = (
 def create_file_planner_agent(mcp_server=None):
     mcp_servers = [mcp_server] if mcp_server else []
     return Agent(
-        name="FilePlannerAgent",
+        name="file_planner_agent",
         instructions=PROMPT,
         model=model,
         mcp_servers=mcp_servers,  

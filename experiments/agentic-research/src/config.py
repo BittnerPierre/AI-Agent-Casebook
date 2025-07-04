@@ -44,7 +44,7 @@ class LoggingConfig(BaseModel):
 class OpenAIConfig(BaseModel):
     """Configuration for OpenAI."""
     model: str = Field(default="gpt-4o")
-
+    reasoning_model: str = Field(default="o3-mini")
 
 class ManagerConfig(BaseModel):
     """Configuration for manager selection."""

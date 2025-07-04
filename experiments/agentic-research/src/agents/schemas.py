@@ -1,13 +1,14 @@
 from pydantic import BaseModel
-from typing import Generic, TypeVar, List
+from typing import Generic, Optional, TypeVar, List
 
 
 class SearchItem(BaseModel):
     reason: str
-    "Votre raisonnement pour pourquoi cette recherche est importante pour la requête."
+    "Votre raisonnement de pourquoi cette recherche est importante pour la requête et le résultat attendu."
 
     query: str
     "La requête à utiliser pour la recherche." 
+
 
 T = TypeVar('T', bound=SearchItem)
 
@@ -17,11 +18,12 @@ class SearchPlan(BaseModel, Generic[T]):
 
 
 class FileSearchItem(SearchItem):
-    filename: str
-    "Le nom du fichier à rechercher dans la base de connaissances."
+    pass
+    # filename: Optional[str] = None
+    # "Le nom du fichier à rechercher dans la base de connaissances."
 
 
-class WebSearchItem(SearchItem):
+class WebSearchItem(SearchItem):    
     pass
 
 

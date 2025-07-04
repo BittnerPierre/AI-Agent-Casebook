@@ -1,6 +1,7 @@
 # Agent used to synthesize a final report from the individual summaries.
 from pydantic import BaseModel
-
+from ..config import get_config
+from openai import OpenAI
 from agents import Agent
 
 PROMPT = (
@@ -13,6 +14,9 @@ PROMPT = (
     "for 5-10 pages of content, at least 1000 words."
 )
 
+config = get_config()
+client = OpenAI()
+model = config.openai.model
 
 class ReportData(BaseModel):
     short_summary: str
@@ -26,8 +30,8 @@ class ReportData(BaseModel):
 
 
 writer_agent = Agent(
-    name="WriterAgent",
+    name="writer_agent",
     instructions=PROMPT,
-    model="o3-mini",
+    model=model,
     output_type=ReportData,
 )

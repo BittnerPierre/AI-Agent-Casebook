@@ -11,6 +11,9 @@ from .config import get_config
 from agents import Agent, Runner, gen_trace_id, trace
 from agents.mcp import MCPServer, MCPServerSse
 from agents.model_settings import ModelSettings
+# LangSmith tracing support
+from agents import set_trace_processors
+from langsmith.wrappers import OpenAIAgentsTracingProcessor
 
 def get_manager_class(manager_path: str):
     """Dynamically import and return a manager class from a path string."""
@@ -44,7 +47,13 @@ async def main() -> None:
     parser.add_argument("--manager", type=str, default=default_manager, 
                         help=f"Manager implementation to use (default: {default_manager})")
     parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
+    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)")
     args = parser.parse_args()
+
+    # Override vector store name if provided
+    if args.vector_store:
+        logger.info(f"Using custom vector store: {args.vector_store}")
+        config.vector_store.name = args.vector_store
 
     # Get the appropriate manager class
     manager_class = get_manager_class(args.manager)
@@ -57,12 +66,16 @@ async def main() -> None:
             return
         
         with open(syllabus_path, 'r', encoding='utf-8') as f:
-            query = f.read()
+            syllabus_content = f.read()
+            query = ("Prépare un rapport de recherche complet et bien structuré couvrant l'intégralité des sujets suivants:\n"
+                    f"<syllabus>\n{syllabus_content}\n</syllabus>")
         logger.info(f"Using syllabus from file: {args.syllabus}")
     elif args.query:
         query = args.query
     else:
         query = input("What would you like to research? ")
+
+    set_trace_processors([OpenAIAgentsTracingProcessor()])
 
     async with MCPServerSse(
         name="SSE Dataprep Server",
@@ -74,9 +87,6 @@ async def main() -> None:
         with trace(workflow_name="SSE Example", trace_id=trace_id):
             print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
             await manager_class().run(server, query)
-
-
-    
    
 def cli_main():
     """Sync entrypoint for Poetry scripts."""

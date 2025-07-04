@@ -30,6 +30,7 @@ html2text = "^2025.4.15"
 lxml = "^6.0.0"
 chardet = "^5.2.0"
 portalocker = "^2.8.2"
+langsmith = "^0.4.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
