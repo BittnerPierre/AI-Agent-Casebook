@@ -16,4 +16,4 @@ Structure:
 - web_loader_improved.py: Chargement et traitement des documents web
 """
 
-from .vector_store import vector_store_manager, vector_store_id
+from .vector_store import get_vector_store, initialize_vector_store, reset_vector_store

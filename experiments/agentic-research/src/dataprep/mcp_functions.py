@@ -10,7 +10,7 @@ from datetime import datetime
 from .knowledge_db import KnowledgeDBManager
 from .models import KnowledgeEntry, UploadResult
 from .web_loader_improved import load_documents_from_urls
-from .vector_store import vector_store_manager, vector_store_id
+from .vector_store import get_vector_store, initialize_vector_store
 from ..config import get_config, VectorStoreConfig
 from ..vector_store_manager import VectorStoreManager
 
@@ -112,7 +112,7 @@ def upload_files_to_vectorstore(
     Args:
         inputs: Liste d'URLs ou noms de fichiers
         config: Configuration
-        vectorstore_name: Nom du vector store (ignoré - utilise celui de la config)
+        vectorstore_name: Nom du vector store (optionnel)
         
     Returns:
         UploadResult: Résultat détaillé de l'opération
@@ -145,13 +145,17 @@ def upload_files_to_vectorstore(
         
         entries_to_process.append((entry, file_path))
     
-    # 2. Utiliser le vector store par défaut
-    # Si un nom personnalisé est fourni, ignorer (simplification)
+    # 2. Initialiser ou récupérer le vector store
+    if vectorstore_name:
+        vector_store_manager, vector_store_id = initialize_vector_store(vectorstore_name)
+    else:
+        vector_store_manager, vector_store_id = get_vector_store()
+    
     logger.info(f"Vector store utilisé: {vector_store_id}")
     
     # 3. Traitement des fichiers (upload si nécessaire)
     files_uploaded = []
-    files_to_attach = []  # (file_id, filename)
+    files_attached = []
     upload_count = 0
     reuse_count = 0
     
