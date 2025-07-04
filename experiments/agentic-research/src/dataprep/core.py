@@ -237,21 +237,23 @@ def process_urls_to_vectorstore(
     
     for i, doc in enumerate(docs_list):
         # Créer un nom de fichier basé sur le titre ou l'URL
-        if doc.title:
+        if hasattr(doc, 'metadata') and doc.metadata.get('title'):
             # Nettoyer le titre pour en faire un nom de fichier valide
-            clean_title = re.sub(r'[^\w\s-]', '', doc.title)
+            clean_title = re.sub(r'[^\w\s-]', '', doc.metadata['title'])
             clean_title = re.sub(r'[-\s]+', '_', clean_title).strip('-_')
             filename = f"{i+1:02d}_{clean_title[:50]}.md"
         else:
             # Utiliser un nom générique basé sur l'URL
-            domain = re.search(r'https?://(?:www\.)?([^/]+)', doc.url)
-            domain_str = domain.group(1) if domain else "document"
+            url = doc.url if hasattr(doc, 'url') else f"document_{i+1}"
+            domain = re.search(r'https?://(?:www\.)?([^/]+)', url)
+            domain_str = domain.group(1) if domain else f"document_{i+1}"
             filename = f"{i+1:02d}_{domain_str}.md"
         
         # Sauvegarder le contenu markdown
         file_path = Path(temp_dir) / filename
         with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(doc.content)
+            content = doc.content if hasattr(doc, 'content') else doc.page_content
+            f.write(content)
         
         saved_files.append((filename, file_path))
         logger.info(f"Document sauvegardé: {filename}")
