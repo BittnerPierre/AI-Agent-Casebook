@@ -8,7 +8,7 @@ from agents.mcp import MCPServer
 from ..config import get_config
 from ..dataprep.vector_store import initialize_vector_store
 from ..dataprep.mcp_functions import (
-    download_and_process_url,
+    download_and_store_url,
     upload_files_to_vectorstore,
     search_vector_store
 )
@@ -44,7 +44,7 @@ def main():
         host=args.host,
         port=args.port,
         functions=[
-            download_and_process_url,
+            download_and_store_url,
             upload_files_to_vectorstore,
             search_vector_store
         ]
