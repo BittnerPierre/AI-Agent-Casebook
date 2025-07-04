@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pydantic import BaseModel
 from typing import Generic, Optional, TypeVar, List
 
@@ -33,3 +34,9 @@ class FileSearchPlan(SearchPlan[FileSearchItem]):
 
 class WebSearchPlan(SearchPlan[WebSearchItem]):
     pass
+
+
+@dataclass
+class ResearchInfo:  
+    vector_store_name: str
+    vector_store_id: str

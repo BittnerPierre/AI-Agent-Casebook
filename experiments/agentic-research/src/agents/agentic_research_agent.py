@@ -1,18 +1,16 @@
-from pydantic import BaseModel
-from agents import Agent
-from agents.mcp import MCPServer
-from .schemas import FileSearchPlan 
-from .file_search_agent import file_search_agent
-from .web_search_agent import web_search_agent
+
+from agents import Agent, RunContextWrapper, function_tool
+from .file_search_agent import create_file_search_agent
 from .file_planner_agent import create_file_planner_agent
-from agents import Agent, FileSearchTool, WebSearchTool, ModelSettings
+from agents import Agent, ModelSettings
 from openai import OpenAI
-from ..config import get_config
 from .writer_agent import writer_agent, ReportData
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from .utils import load_prompt_from_file
 import os
+from ..config import get_config
+from .schemas import ResearchInfo
 
 # Chemin vers le fichier de prompt
 # Utiliser un chemin relatif par rapport au fichier actuel
@@ -52,16 +50,28 @@ ORCHESTRATOR_PROMP_V1 = """
 
 config = get_config()
 client = OpenAI()
-# Pas besoin d'accéder au vector store ici
+# manager = VectorStoreManager(client, config.vector_store)
+#vector_store_id = manager.get_or_create_vector_store()
 model = config.openai.model   
 
+
+@function_tool
+async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> str:  
+    """
+    Fetch the name of the vector store.
+    Call this function to get the vector store name to upload file.
+    """
+    return f"The name of vector store is '{wrapper.context.vector_store_name}'."
+
+
 # Factory function pour créer l'agent avec le serveur MCP
-def create_research_supervisor_agent(mcp_server=None):
+def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInfo=None):
     mcp_servers = [mcp_server] if mcp_server else []
 
     file_planner_agent = create_file_planner_agent(mcp_server)
+    file_search_agent = create_file_search_agent(research_info.vector_store_id)
     
-    return Agent(
+    return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
         model="gpt-4.1",
@@ -81,6 +91,7 @@ def create_research_supervisor_agent(mcp_server=None):
                 tool_name="write",
                 tool_description="Write the report based on the search results",
             ),
+            fetch_vector_store_name,
     ],
         output_type=ReportData,
         mcp_servers=mcp_servers,

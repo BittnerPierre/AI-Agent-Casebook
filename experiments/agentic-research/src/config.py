@@ -19,6 +19,7 @@ class VectorStoreConfig(BaseModel):
     name: str = Field(default="Agentic Research Vector Store")
     description: str = Field(default="Vector store for research")
     expires_after_days: int = Field(default=30)
+    vector_store_id: str = Field(default="")
 
 
 class DataConfig(BaseModel):

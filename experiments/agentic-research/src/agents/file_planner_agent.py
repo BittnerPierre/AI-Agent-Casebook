@@ -15,7 +15,7 @@ PROMPT = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
     "You are a helpful research assistant. Given a query and a list of knowledge entries, generate a set of "
     "semantic searches to perform in vectorized files to better answer the query. "
-    "Generate between 3 and 5 searches per domain identified in the query."
+    "Generate between 5 to 10 searches per domain identified in the query."
     "Prepare a FileSearchPlan with the `query` (what you are looking for) and the `reason` (why it is important and what you expect to find)."
     "Look at the knowledge entries summary and keywords to frame your query based on the topics and research areas identified in the query."
 
@@ -28,6 +28,6 @@ def create_file_planner_agent(mcp_server=None):
         name="file_planner_agent",
         instructions=PROMPT,
         model=model,
-        mcp_servers=mcp_servers,  
+        # mcp_servers=mcp_servers,  
         output_type=FileSearchPlan,
     )

@@ -1,22 +1,23 @@
 import logging
 import tempfile
 import re
-import argparse
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from openai import OpenAI
 from ..config import get_config
-from .vector_store import initialize_vector_store, get_vector_store
+from ..vector_store_manager import VectorStoreManager
 #from .web_loader import WebDocument, load_documents_from_urls
 from .web_loader_improved import WebDocument, load_documents_from_urls
 
 # Configuration du logger
+
 config = get_config()
 logger = logging.getLogger(__name__)
 
 client = OpenAI()
 
-# Le vector store sera initialisé plus tard, lors du traitement des arguments CLI
+manager = VectorStoreManager(client, config.vector_store)
+vector_store_id = manager.get_or_create_vector_store()
 
 
 def format_document_as_markdown(doc: WebDocument) -> str:
@@ -168,185 +169,170 @@ def upload_files_to_vector_store(client: OpenAI, file_paths: List[Path], vector_
     return upload_results
 
 
-def process_urls_to_vectorstore(
-    urls_file: str, 
-    dry_run: bool = False, 
-    verbose: bool = False,
-    vector_store_name: Optional[str] = None
-) -> Dict[str, Any]:
+def load_urls_from_file() -> List[str]:
     """
-    Traite une liste d'URLs pour les transformer en documents et les uploader vers un vector store.
+    Charge la liste des URLs depuis un fichier texte configuré.
     
-    Args:
-        urls_file: Chemin vers le fichier contenant les URLs (une par ligne)
-        dry_run: Si True, n'effectue pas l'upload vers le vector store
-        verbose: Si True, affiche plus de détails pendant le traitement
-        vector_store_name: Nom du vector store à utiliser (optionnel)
-        
     Returns:
-        Dict contenant les résultats du traitement
+        Liste des URLs valides
+        
+    Raises:
+        FileNotFoundError: Si le fichier URLs n'existe pas
+        ValueError: Si aucune URL valide n'est trouvée dans le fichier
+        Exception: Pour toute autre erreur de lecture du fichier
     """
-    # 1. Initialiser le vector store avec le nom spécifié (si fourni)
-    if vector_store_name:
-        vector_store_manager, vector_store_id = initialize_vector_store(vector_store_name)
-    else:
-        vector_store_manager, vector_store_id = get_vector_store()
+    # Récupérer le nom du fichier depuis la configuration
+    urls_file_path = config.data.urls_file
     
-    # Chargement des URLs depuis le fichier spécifié
-    urls_path = Path(urls_file)
-    if not urls_path.exists():
-        raise FileNotFoundError(f"Le fichier d'URLs '{urls_file}' n'existe pas")
+    # Déterminer le chemin absolu du fichier URLs
+    current_dir = Path(__file__).parent.parent.parent  # Remonter au dossier experiments/agentic-research
+    urls_file = current_dir / urls_file_path
+    
+    # Vérifier que le fichier existe
+    if not urls_file.exists():
+        raise FileNotFoundError(f"Fichier URLs non trouvé: {urls_file}")
     
     urls = []
-    with open(urls_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                urls.append(line)
     
-    logger.info(f"{len(urls)} URLs chargées depuis {urls_path}")
+    try:
+        with open(urls_file, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                url = line.strip()
+                
+                # Ignorer les lignes vides et les commentaires
+                if url and not url.startswith('#'):
+                    # Validation basique d'URL
+                    if url.startswith(('http://', 'https://')):
+                        urls.append(url)
+                        logger.debug(f"URL ajoutée: {url}")
+                    else:
+                        logger.warning(f"URL invalide ignorée (ligne {line_num}): {url}")
+        
+        if not urls:
+            raise ValueError(f"Aucune URL valide trouvée dans le fichier: {urls_file}")
+        
+        logger.info(f"{len(urls)} URLs chargées depuis {urls_file}")
+        
+    except (OSError, IOError) as e:
+        raise Exception(f"Erreur lors de la lecture du fichier URLs {urls_file}: {e}")
     
-    # Traitement des URLs
-    logger.info(f"Début du traitement de {len(urls)} URLs")
-    
-    # Chargement des documents
-    logger.info("Chargement des documents depuis les URLs...")
-    docs_list = load_documents_from_urls(urls)
-    logger.info(f"{len(docs_list)} documents chargés avec succès")
-    
-    # Mode dry-run: ne pas uploader vers le vector store
-    if dry_run:
-        logger.info("Mode dry-run - pas d'upload vers vector store")
-        return {
-            'total_urls': len(urls),
-            'total_docs': len(docs_list),
-            'total_files_saved': 0,
-            'upload_results': None
-        }
-    
-    # Mode normal: upload vers le vector store
-    logger.info("Mode normal - upload vers vector store")
-    
-    # Création d'un dossier temporaire pour les fichiers markdown
-    temp_dir = tempfile.mkdtemp(prefix="agentic_research_docs_")
-    logger.info(f"Dossier temporaire créé: {temp_dir}")
-    
-    # Conversion des documents en markdown et sauvegarde dans le dossier temporaire
-    logger.info("Conversion et sauvegarde des documents en markdown...")
-    saved_files = []
-    
-    for i, doc in enumerate(docs_list):
-        # Créer un nom de fichier basé sur le titre ou l'URL
-        if hasattr(doc, 'metadata') and doc.metadata.get('title'):
-            # Nettoyer le titre pour en faire un nom de fichier valide
-            clean_title = re.sub(r'[^\w\s-]', '', doc.metadata['title'])
-            clean_title = re.sub(r'[-\s]+', '_', clean_title).strip('-_')
-            filename = f"{i+1:02d}_{clean_title[:50]}.md"
+    return urls
+
+
+def main():
+    """
+    Fonction principale pour traiter les documents web et les envoyer au vector store.
+    Si le mode debug est activé, sauvegarde les documents localement.
+    """
+    try:
+        # Chargement des URLs depuis le fichier externe configuré
+        urls = load_urls_from_file()
+        
+        logger.info(f"Début du traitement de {len(urls)} URLs")
+        
+        # Chargement des documents
+        logger.info("Chargement des documents depuis les URLs...")
+        docs_list = load_documents_from_urls(urls)
+        
+        if not docs_list:
+            logger.error("Aucun document n'a pu être chargé")
+            return
+        
+        logger.info(f"{len(docs_list)} documents chargés avec succès")
+        
+        # Vérifier si le mode debug est activé
+        debug_enabled = config.debug.enabled
+        debug_output_dir = Path(config.debug.output_dir)
+        
+        if debug_enabled:
+            # Mode debug : sauvegarde locale permanente
+            logger.info(f"Mode debug activé - sauvegarde dans {debug_output_dir}")
+            
+            # Créer le dossier debug_output s'il n'existe pas
+            debug_output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Sauvegarde en markdown dans debug_output
+            logger.info("Conversion et sauvegarde des documents en markdown...")
+            saved_files = save_docs_to_markdown(docs_list, debug_output_dir)
+            
+            if not saved_files:
+                logger.error("Aucun fichier n'a pu être sauvegardé")
+                return
+            
+            logger.info(f"{len(saved_files)} fichiers markdown créés dans {debug_output_dir}")
+            
+            # Affichage du contenu en mode debug
+            logger.info("=== APERÇU DU CONTENU CHARGÉ ===")
+            for i, doc in enumerate(docs_list, 1):
+                title = doc.metadata.get('title', f'Document {i}')
+                source = doc.metadata.get('source', 'Source inconnue')
+                content_preview = doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content
+                
+                logger.info(f"\n📄 Document {i}: {title}")
+                logger.info(f"🔗 Source: {source}")
+                logger.info(f"📝 Aperçu: {content_preview}")
+                logger.info(f"📊 Taille: {len(doc.page_content)} caractères")
+                
+            # Créer un rapport de synthèse en mode debug
+            if config.debug.save_reports:
+                report_path = debug_output_dir / "processing_report.md"
+                create_processing_report(docs_list, saved_files, report_path)
+                logger.info(f"📋 Rapport de traitement sauvegardé: {report_path}")
+            
+            logger.info(f"\n✅ Mode debug - Contenu sauvegardé localement dans {debug_output_dir}")
+            logger.info("Les fichiers markdown sont prêts à être utilisés pour la recherche locale.")
+            
         else:
-            # Utiliser un nom générique basé sur l'URL
-            url = doc.url if hasattr(doc, 'url') else f"document_{i+1}"
-            domain = re.search(r'https?://(?:www\.)?([^/]+)', url)
-            domain_str = domain.group(1) if domain else f"document_{i+1}"
-            filename = f"{i+1:02d}_{domain_str}.md"
-        
-        # Sauvegarder le contenu markdown
-        file_path = Path(temp_dir) / filename
-        with open(file_path, 'w', encoding='utf-8') as f:
-            content = doc.content if hasattr(doc, 'content') else doc.page_content
-            f.write(content)
-        
-        saved_files.append((filename, file_path))
-        logger.info(f"Document sauvegardé: {filename}")
-    
-    logger.info(f"{len(saved_files)} fichiers markdown créés")
-    
-    # Upload des fichiers vers le vector store
-    logger.info("Upload vers le vector store OpenAI...")
-    
-    upload_results = {
-        'total': len(saved_files),
-        'success': 0,
-        'failures': 0,
-        'files': []
-    }
-    
-    for filename, file_path in saved_files:
-        try:
-            # Upload du fichier vers l'API Files
-            logger.info(f"Upload du fichier vers l'API Files: {filename}")
-            with open(file_path, 'rb') as file:
-                response = client.files.create(
-                    file=file,
-                    purpose="assistants"
+            # Mode normal : upload vers vector store avec dossier temporaire
+            logger.info("Mode normal - upload vers vector store")
+            
+            with tempfile.TemporaryDirectory(prefix="agentic_research_docs_") as temp_dir:
+                temp_path = Path(temp_dir)
+                logger.info(f"Dossier temporaire créé: {temp_path}")
+                
+                # Sauvegarde en markdown
+                logger.info("Conversion et sauvegarde des documents en markdown...")
+                saved_files = save_docs_to_markdown(docs_list, temp_path)
+                
+                if not saved_files:
+                    logger.error("Aucun fichier n'a pu être sauvegardé")
+                    return
+                
+                logger.info(f"{len(saved_files)} fichiers markdown créés")
+                
+                # Upload vers le vector store
+                logger.info("Upload vers le vector store OpenAI...")
+                upload_results = upload_files_to_vector_store(
+                    client, 
+                    saved_files, 
+                    vector_store_id
                 )
-            
-            file_id = response.id
-            logger.info(f"Fichier uploadé vers l'API Files avec l'ID: {file_id}")
-            
-            # Attachement du fichier au vector store
-            logger.info(f"Attachement du fichier au vector store: {filename}")
-            vector_store_file = client.vector_stores.files.create(
-                vector_store_id=vector_store_id,
-                file_id=file_id
-            )
-            
-            # Attendre que le fichier soit traité
-            logger.info(f"Traitement en cours pour {filename}...")
-            file_status = client.vector_stores.files.retrieve(
-                vector_store_id=vector_store_id,
-                file_id=file_id
-            )
-            
-            # Vérifier si le traitement a réussi
-            if file_status.status == "processed":
-                logger.info(f"Fichier attaché avec succès au vector store: {filename}")
-                upload_results['success'] += 1
-                upload_results['files'].append({
-                    'filename': filename,
-                    'file_id': file_id,
-                    'status': 'success'
-                })
-            else:
-                logger.warning(f"Problème avec le fichier {filename}: {file_status.status}")
-                upload_results['failures'] += 1
-                upload_results['files'].append({
-                    'filename': filename,
-                    'file_id': file_id,
-                    'status': file_status.status
-                })
+                
+                # Rapport final
+                logger.info("=== RAPPORT D'UPLOAD ===")
+                logger.info(f"Total de fichiers traités: {upload_results['total_files']}")
+                logger.info(f"Uploads réussis: {len(upload_results['success'])}")
+                logger.info(f"Échecs: {len(upload_results['failures'])}")
+                
+                if upload_results['success']:
+                    logger.info("Fichiers uploadés avec succès:")
+                    for result in upload_results['success']:
+                        logger.info(f"  - {result['filename']} (ID: {result['file_id']})")
+                
+                if upload_results['failures']:
+                    logger.warning("Fichiers en échec:")
+                    for failure in upload_results['failures']:
+                        logger.warning(f"  - {failure['filename']}: {failure['error']}")
+                        
+            logger.info("Traitement terminé. Dossier temporaire nettoyé automatiquement.")
         
-        except Exception as e:
-            logger.error(f"Erreur lors de l'upload du fichier {filename}: {e}")
-            upload_results['failures'] += 1
-            upload_results['files'].append({
-                'filename': filename,
-                'status': 'error',
-                'error': str(e)
-            })
-    
-    # Affichage du rapport d'upload
-    logger.info("=== RAPPORT D'UPLOAD ===")
-    logger.info(f"Total de fichiers traités: {upload_results['total']}")
-    logger.info(f"Uploads réussis: {upload_results['success']}")
-    logger.info(f"Échecs: {upload_results['failures']}")
-    
-    if upload_results['success'] > 0:
-        logger.info("Fichiers uploadés avec succès:")
-        for file_info in upload_results['files']:
-            if file_info['status'] == 'success':
-                logger.info(f"  - {file_info['filename']} (ID: {file_info['file_id']})")
-    
-    # Nettoyage du dossier temporaire
-    import shutil
-    shutil.rmtree(temp_dir)
-    logger.info("Traitement terminé. Dossier temporaire nettoyé automatiquement.")
-    
-    return {
-        'total_urls': len(urls),
-        'total_docs': len(docs_list),
-        'total_files_saved': len(saved_files),
-        'upload_results': upload_results
-    }
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(f"Erreur de configuration: {e}")
+        logger.error(f"Veuillez créer un fichier '{config.data.urls_file}' avec les URLs à traiter (une par ligne)")
+        raise
+    except Exception as e:
+        logger.error(f"Erreur critique dans le traitement: {e}")
+        raise
 
 
 def create_processing_report(docs_list: List[WebDocument], saved_files: List[Path], report_path: Path) -> None:
@@ -410,24 +396,11 @@ def create_processing_report(docs_list: List[WebDocument], saved_files: List[Pat
 
 if __name__ == "__main__":
     # Configuration du logging pour l'exécution directe
+    config = get_config()
     logging.basicConfig(
         level=getattr(logging, config.logging.level),
         format=config.logging.format
     )
     
-    # Parsing des arguments CLI
-    parser = argparse.ArgumentParser(description="Traitement d'URLs pour vector store")
-    parser.add_argument("--urls-file", default="urls.txt", help="Fichier contenant les URLs à traiter")
-    parser.add_argument("--dry-run", action="store_true", help="Ne pas uploader vers le vector store")
-    parser.add_argument("--verbose", action="store_true", help="Afficher plus de détails")
-    parser.add_argument("--vector-store", help="Nom du vector store à utiliser")
-    args = parser.parse_args()
-    
-    # Traitement des URLs
-    results = process_urls_to_vectorstore(
-        args.urls_file,
-        dry_run=args.dry_run,
-        verbose=args.verbose,
-        vector_store_name=args.vector_store
-    )
+    main()
 

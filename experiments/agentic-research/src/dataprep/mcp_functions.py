@@ -10,11 +10,20 @@ from datetime import datetime
 from .knowledge_db import KnowledgeDBManager
 from .models import KnowledgeEntry, UploadResult
 from .web_loader_improved import load_documents_from_urls
-from .vector_store import get_vector_store, initialize_vector_store
-from ..config import get_config, VectorStoreConfig
-from ..vector_store_manager import VectorStoreManager
+from .vector_store_manager import VectorStoreManager
+from ..config import get_config
 
 logger = logging.getLogger(__name__)
+
+
+class VectorStoreSingleton:
+    _instance = None
+
+    @staticmethod
+    def get_instance(vector_store_name):
+        if VectorStoreSingleton._instance is None:
+            VectorStoreSingleton._instance = VectorStoreManager(vector_store_name)
+        return VectorStoreSingleton._instance
 
 
 def download_and_store_url(url: str, config) -> str:
@@ -98,7 +107,7 @@ def download_and_store_url(url: str, config) -> str:
 def upload_files_to_vectorstore(
     inputs: List[str], 
     config, 
-    vectorstore_name: str = None
+    vectorstore_name: str
 ) -> UploadResult:
     """
     MCP Function 2: Upload optimisé vers vector store OpenAI
@@ -112,7 +121,7 @@ def upload_files_to_vectorstore(
     Args:
         inputs: Liste d'URLs ou noms de fichiers
         config: Configuration
-        vectorstore_name: Nom du vector store (optionnel)
+        vectorstore_name: Nom du vector store
         
     Returns:
         UploadResult: Résultat détaillé de l'opération
@@ -145,17 +154,15 @@ def upload_files_to_vectorstore(
         
         entries_to_process.append((entry, file_path))
     
-    # 2. Initialiser ou récupérer le vector store
-    if vectorstore_name:
-        vector_store_manager, vector_store_id = initialize_vector_store(vectorstore_name)
-    else:
-        vector_store_manager, vector_store_id = get_vector_store()
+    # 2. Créer vector store avec expiration 1 jour
+    vector_store_manager = VectorStoreSingleton.get_instance(vectorstore_name)
+    vector_store_id = vector_store_manager.get_or_create_vector_store()
     
-    logger.info(f"Vector store utilisé: {vector_store_id}")
+    logger.info(f"Vector store créé: {vector_store_id}")
     
     # 3. Traitement des fichiers (upload si nécessaire)
     files_uploaded = []
-    files_attached = []
+    files_to_attach = []  # (file_id, filename)
     upload_count = 0
     reuse_count = 0
     
@@ -208,18 +215,6 @@ def upload_files_to_vectorstore(
     
     for file_id, filename in files_to_attach:
         try:
-            # Vérifier si le fichier est déjà attaché au vector store
-            if vector_store_manager.check_file_in_vector_store(file_id):
-                logger.info(f"Fichier déjà attaché au vector store: {filename}")
-                files_attached.append({
-                    'filename': filename,
-                    'file_id': file_id,
-                    'status': 'already_attached'
-                })
-                attach_success_count += 1
-                continue
-            
-            # Attacher le fichier au vector store
             vector_store_file = client.vector_stores.files.create(
                 vector_store_id=vector_store_id,
                 file_id=file_id
