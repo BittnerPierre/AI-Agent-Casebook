@@ -2,7 +2,7 @@ from agents import Agent, FileSearchTool
 from agents.model_settings import ModelSettings
 
 from ..config import get_config
-from ..vector_store_manager import VectorStoreManager
+from ..dataprep.vector_store import vector_store_id
 from openai import OpenAI
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
@@ -17,11 +17,9 @@ INSTRUCTIONS = (
     "The summary must be in the same language as the search topic."
 )
 
-# Récupérer l'ID du vector store
+# Récupérer l'ID du vector store depuis le module vector_store
 config = get_config()
 client = OpenAI()
-manager = VectorStoreManager(client, config.vector_store)
-vector_store_id = manager.get_or_create_vector_store()
 model = config.openai.model
 
 file_search_agent = Agent(

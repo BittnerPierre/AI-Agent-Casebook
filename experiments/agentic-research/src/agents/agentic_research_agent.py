@@ -7,7 +7,6 @@ from .web_search_agent import web_search_agent
 from .file_planner_agent import create_file_planner_agent
 from agents import Agent, FileSearchTool, WebSearchTool, ModelSettings
 from openai import OpenAI
-from ..vector_store_manager import VectorStoreManager
 from ..config import get_config
 from .writer_agent import writer_agent, ReportData
 
@@ -53,8 +52,7 @@ ORCHESTRATOR_PROMP_V1 = """
 
 config = get_config()
 client = OpenAI()
-# manager = VectorStoreManager(client, config.vector_store)
-#vector_store_id = manager.get_or_create_vector_store()
+# Pas besoin d'accéder au vector store ici
 model = config.openai.model   
 
 # Factory function pour créer l'agent avec le serveur MCP
