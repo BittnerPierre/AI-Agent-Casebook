@@ -4,7 +4,7 @@ import logging
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from agents.mcp import MCPServer
+from agents.mcp import MCPServerSse
 from ..config import get_config
 from ..dataprep.vector_store import initialize_vector_store
 from ..dataprep.mcp_functions import (
@@ -40,14 +40,21 @@ def main():
     
     # Création et démarrage du serveur MCP
     logger.info(f"Démarrage du serveur MCP sur {args.host}:{args.port}")
-    server = MCPServer(
-        host=args.host,
-        port=args.port,
-        functions=[
+    
+    # Paramètres pour le serveur MCP
+    params = {
+        "host": args.host,
+        "port": args.port,
+        "functions": [
             download_and_store_url,
             upload_files_to_vectorstore,
             get_knowledge_entries
         ]
+    }
+    
+    server = MCPServerSse(
+        params=params,
+        name="DataPrep MCP Server"
     )
     
     try:
