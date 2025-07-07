@@ -15,7 +15,7 @@ from .schemas import ResearchInfo
 # Chemin vers le fichier de prompt
 # Utiliser un chemin relatif par rapport au fichier actuel
 current_dir = os.path.dirname(os.path.abspath(__file__))
-RESEARCH_LEAD_PROMPT_PATH = os.path.join(current_dir, "prompts", "research_lead_agent.md")
+RESEARCH_LEAD_PROMPT_PATH = os.path.join(current_dir, "prompts", "research_lead_agent_revised.md")
 
 # Chargement du prompt depuis le fichier
 ORCHESTRATOR_PROMPT = load_prompt_from_file(RESEARCH_LEAD_PROMPT_PATH)
@@ -23,6 +23,10 @@ ORCHESTRATOR_PROMPT = load_prompt_from_file(RESEARCH_LEAD_PROMPT_PATH)
 if ORCHESTRATOR_PROMPT is None:
     raise ValueError("ORCHESTRATOR_PROMPT is None")
 
+INSTRUCTIONS = (
+    f"{RECOMMENDED_PROMPT_PREFIX}"
+    f"{ORCHESTRATOR_PROMPT}"
+)
 
 ORCHESTRATOR_PROMP_V1 = """
     You are a helpful lead research assistant. 

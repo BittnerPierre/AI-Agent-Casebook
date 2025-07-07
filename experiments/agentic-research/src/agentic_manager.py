@@ -24,12 +24,12 @@ class ResearchManager:
         self.mcp_server = mcp_server
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
-            self.printer.update_item(
-                "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-                is_done=True,
-                hide_checkmark=True,
-            )
+            # self.printer.update_item(
+            #     "trace_id",
+            #     f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
+            #     is_done=True,
+            #     hide_checkmark=True,
+            # )
 
             self.printer.update_item(
                 "starting",
@@ -62,7 +62,9 @@ class ResearchManager:
         
         result = await Runner.run(
             self.research_supervisor_agent,
-            f"Requête: {query}",
+            f"Demande: \n\n"
+            f"######\n"
+            f"{query}",
             context=research_info,
             run_config=run_config
         )

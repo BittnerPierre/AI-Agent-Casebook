@@ -61,7 +61,9 @@ class ResearchManager:
 
         result = await Runner.run(
             file_planner_agent,
-            f"Requête: {query}",
+            f"Demande: \n\n"
+            f"######\n"
+            f"{query}",
             run_config=run_config
         )
         self.printer.update_item(

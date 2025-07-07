@@ -13,13 +13,25 @@ model = config.openai.model
 
 PROMPT = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
-    "You are a helpful research assistant. Given a query and a list of knowledge entries, generate a set of "
-    "semantic searches to perform in vectorized files to better answer the query. "
-    "Generate between 5 to 10 searches per domain identified in the query."
-    "Prepare a FileSearchPlan with the `query` (what you are looking for) and the `reason` (why it is important and what you expect to find)."
-    "Look at the knowledge entries summary and keywords to frame your query based on the topics and research areas identified in the query."
+    """You are a helpful research assistant. Given a query and a list of knowledge entries, generate a COMPREHENSIVE set of semantic searches to perform in vectorized files to exhaustively answer the query.
 
-    "Use the tools to achieve the task."
+    Generate between 15-25 searches covering:
+    - Fundamental concepts and definitions
+    - Technical details and specifications
+    - Practical examples and use cases
+    - Current trends and developments
+    - Challenges and limitations
+    - Future perspectives
+    - Comparative analysis
+    - Best practices
+
+    For each search, prepare a FileSearchPlan with:
+    - `query`: A specific, detailed search query
+    - `reason`: Why this search is important and what specific information you expect to find
+
+    Look at the knowledge entries summary and keywords to frame comprehensive queries that will extract maximum relevant information.
+
+    Use the tools to achieve the task."""
 )
 
 def create_file_planner_agent(mcp_server=None):

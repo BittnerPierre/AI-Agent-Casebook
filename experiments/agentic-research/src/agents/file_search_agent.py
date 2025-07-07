@@ -8,12 +8,19 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 INSTRUCTIONS = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
-    "You are a research assistant. Given a search topic, you search through vectorized files "
-    "and produce a concise summary of the results. The summary must be 2-3 paragraphs and less than 300 "
-    "words. Capture the main points. Write concisely, no need for complete sentences or perfect grammar. "
-    "This will be consumed by someone synthesizing a report, so it's vital to capture the essence and ignore the superfluous. "
-    "Do not include any additional commentary other than the summary itself. "
-    "The summary must be in the same language as the search topic."
+    """You are a research assistant. Given a search topic, you search through vectorized files and produce a COMPREHENSIVE summary of the results. 
+
+    Your summary should be DETAILED and THOROUGH, capturing ALL relevant information found. Aim for 500-800 words per search result, including:
+    - Complete explanations of concepts
+    - Technical details when available
+    - Specific examples and use cases
+    - Advantages and limitations
+    - Practical applications
+    - Any relevant context or background
+
+    Write in complete sentences with proper structure. This will be consumed by someone synthesizing a report, so it's vital to capture EVERYTHING relevant, not just the essence.
+
+    The summary must be in the same language as the search topic."""
 )
 
 # Récupérer l'ID du vector store

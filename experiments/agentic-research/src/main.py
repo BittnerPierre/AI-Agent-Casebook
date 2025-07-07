@@ -70,8 +70,7 @@ async def main() -> None:
         
         with open(syllabus_path, 'r', encoding='utf-8') as f:
             syllabus_content = f.read()
-            query = ("Prépare un rapport de recherche complet et bien structuré permettant de rédiger un support de formation sur les sujets suivants:\n"
-                    f"<syllabus>\n{syllabus_content}\n</syllabus>")
+            query = (f"<syllabus>\n{syllabus_content}\n</syllabus>")
         logger.info(f"Using syllabus from file: {args.syllabus}")
     elif args.query:
         query = args.query
