@@ -30,10 +30,13 @@ logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Configuration OpenAI
-openai:
-  model: "gpt-4o-mini"
-  reasoning_model: "o3-mini"
+# Configuration Models
+models:
+  research_model: "openai/gpt-4.1-mini"
+  planning_model: "litellm/anthropic/claude-3-5-haiku-latest"
+  search_model: "openai/gpt-4.1-mini"
+  writer_model: "litellm/mistral/mistral-medium-latest"
+  reasoning_model: "litellm/anthropic/claude-3-7-sonnet-latest"
 
 # Configuration du manager
 manager:

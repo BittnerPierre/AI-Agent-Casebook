@@ -3,15 +3,17 @@ from pydantic import BaseModel
 from ..config import get_config
 from openai import OpenAI
 from agents import Agent
+from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 PROMPT = (
+    f"{RECOMMENDED_PROMPT_PREFIX}"
    """You are a senior researcher tasked with writing a COMPREHENSIVE and DETAILED report for a research inquiry.
 
     You will be provided with the original inquiry and extensive research done by research assistants.
 
     Your task:
-    1. Create a detailed outline covering all aspects of the topic
-    2. Write a thorough, exhaustive report that serves as a complete reference
+    1. Create a detailed outline covering all aspects of the plan of the research
+    2. Write a thorough, exhaustive report that serves as a complete reference on the topic
 
     The final output should be:
     - In markdown format
@@ -26,7 +28,7 @@ PROMPT = (
 
 config = get_config()
 client = OpenAI()
-model = config.openai.model
+model = config.models.writer_model
 
 class ReportData(BaseModel):
     short_summary: str

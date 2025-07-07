@@ -7,7 +7,7 @@ from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
 from agents.mcp import MCPServer
-from .agents.file_planner_agent import create_file_planner_agent
+from .agents.file_search_planning_agent import create_file_planner_agent
 from .agents.file_search_agent import create_file_search_agent
 from .agents.writer_agent import ReportData, writer_agent
 from .agents.schemas import FileSearchPlan, FileSearchItem

@@ -1,7 +1,7 @@
 
 from agents import Agent, RunContextWrapper, function_tool
 from .file_search_agent import create_file_search_agent
-from .file_planner_agent import create_file_planner_agent
+from .file_search_planning_agent import create_file_planner_agent
 from agents import Agent, ModelSettings
 from openai import OpenAI
 from .writer_agent import writer_agent, ReportData
@@ -56,7 +56,7 @@ config = get_config()
 client = OpenAI()
 # manager = VectorStoreManager(client, config.vector_store)
 #vector_store_id = manager.get_or_create_vector_store()
-model = config.openai.model   
+model = config.models.research_model
 
 
 @function_tool
@@ -68,6 +68,14 @@ async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> s
     return f"The name of vector store is '{wrapper.context.vector_store_name}'."
 
 
+@function_tool
+async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) -> str:  
+    """
+    Display the agenda in the conversation.
+    Call this function to display the agenda in the conversation.
+    """
+    return f"#### Cartographie des concepts à explorer\n\n{agenda}"
+
 # Factory function pour créer l'agent avec le serveur MCP
 def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInfo=None):
     mcp_servers = [mcp_server] if mcp_server else []
@@ -78,7 +86,7 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
-        model="gpt-4.1",
+        model=model,
         # handoffs=[
         #     file_planner_agent, file_search_agent, writer_agent
         # ],
@@ -93,9 +101,10 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
             ),
             writer_agent.as_tool(
                 tool_name="write",
-                tool_description="Write the report based on the search results",
+                tool_description="Write the full report based on the search results",
             ),
             fetch_vector_store_name,
+            display_agenda,
     ],
         output_type=ReportData,
         mcp_servers=mcp_servers,

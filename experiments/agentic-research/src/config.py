@@ -42,10 +42,13 @@ class LoggingConfig(BaseModel):
     format: str = Field(default="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
-class OpenAIConfig(BaseModel):
+class ModelsConfig(BaseModel):
     """Configuration for OpenAI."""
-    model: str = Field(default="gpt-4o")
-    reasoning_model: str = Field(default="o3-mini")
+    research_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
+    planning_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
+    search_model: str = Field(default="openai/gpt-4o-mini")
+    writer_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
+    reasoning_model: str = Field(default="openai/o3-mini")
 
 class ManagerConfig(BaseModel):
     """Configuration for manager selection."""
@@ -58,7 +61,7 @@ class Config(BaseModel):
     data: DataConfig = Field(default_factory=DataConfig)
     debug: DebugConfig = Field(default_factory=DebugConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
-    openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+    models: ModelsConfig = Field(default_factory=ModelsConfig)
     manager: ManagerConfig = Field(default_factory=ManagerConfig)
 
 
@@ -99,12 +102,12 @@ class ConfigManager:
     
     def _apply_env_overrides(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
         """Apply environment variable overrides to configuration."""
-        # Permettre l'override du vector store name via la variable d'environnement
-        vector_store_name = os.getenv("VECTOR_STORE_NAME")
-        if vector_store_name:
-            if "vector_store" not in config_data:
-                config_data["vector_store"] = {}
-            config_data["vector_store"]["name"] = vector_store_name
+        # # Permettre l'override du vector store name via la variable d'environnement
+        # vector_store_name = os.getenv("VECTOR_STORE_NAME")
+        # if vector_store_name:
+        #     if "vector_store" not in config_data:
+        #         config_data["vector_store"] = {}
+        #     config_data["vector_store"]["name"] = vector_store_name
         
         # Override du mode debug via variable d'environnement
         debug_enabled = os.getenv("DEBUG")

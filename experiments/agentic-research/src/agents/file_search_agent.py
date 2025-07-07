@@ -3,14 +3,14 @@ from agents.model_settings import ModelSettings
 
 from ..config import get_config
 from openai import OpenAI
-from .utils import get_vector_store_id_by_name
+#from .utils import get_vector_store_id_by_name
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 INSTRUCTIONS = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
     """You are a research assistant. Given a search topic, you search through vectorized files and produce a COMPREHENSIVE summary of the results. 
 
-    Your summary should be DETAILED and THOROUGH, capturing ALL relevant information found. Aim for 500-800 words per search result, including:
+    Your summary should be DETAILED and THOROUGH, capturing ALL relevant information found. Aim for 300-500 words per search result, including:
     - Complete explanations of concepts
     - Technical details when available
     - Specific examples and use cases
@@ -32,7 +32,7 @@ def create_file_search_agent(vector_store_id:str=None):
     # vector_store_id = get_vector_store_id_by_name(client, vector_store_name)
     if vector_store_id is None:
         vector_store_id = config.vector_store.vector_store_id
-    model = config.openai.model
+    model = config.models.search_model
 
     file_search_agent = Agent(
         name="file_search_agent",
