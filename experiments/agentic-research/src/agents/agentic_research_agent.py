@@ -2,7 +2,7 @@
 from agents import Agent, RunContextWrapper, function_tool
 from .file_search_agent import create_file_search_agent
 from .file_search_planning_agent import create_file_planner_agent
-from agents import Agent, ModelSettings
+from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
 from .writer_agent import writer_agent, ReportData
 
@@ -83,13 +83,25 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
     file_planner_agent = create_file_planner_agent(mcp_server)
     file_search_agent = create_file_search_agent(research_info.vector_store_id)
     
+
+    def on_handoff(ctx: RunContextWrapper[None]):
+        print("Writer agent called")
+
+    handoff_obj = handoff(
+        agent=writer_agent,
+        on_handoff=on_handoff,
+        # tool_name_override="custom_handoff_tool",
+        # tool_description_override="Custom description",
+    )
+
+
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
         model=model,
-        # handoffs=[
-        #     file_planner_agent, file_search_agent, writer_agent
-        # ],
+        handoffs=[
+            writer_agent
+        ],
         tools=[
             file_planner_agent.as_tool(
                 tool_name="plan_file_search",
@@ -99,14 +111,14 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
                 tool_name="file_search",
                 tool_description="Search for relevant information in the knowledge base",
             ),
-            writer_agent.as_tool(
-                tool_name="write",
-                tool_description="Write the full report based on the search results",
-            ),
+            # writer_agent.as_tool(
+            #     tool_name="write",
+            #     tool_description="Write the full report based on the search results",
+            # ),
             fetch_vector_store_name,
             display_agenda,
     ],
-        output_type=ReportData,
+        # output_type=ReportData,
         mcp_servers=mcp_servers,
         model_settings=ModelSettings(tool_choice="required"),
     ) 
