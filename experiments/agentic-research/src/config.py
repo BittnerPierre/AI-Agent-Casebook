@@ -44,10 +44,11 @@ class LoggingConfig(BaseModel):
 
 class ModelsConfig(BaseModel):
     """Configuration for OpenAI."""
-    research_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
-    planning_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
-    search_model: str = Field(default="openai/gpt-4o-mini")
-    writer_model: str = Field(default="litellm/anthropic/claude-3-7-sonnet-latest")
+    research_model: str = Field(default="openai/gpt-4.1-mini")
+    planning_model: str = Field(default="openai/gpt-4.1-mini")
+    search_model: str = Field(default="openai/gpt-4.1-mini")
+    writer_model: str = Field(default="openai/gpt-4.1-mini")
+    model: str = Field(default="openai/gpt-4.1-mini")
     reasoning_model: str = Field(default="openai/o3-mini")
 
 class ManagerConfig(BaseModel):
