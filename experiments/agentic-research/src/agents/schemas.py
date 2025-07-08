@@ -40,3 +40,4 @@ class WebSearchPlan(SearchPlan[WebSearchItem]):
 class ResearchInfo:  
     vector_store_name: str
     vector_store_id: str
+    temp_dir: str

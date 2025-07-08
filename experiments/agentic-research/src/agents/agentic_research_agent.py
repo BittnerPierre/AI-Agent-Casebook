@@ -4,7 +4,8 @@ from .file_search_agent import create_file_search_agent
 from .file_search_planning_agent import create_file_planner_agent
 from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
-from .writer_agent import writer_agent, ReportData
+from .writer_agent import create_writer_agent, ReportData
+from agents.mcp import MCPServer
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from .utils import load_prompt_from_file
@@ -77,12 +78,17 @@ async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) 
     return f"#### Cartographie des concepts à explorer\n\n{agenda}"
 
 # Factory function pour créer l'agent avec le serveur MCP
-def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInfo=None):
-    mcp_servers = [mcp_server] if mcp_server else []
-
-    file_planner_agent = create_file_planner_agent(mcp_server)
-    file_search_agent = create_file_search_agent(research_info.vector_store_id)
+def create_research_supervisor_agent(
+        mcp_servers:list[MCPServer],
+        file_planner_agent:Agent,
+        file_search_agent:Agent,
+        writer_agent:Agent):
     
+    # mcp_servers = mcp_servers if mcp_servers else []
+
+    # file_planner_agent = create_file_planner_agent(mcp_servers)
+    # file_search_agent = create_file_search_agent(mcp_servers, research_info.vector_store_id)
+    # writer_agent = create_writer_agent(mcp_servers)
 
     def on_handoff(ctx: RunContextWrapper[None]):
         print("Writer agent called")
@@ -99,9 +105,9 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
         model=model,
-        handoffs=[
-            writer_agent
-        ],
+        # handoffs=[
+        #     writer_agent
+        # ],
         tools=[
             file_planner_agent.as_tool(
                 tool_name="plan_file_search",
@@ -111,14 +117,14 @@ def create_research_supervisor_agent(mcp_server=None, research_info: ResearchInf
                 tool_name="file_search",
                 tool_description="Search for relevant information in the knowledge base",
             ),
-            # writer_agent.as_tool(
-            #     tool_name="write",
-            #     tool_description="Write the full report based on the search results",
-            # ),
+            writer_agent.as_tool(
+                tool_name="write",
+                tool_description="Write the full report based on the search results",
+            ),
             fetch_vector_store_name,
             display_agenda,
     ],
-        # output_type=ReportData,
+        output_type=ReportData,
         mcp_servers=mcp_servers,
         model_settings=ModelSettings(tool_choice="required"),
     ) 

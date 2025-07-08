@@ -2,14 +2,15 @@ import asyncio
 import logging
 import argparse
 import importlib
-import os.path
+import os.path  
 from pathlib import Path
+import tempfile
 
 from .agentic_manager import ResearchManager as AgenticResearchManager
 from .manager import ResearchManager as StandardResearchManager
 from .config import get_config
 from agents import Agent, Runner, gen_trace_id, trace
-from agents.mcp import MCPServer, MCPServerSse
+from agents.mcp import MCPServerSse, MCPServerStdio  
 from agents.model_settings import ModelSettings
 # LangSmith tracing support
 from agents import set_trace_processors
@@ -33,7 +34,6 @@ def get_manager_class(manager_path: str):
     module_path, class_name = manager_path.rsplit(".", 1)
     module = importlib.import_module(f".{module_path}", package="src")
     return getattr(module, class_name)
-
 
 async def main() -> None:
     # Configure logging and get config first
@@ -77,20 +77,37 @@ async def main() -> None:
     else:
         query = input("What would you like to research? ")
 
-    set_trace_processors([OpenAIAgentsTracingProcessor()])
+    # set_trace_processors([OpenAIAgentsTracingProcessor()])
 
-    async with MCPServerSse(
-        name="SSE Dataprep Server",
-        params={
-            "url": "http://localhost:8001/sse",
-        },
-    ) as server:
-        trace_id = gen_trace_id()
-        with trace(workflow_name="SSE Example", trace_id=trace_id):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        fs_server = MCPServerStdio(
+            name="Filesystem Server, via npx",
+            params={
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-filesystem", temp_dir],
+            },
+        )
+        canonical_tmp_dir = os.path.realpath(temp_dir)
+        print("Temp dir (canonical):", canonical_tmp_dir)
+        # print(f"Temp dir: {temp_dir}")
+
+        dataprep_server = MCPServerSse(
+            name="SSE Dataprep Server",
+            params={
+                "url": "http://localhost:8001/sse",
+            },
+        )
+        async with fs_server, dataprep_server:
+            # trace_id = gen_trace_id()
+            #with trace(workflow_name="SSE Example", trace_id=trace_id):
             client = OpenAI()
             vector_store_name = config.vector_store.name    
             vector_store_id = get_vector_store_id_by_name(client, vector_store_name)
-            research_info = ResearchInfo(vector_store_name=vector_store_name, vector_store_id=vector_store_id)
+            research_info = ResearchInfo(
+                vector_store_name=vector_store_name,
+                vector_store_id=vector_store_id,
+                temp_dir=canonical_tmp_dir)
+            
             if vector_store_id is None:
                 vector_store_obj = client.vector_stores.create(
                     name=vector_store_name
@@ -100,9 +117,9 @@ async def main() -> None:
                 print(f"Vector store created: {vector_store_id}")
             else:
                 print(f"Vector store already exists: {vector_store_id}")
-            print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
-            await manager_class().run(server, query, research_info)
-   
+            # print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
+            await manager_class().run(dataprep_server=dataprep_server, fs_server=fs_server, query=query, research_info=research_info)
+
 def cli_main():
     """Sync entrypoint for Poetry scripts."""
     asyncio.run(main())

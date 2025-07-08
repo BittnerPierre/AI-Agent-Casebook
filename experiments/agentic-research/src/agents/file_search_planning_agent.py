@@ -5,6 +5,7 @@ from .schemas import FileSearchPlan
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from ..config import get_config
 from openai import OpenAI
+from agents.mcp import MCPServer
 
 config = get_config()
 client = OpenAI()
@@ -34,8 +35,8 @@ PROMPT = (
     Use the tools to achieve the task."""
 )
 
-def create_file_planner_agent(mcp_server=None):
-    mcp_servers = [mcp_server] if mcp_server else []
+def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
+    mcp_servers = mcp_servers if mcp_servers else []
     return Agent(
         name="file_planner_agent",
         instructions=PROMPT,

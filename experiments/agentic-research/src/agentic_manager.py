@@ -7,10 +7,12 @@ from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
 from agents.mcp import MCPServer
-
-from .agents.writer_agent import ReportData
+from .agents.file_search_planning_agent import create_file_planner_agent
+from .agents.file_search_agent import create_file_search_agent
+from .agents.writer_agent import ReportData, create_writer_agent
 from .printer import Printer
 from .agents.agentic_research_agent import create_research_supervisor_agent
+
 from .agents.schemas import ResearchInfo
 
 
@@ -18,10 +20,10 @@ class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
-        self.mcp_server = None
 
-    async def run(self, mcp_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
-        self.mcp_server = mcp_server
+
+    async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
+
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             # self.printer.update_item(
@@ -38,8 +40,15 @@ class ResearchManager:
                 hide_checkmark=True,
             )
 
-            self.research_supervisor_agent = create_research_supervisor_agent(self.mcp_server,
-                                                                               research_info)
+            file_planner_agent = create_file_planner_agent([fs_server])
+            file_search_agent = create_file_search_agent([fs_server], research_info.vector_store_id)
+            writer_agent = create_writer_agent([fs_server])
+
+            self.research_supervisor_agent = create_research_supervisor_agent([dataprep_server],
+                                                                              file_planner_agent,
+                                                                              file_search_agent,
+                                                                              writer_agent)
+        
             report = await self._agentic_research(query, research_info)
             # report = await self._write_report(query, search_results)
 

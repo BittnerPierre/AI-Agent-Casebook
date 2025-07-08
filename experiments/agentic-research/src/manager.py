@@ -9,7 +9,7 @@ from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
 from agents.mcp import MCPServer
 from .agents.file_search_planning_agent import create_file_planner_agent
 from .agents.file_search_agent import create_file_search_agent
-from .agents.writer_agent import ReportData, writer_agent
+from .agents.writer_agent import ReportData, create_writer_agent
 from .agents.schemas import FileSearchPlan, FileSearchItem
 from .printer import Printer
 
@@ -19,8 +19,8 @@ class ResearchManager:
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, mcp_server: MCPServer, query: str) -> None:
-        self.mcp_server = mcp_server
+    async def run(self, mcp_servers: list[MCPServer], query: str) -> None:
+        self.mcp_servers = mcp_servers
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             self.printer.update_item(
@@ -92,7 +92,7 @@ class ResearchManager:
 
     async def _file_search(self, item: FileSearchItem) -> str | None:
         input_text = f"Terme de recherche: {item.query}\nRaison de la recherche: {item.reason}"
-        file_search_agent = create_file_search_agent(item.vector_store_id)
+        file_search_agent = create_file_search_agent(self.mcp_servers, item.vector_store_id)
         try:
             # Désactiver le tracing automatique pour cet appel
             run_config = RunConfig(tracing_disabled=False)
