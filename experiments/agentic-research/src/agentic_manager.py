@@ -13,7 +13,7 @@ from .agents.writer_agent import ReportData, create_writer_agent
 from .printer import Printer
 from .agents.agentic_research_agent import create_research_supervisor_agent
 
-from .agents.schemas import ResearchInfo
+from .agents.schemas import FileFinalReport, ResearchInfo
 
 
 class ResearchManager:
@@ -58,12 +58,12 @@ class ResearchManager:
             self.printer.end()
 
         print("\n\n=====REPORT=====\n\n")
-        print(f"Report: {report.markdown_report}")
+        print(f"Report: {report.absolute_file_path}")
         print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
-    async def _agentic_research(self, query: str, research_info: ResearchInfo) -> ReportData:
+    async def _agentic_research(self, query: str, research_info: ResearchInfo) -> FileFinalReport:
         self.printer.update_item("agentic_research", "Starting Agentic Research...")
         
         # Désactiver le tracing automatique pour cet appel
@@ -82,7 +82,7 @@ class ResearchManager:
             f"Doing Agentic Research",
             is_done=True,
         )
-        return result.final_output_as(ReportData)
+        return result.final_output_as(FileFinalReport)
 
     # async def _perform_file_searches(self, search_plan: FileSearchPlan) -> list[str]:
     #     with custom_span("Recherche dans les fichiers"):

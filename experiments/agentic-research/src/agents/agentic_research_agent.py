@@ -1,33 +1,14 @@
 
 from agents import Agent, RunContextWrapper, function_tool
-from .file_search_agent import create_file_search_agent
-from .file_search_planning_agent import create_file_planner_agent
 from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
-from .writer_agent import create_writer_agent, ReportData
 from agents.mcp import MCPServer
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from .utils import load_prompt_from_file
-import os
+from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda
 from ..config import get_config
-from .schemas import ResearchInfo
+from .schemas import FileFinalReport, ResearchInfo, ReportData
 
-# Chemin vers le fichier de prompt
-# Utiliser un chemin relatif par rapport au fichier actuel
-current_dir = os.path.dirname(os.path.abspath(__file__))
-RESEARCH_LEAD_PROMPT_PATH = os.path.join(current_dir, "prompts", "research_lead_agent_revised.md")
-
-# Chargement du prompt depuis le fichier
-ORCHESTRATOR_PROMPT = load_prompt_from_file(RESEARCH_LEAD_PROMPT_PATH)
-
-if ORCHESTRATOR_PROMPT is None:
-    raise ValueError("ORCHESTRATOR_PROMPT is None")
-
-INSTRUCTIONS = (
-    f"{RECOMMENDED_PROMPT_PREFIX}"
-    f"{ORCHESTRATOR_PROMPT}"
-)
 
 ORCHESTRATOR_PROMP_V1 = """
     You are a helpful lead research assistant. 
@@ -60,22 +41,18 @@ client = OpenAI()
 model = config.models.research_model
 
 
-@function_tool
-async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> str:  
-    """
-    Fetch the name of the vector store.
-    Call this function to get the vector store name to upload file.
-    """
-    return f"The name of vector store is '{wrapper.context.vector_store_name}'."
+prompt_file = "research_lead_agent_revised.md"
 
+# Chargement du prompt depuis le fichier
+ORCHESTRATOR_PROMPT = load_prompt_from_file("prompts", prompt_file)
 
-@function_tool
-async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) -> str:  
-    """
-    Display the agenda in the conversation.
-    Call this function to display the agenda in the conversation.
-    """
-    return f"#### Cartographie des concepts à explorer\n\n{agenda}"
+if ORCHESTRATOR_PROMPT is None:
+    raise ValueError(f"{prompt_file} is None")
+
+INSTRUCTIONS = (
+    f"{RECOMMENDED_PROMPT_PREFIX}"
+    f"{ORCHESTRATOR_PROMPT}"
+)
 
 # Factory function pour créer l'agent avec le serveur MCP
 def create_research_supervisor_agent(
@@ -83,12 +60,6 @@ def create_research_supervisor_agent(
         file_planner_agent:Agent,
         file_search_agent:Agent,
         writer_agent:Agent):
-    
-    # mcp_servers = mcp_servers if mcp_servers else []
-
-    # file_planner_agent = create_file_planner_agent(mcp_servers)
-    # file_search_agent = create_file_search_agent(mcp_servers, research_info.vector_store_id)
-    # writer_agent = create_writer_agent(mcp_servers)
 
     def on_handoff(ctx: RunContextWrapper[None]):
         print("Writer agent called")
@@ -96,10 +67,7 @@ def create_research_supervisor_agent(
     handoff_obj = handoff(
         agent=writer_agent,
         on_handoff=on_handoff,
-        # tool_name_override="custom_handoff_tool",
-        # tool_description_override="Custom description",
     )
-
 
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
@@ -124,7 +92,7 @@ def create_research_supervisor_agent(
             fetch_vector_store_name,
             display_agenda,
     ],
-        output_type=ReportData,
+        output_type=FileFinalReport,
         mcp_servers=mcp_servers,
         model_settings=ModelSettings(tool_choice="required"),
     ) 

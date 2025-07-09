@@ -55,6 +55,10 @@ class ManagerConfig(BaseModel):
     """Configuration for manager selection."""
     default_manager: str = Field(default="agentic_manager")
 
+class AgentsConfig(BaseModel):
+    """Configuration for agents."""
+    max_search_plan: str = Field(default="8-12")
+    output_dir: str = Field(default="output/")
 
 class Config(BaseModel):
     """Main configuration class."""
@@ -64,7 +68,7 @@ class Config(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     models: ModelsConfig = Field(default_factory=ModelsConfig)
     manager: ManagerConfig = Field(default_factory=ManagerConfig)
-
+    agents: AgentsConfig = Field(default_factory=AgentsConfig)
 
 class ConfigManager:
     """Manages configuration loading with environment variable override."""

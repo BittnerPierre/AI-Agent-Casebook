@@ -6,7 +6,8 @@ from agents import Agent
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
-from .schemas import ResearchInfo
+from .schemas import FileFinalReport, ResearchInfo, ReportData
+from .utils import load_prompt_from_file, write_final_report
 
 PROMPT_V1 = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
@@ -142,7 +143,7 @@ You are a senior researcher tasked with writing a comprehensive and detailed rep
 - Produce section by section, fully expanding each point using all Raw Notes.
 
 **Fifth: Final Report**
-- After producing the full content, write the final report in the same output with `write_file` and the filename `FINAL_REPORT.md`.
+- After producing the full content, write the final report with `write_file` and the filename `FINAL_REPORT.md`.
 - In your final reply, return only the following JSON object between code markdown blocks: 
     ```json
     {
@@ -212,23 +213,27 @@ config = get_config()
 client = OpenAI()
 model = config.models.writer_model
 
+prompt_file = "write_prompt.md"
 
 def dynamic_instructions(
     context: RunContextWrapper[ResearchInfo], agent: Agent[ResearchInfo]
 ) -> str:
-    return (f"{PROMPT_V3}"
-    f"The absolute path to filesystem is `{context.context.temp_dir}`. You MUST use it to write and read files.")
+    
+    prompt_template = load_prompt_from_file("prompts", prompt_file)
 
+    if prompt_template is None:
+        raise ValueError(f"{prompt_file} is None")
 
-class ReportData(BaseModel):
-    short_summary: str
-    """A short 2-3 sentence summary of the findings."""
+    dynamic_prompt = prompt_template.format(
+        RECOMMENDED_PROMPT_PREFIX=RECOMMENDED_PROMPT_PREFIX
+    )
 
-    markdown_report: str
-    """The final report"""
+    return (
+            f"{dynamic_prompt}"
+            f"The absolute path to **temporary filesystem** is `{context.context.temp_dir}`. "
+             " You MUST use it to write and read temporary data.\n\n"
+        )
 
-    follow_up_questions: list[str]
-    """Suggested topics to research further"""
 
 def create_writer_agent(mcp_servers:list[MCPServer]=None):
     mcp_servers = mcp_servers if mcp_servers else []
@@ -237,7 +242,10 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None):
         name="writer_agent",
         instructions=dynamic_instructions,
         model=model,
-        output_type=ReportData,
+        output_type=FileFinalReport,
         mcp_servers=mcp_servers,
+        tools=[
+            write_final_report,
+        ],
     )
     return writer_agent

@@ -51,16 +51,36 @@ async def main() -> None:
                         help=f"Manager implementation to use (default: {default_manager})")
     parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
     parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)")
+    parser.add_argument("--max-search-plan", type=str, default=config.agents.max_search_plan,
+                        help=f"Maximum number of search plans to generate (default: {config.agents.max_search_plan})") 
+    parser.add_argument("--output-dir", type=str, default=config.agents.output_dir,
+                        help=f"Output directory (default: {config.agents.output_dir})")
+    parser.add_argument("--debug", action="store_true", default=config.debug.enabled,
+                        help=f"Debug mode (default: {config.debug.enabled})")
     args = parser.parse_args()
 
     # Override vector store name if provided
     if args.vector_store:
-        logger.info(f"Using custom vector store: {args.vector_store}")
         config.vector_store.name = args.vector_store
+        logger.info(f"Using custom vector store name: {args.vector_store}")
 
     # Get the appropriate manager class
     manager_class = get_manager_class(args.manager)
     
+    if args.max_search_plan:
+        config.agents.max_search_plan = args.max_search_plan
+        logger.info(f"Using custom max search plan: {args.max_search_plan}")
+
+    if args.output_dir:
+        config.agents.output_dir = args.output_dir
+        logger.info(f"Using custom output directory: {args.output_dir}")
+        if not os.path.exists(config.agents.output_dir):
+            os.makedirs(config.agents.output_dir)
+
+    if args.debug:
+        config.debug.enabled = args.debug
+        logger.info(f"Using custom debug mode: {args.debug}")
+
     # Get input: either from syllabus file, command line argument, or interactive input
     if args.syllabus:
         syllabus_path = Path(args.syllabus)
@@ -78,8 +98,9 @@ async def main() -> None:
         query = input("What would you like to research? ")
 
     # set_trace_processors([OpenAIAgentsTracingProcessor()])
+    debug_mode = config.debug.enabled
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:
         fs_server = MCPServerStdio(
             name="Filesystem Server, via npx",
             params={
@@ -88,8 +109,6 @@ async def main() -> None:
             },
         )
         canonical_tmp_dir = os.path.realpath(temp_dir)
-        print("Temp dir (canonical):", canonical_tmp_dir)
-        # print(f"Temp dir: {temp_dir}")
 
         dataprep_server = MCPServerSse(
             name="SSE Dataprep Server",
@@ -103,10 +122,13 @@ async def main() -> None:
             client = OpenAI()
             vector_store_name = config.vector_store.name    
             vector_store_id = get_vector_store_id_by_name(client, vector_store_name)
+
             research_info = ResearchInfo(
                 vector_store_name=vector_store_name,
                 vector_store_id=vector_store_id,
-                temp_dir=canonical_tmp_dir)
+                temp_dir=canonical_tmp_dir,
+                max_search_plan=config.agents.max_search_plan,
+                output_dir=config.agents.output_dir)
             
             if vector_store_id is None:
                 vector_store_obj = client.vector_stores.create(

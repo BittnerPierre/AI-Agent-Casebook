@@ -36,8 +36,37 @@ class WebSearchPlan(SearchPlan[WebSearchItem]):
     pass
 
 
+class FileSearchResult(BaseModel):
+    file_name: str
+    "Le nom du fichier contenant les résultats de la recherche."
+
+
+class FileFinalReport(BaseModel):
+    absolute_file_path: str
+    "Le chemin absolu du fichier contenant le rapport final."
+
+    short_summary: str
+    "Le résumé court du rapport final."
+
+    follow_up_questions: list[str]
+    "Les questions suivantes à explorer."
+
+
 @dataclass
 class ResearchInfo:  
     vector_store_name: str
     vector_store_id: str
     temp_dir: str
+    max_search_plan: str
+    output_dir: str
+
+
+class ReportData(BaseModel):
+    short_summary: str
+    """A short 2-3 sentence summary of the findings."""
+
+    markdown_report: str
+    """The final report"""
+
+    follow_up_questions: list[str]
+    """Suggested topics to research further"""

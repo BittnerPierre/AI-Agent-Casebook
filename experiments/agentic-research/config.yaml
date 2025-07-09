@@ -41,3 +41,7 @@ models:
 # Configuration du manager
 manager:
   default_manager: "manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+
+agents:
+  max_search_plan: "12"
+  ouput_dir: "output/"
