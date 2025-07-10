@@ -2,12 +2,12 @@ from agents import Agent, FileSearchTool
 from agents.model_settings import ModelSettings
 
 from ..config import get_config
-from openai import OpenAI
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import ResearchInfo, FileSearchResult
 from .utils import load_prompt_from_file
+
 
 INSTRUCTIONS = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
@@ -119,16 +119,13 @@ def dynamic_instructions(
             #   " You MUST use it to write and read output final content.\n\n"
         )
 
-# Récupérer l'ID du vector store
-config = get_config()
-client = OpenAI()
+
 
 def create_file_search_agent(mcp_servers:list[MCPServer]=None, vector_store_id:str=None):
-    # vector_store_name = config.vector_store.name
-    # vector_store_id = get_vector_store_id_by_name(client, vector_store_name)
-    # mcp_servers = mcp_servers if mcp_servers else []
-    # if vector_store_id is None:
-    #    vector_store_id = config.vector_store.vector_store_id
+
+    mcp_servers = mcp_servers if mcp_servers else []
+
+    config = get_config()
 
     model = config.models.search_model
 

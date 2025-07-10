@@ -1,6 +1,7 @@
 import os
 from agents import Agent, RunContextWrapper, function_tool
 from .schemas import ResearchInfo, ReportData, FileFinalReport
+from agents.mcp import ToolFilterContext
 
 
 def load_prompt_from_file(folder_path: str, file_path: str) -> str:
@@ -50,11 +51,12 @@ async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) 
 
 
 @function_tool
-async def write_final_report(wrapper: RunContextWrapper[ResearchInfo], report: ReportData, file_name: str) -> FileFinalReport:  
+async def save_final_report(wrapper: RunContextWrapper[ResearchInfo], report: ReportData) -> str:  
     """
-    Write the file to the output directory.
-    Call this function to write the file to the output directory.
+    Write the final report.
+    Call this function to write the final report.
     """
+    file_name = f"{report.research_topic}_final_report.md"
     output_dir = wrapper.context.output_dir
     file_path = os.path.join(output_dir, file_name)
     with open(file_path, "w", encoding="utf-8") as file:
@@ -63,8 +65,61 @@ async def write_final_report(wrapper: RunContextWrapper[ResearchInfo], report: R
         print(f"Report: {report.markdown_report}")
         
     absolute_file_path = os.path.abspath(file_path)
-    file_final_report = FileFinalReport(absolute_file_path=absolute_file_path,
-                                        short_summary=report.short_summary,
-                                        follow_up_questions=report.follow_up_questions
-                                        )
-    return file_final_report
+    # file_final_report = FileFinalReport(absolute_file_path=absolute_file_path,
+    #                                     short_summary=report.short_summary,
+    #                                     follow_up_questions=report.follow_up_questions
+    #                                     )
+    return absolute_file_path
+
+MS_FS_TOOLS = [
+    "read_file",
+    "read_multiple_files",
+    "write_file",
+    "edit_file",
+    "create_directory",
+    "list_directory",
+    "list_directory_with_sizes",
+    "directory_tree",
+    "move_file",
+    "search_files",
+    "get_file_info",
+    "list_allowed_directories"
+]
+
+MS_DATAPREP_TOOLS = [
+    "download_and_store_url_tool",
+    "upload_files_to_vectorstore_tool",
+    "get_knowledge_entries_tool",
+    "check_vectorstore_file_status"
+]
+
+WRITER_AGENT_TOOLS = [
+    "save_final_report",
+    "read_file",
+    "read_multiple_files",
+    "list_directory",
+]
+
+
+def some_filtering_logic(agent_name, server_name, tool) -> bool:
+    tool_name = tool.name
+    if agent_name == "writer_agent":
+        if tool_name in WRITER_AGENT_TOOLS:
+            return True
+        else:
+            return False
+    else:
+        return True
+
+
+# Context-aware filter
+def context_aware_filter(context: ToolFilterContext, tool) -> bool:
+    """Filter tools based on context information."""
+    # Access agent information
+    agent_name = context.agent.name
+
+    # Access server information  
+    server_name = context.server_name
+
+    # Implement your custom filtering logic here
+    return some_filtering_logic(agent_name, server_name, tool)

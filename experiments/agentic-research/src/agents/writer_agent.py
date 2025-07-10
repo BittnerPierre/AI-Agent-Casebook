@@ -1,13 +1,14 @@
 # Agent used to synthesize a final report from the individual summaries.
 from pydantic import BaseModel
 from ..config import get_config
-from openai import OpenAI
 from agents import Agent
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import FileFinalReport, ResearchInfo, ReportData
-from .utils import load_prompt_from_file, write_final_report
+from .utils import load_prompt_from_file, save_final_report
+from agents import ModelSettings
+
 
 PROMPT_V1 = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
@@ -209,9 +210,6 @@ Before finalizing:
     """
 )
 
-config = get_config()
-client = OpenAI()
-model = config.models.writer_model
 
 prompt_file = "write_prompt.md"
 
@@ -231,21 +229,30 @@ def dynamic_instructions(
     return (
             f"{dynamic_prompt}"
             f"The absolute path to **temporary filesystem** is `{context.context.temp_dir}`. "
-             " You MUST use it to write and read temporary data.\n\n"
+             " You MUST use it ONLY to READ temporary data. You MUST call `save_final_report` to save the final report.\n\n"
         )
 
 
 def create_writer_agent(mcp_servers:list[MCPServer]=None):
     mcp_servers = mcp_servers if mcp_servers else []
 
+    config = get_config()
+    model = config.models.writer_model
+
+    model_settings = ModelSettings(
+        #tool_choice="required",
+        metadata={"agent_type": "sub-agent", "trace_type": "agent"}
+    )
+
     writer_agent = Agent(
         name="writer_agent",
         instructions=dynamic_instructions,
         model=model,
-        output_type=FileFinalReport,
+        output_type=ReportData,
         mcp_servers=mcp_servers,
         tools=[
-            write_final_report,
+            save_final_report,
         ],
+        model_settings=model_settings
     )
     return writer_agent
