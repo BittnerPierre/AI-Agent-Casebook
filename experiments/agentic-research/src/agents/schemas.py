@@ -62,8 +62,8 @@ class ResearchInfo:
 
 
 class ReportData(BaseModel):
-    absolute_file_path: str
-    "Le chemin absolu du fichier contenant le rapport final."
+    file_name: str
+    "The name of the file containing the final report."
 
     research_topic: str
     """The main research topic following naming rules : no space (use `_` instead) or special caracter)."""

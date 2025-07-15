@@ -56,20 +56,22 @@ async def save_final_report(wrapper: RunContextWrapper[ResearchInfo], report: Re
     Write the final report.
     Call this function to write the final report.
     """
-    file_name = f"{report.research_topic}_final_report.md"
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"{report.research_topic}_final_report_{timestamp}.md"
     output_dir = wrapper.context.output_dir
     file_path = os.path.join(output_dir, file_name)
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(report.markdown_report)
         print(f"File written: {file_path}")
-        print(f"Report: {report.markdown_report}")
+        # print(f"Report: {report.markdown_report}")
         
-    absolute_file_path = os.path.abspath(file_path)
+    # absolute_file_path = os.path.abspath(file_path)
     # file_final_report = FileFinalReport(absolute_file_path=absolute_file_path,
     #                                     short_summary=report.short_summary,
     #                                     follow_up_questions=report.follow_up_questions
     #                                     )
-    return absolute_file_path
+    return file_name
 
 MS_FS_TOOLS = [
     "read_file",

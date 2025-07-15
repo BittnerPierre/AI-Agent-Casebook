@@ -18,6 +18,7 @@ from langsmith.wrappers import OpenAIAgentsTracingProcessor
 from openai import OpenAI
 from .agents.utils import get_vector_store_id_by_name
 from .agents.schemas import ResearchInfo
+from .tracing.trace_processor import FileTraceProcessor
 
 def get_manager_class(manager_path: str):
     """Dynamically import and return a manager class from a path string."""
@@ -99,6 +100,7 @@ async def main() -> None:
         query = input("What would you like to research? ")
 
     # set_trace_processors([OpenAIAgentsTracingProcessor()])
+    # set_trace_processors([FileTraceProcessor(log_dir="traces")])
     debug_mode = config.debug.enabled
 
     with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:
