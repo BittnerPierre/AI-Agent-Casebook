@@ -6,28 +6,32 @@ import time
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
-
-# from .agents.file_planner_agent import file_planner_agent
-from .agents.file_search_agent import file_search_agent
-from .agents.writer_agent import ReportData, writer_agent
-from .agents.schemas import FileSearchPlan, FileSearchItem
+from agents.mcp import MCPServer
+from .agents.file_search_planning_agent import create_file_planner_agent
+from .agents.file_search_agent import create_file_search_agent
+from .agents.writer_agent import ReportData, create_writer_agent
 from .printer import Printer
-from .agents.agentic_research_agent import research_agent
+from .agents.agentic_research_agent import create_research_supervisor_agent
+
+from .agents.schemas import FileFinalReport, ResearchInfo
+
 
 class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, query: str) -> None:
+
+    async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
+
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
-            self.printer.update_item(
-                "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-                is_done=True,
-                hide_checkmark=True,
-            )
+            # self.printer.update_item(
+            #     "trace_id",
+            #     f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
+            #     is_done=True,
+            #     hide_checkmark=True,
+            # )
 
             self.printer.update_item(
                 "starting",
@@ -35,7 +39,17 @@ class ResearchManager:
                 is_done=True,
                 hide_checkmark=True,
             )
-            report = await self._agentic_research(query)
+
+            file_planner_agent = create_file_planner_agent([fs_server])
+            file_search_agent = create_file_search_agent([fs_server], research_info.vector_store_id)
+            writer_agent = create_writer_agent([fs_server])
+
+            self.research_supervisor_agent = create_research_supervisor_agent([dataprep_server],
+                                                                              file_planner_agent,
+                                                                              file_search_agent,
+                                                                              writer_agent)
+        
+            report = await self._agentic_research(query, research_info)
             # report = await self._write_report(query, search_results)
 
             final_report = f"Report summary\n\n{report.short_summary}"
@@ -44,20 +58,23 @@ class ResearchManager:
             self.printer.end()
 
         print("\n\n=====REPORT=====\n\n")
-        print(f"Report: {report.markdown_report}")
+        print(f"Report: {report.absolute_file_path}")
         print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
-    async def _agentic_research(self, query: str) -> ReportData:
+    async def _agentic_research(self, query: str, research_info: ResearchInfo) -> FileFinalReport:
         self.printer.update_item("agentic_research", "Starting Agentic Research...")
         
         # Désactiver le tracing automatique pour cet appel
         run_config = RunConfig(tracing_disabled=False)
         
         result = await Runner.run(
-            research_agent,
-            f"Requête: {query}",
+            self.research_supervisor_agent,
+            f"Demande: \n\n"
+            f"######\n"
+            f"{query}",
+            context=research_info,
             run_config=run_config
         )
         self.printer.update_item(
@@ -65,7 +82,7 @@ class ResearchManager:
             f"Doing Agentic Research",
             is_done=True,
         )
-        return result.final_output_as(FileSearchPlan)
+        return result.final_output_as(FileFinalReport)
 
     # async def _perform_file_searches(self, search_plan: FileSearchPlan) -> list[str]:
     #     with custom_span("Recherche dans les fichiers"):

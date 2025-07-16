@@ -1,31 +1,72 @@
+from dataclasses import dataclass
 from pydantic import BaseModel
+from typing import Generic, Optional, TypeVar, List
 
 
 class SearchItem(BaseModel):
     reason: str
-    "Votre raisonnement pour pourquoi cette recherche est importante pour la requête."
+    "Votre raisonnement de pourquoi cette recherche est importante pour la requête et le résultat attendu."
 
     query: str
-    "Le terme de recherche à utiliser pour la recherche." 
+    "La requête à utiliser pour la recherche." 
 
 
-class SearchPlan(BaseModel):
-    searches: list[SearchItem]
+T = TypeVar('T', bound=SearchItem)
+
+class SearchPlan(BaseModel, Generic[T]):
+    searches: List[T]
     """Une liste de recherches à effectuer pour mieux répondre à la requête."""
-
 
 
 class FileSearchItem(SearchItem):
     pass
+    # filename: Optional[str] = None
+    # "Le nom du fichier à rechercher dans la base de connaissances."
 
 
-class WebSearchItem(SearchItem):
+class WebSearchItem(SearchItem):    
     pass
 
 
-class FileSearchPlan(SearchPlan):
+class FileSearchPlan(SearchPlan[FileSearchItem]):
     pass
 
 
-class WebSearchPlan(SearchPlan):
+class WebSearchPlan(SearchPlan[WebSearchItem]):
     pass
+
+
+class FileSearchResult(BaseModel):
+    file_name: str
+    "Le nom du fichier contenant les résultats de la recherche."
+
+
+class FileFinalReport(BaseModel):
+    absolute_file_path: str
+    "Le chemin absolu du fichier contenant le rapport final."
+
+    short_summary: str
+    "Le résumé court du rapport final."
+
+    follow_up_questions: list[str]
+    "Les questions suivantes à explorer."
+
+
+@dataclass
+class ResearchInfo:  
+    vector_store_name: str
+    vector_store_id: str
+    temp_dir: str
+    max_search_plan: str
+    output_dir: str
+
+
+class ReportData(BaseModel):
+    short_summary: str
+    """A short 2-3 sentence summary of the findings."""
+
+    markdown_report: str
+    """The final report"""
+
+    follow_up_questions: list[str]
+    """Suggested topics to research further"""

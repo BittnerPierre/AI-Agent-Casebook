@@ -9,6 +9,10 @@ vector_store:
 data:
   # Fichier contenant les URLs à traiter (une par ligne)
   urls_file: "urls.txt"
+  # Base de connaissances locale (JSON)
+  knowledge_db_path: "data/knowledge_db.json"
+  # Dossier de stockage local des fichiers .md
+  local_storage_dir: "data/"
 
 # Configuration de debug
 debug:
@@ -26,6 +30,18 @@ logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Configuration OpenAI
-openai:
-  model: "gpt-4o"
+# Configuration Models
+models:
+  research_model: "openai/gpt-4.1-mini"
+  planning_model: "litellm/anthropic/claude-3-5-haiku-latest"
+  search_model: "openai/gpt-4.1-mini"
+  writer_model: "openai/gpt-4.1-mini"
+  reasoning_model: "litellm/anthropic/claude-3-7-sonnet-latest"
+
+# Configuration du manager
+manager:
+  default_manager: "manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+
+agents:
+  max_search_plan: "12"
+  ouput_dir: "output/"
