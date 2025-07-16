@@ -71,43 +71,43 @@ def create_dataprep_server() -> FastMCP:
         config = get_config()
         return get_knowledge_entries(config)
     
-    @mcp.tool()
-    def check_vectorstore_file_status(
-        vectorstore_id: str,
-        file_ids: List[str]
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Vérifie l'état de traitement des fichiers dans un vector store.
+    # @mcp.tool()
+    # def check_vectorstore_file_status(
+    #     vectorstore_id: str,
+    #     file_ids: List[str]
+    # ) -> Dict[str, List[Dict[str, Any]]]:
+    #     """
+    #     Vérifie l'état de traitement des fichiers dans un vector store.
         
-        Args:
-            vectorstore_id: ID du vector store
-            file_ids: Liste des IDs de fichiers à vérifier
+    #     Args:
+    #         vectorstore_id: ID du vector store
+    #         file_ids: Liste des IDs de fichiers à vérifier
             
-        Returns:
-            Dict avec statut de chaque fichier
-        """
-        client = OpenAI()
-        results = []
+    #     Returns:
+    #         Dict avec statut de chaque fichier
+    #     """
+    #     client = OpenAI()
+    #     results = []
         
-        for file_id in file_ids:
-            try:
-                vector_store_file = client.vector_stores.files.retrieve(
-                    vector_store_id=vectorstore_id,
-                    file_id=file_id
-                )
-                results.append({
-                    'file_id': file_id,
-                    'status': vector_store_file.status,
-                    'last_error': vector_store_file.last_error
-                })
-            except Exception as e:
-                results.append({
-                    'file_id': file_id,
-                    'status': 'error',
-                    'error': str(e)
-                })
+    #     for file_id in file_ids:
+    #         try:
+    #             vector_store_file = client.vector_stores.files.retrieve(
+    #                 vector_store_id=vectorstore_id,
+    #                 file_id=file_id
+    #             )
+    #             results.append({
+    #                 'file_id': file_id,
+    #                 'status': vector_store_file.status,
+    #                 'last_error': vector_store_file.last_error
+    #             })
+    #         except Exception as e:
+    #             results.append({
+    #                 'file_id': file_id,
+    #                 'status': 'error',
+    #                 'error': str(e)
+    #             })
         
-        return {'files': results}
+    #     return {'files': results}
     
     return mcp
 

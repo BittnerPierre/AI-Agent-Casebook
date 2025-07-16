@@ -7,20 +7,23 @@ from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
 from agents.mcp import MCPServer
-from .agents.file_planner_agent import create_file_planner_agent
-from .agents.file_search_agent import file_search_agent
-from .agents.writer_agent import ReportData, writer_agent
-from .agents.schemas import FileSearchPlan, FileSearchItem
+from .agents.file_search_planning_agent import create_file_planner_agent
+from .agents.file_search_agent import create_file_search_agent
+from .agents.writer_agent import create_writer_agent
+from .agents.schemas import FileSearchPlan, FileSearchItem, ResearchInfo
 from .printer import Printer
-
+from .agents.schemas import ReportData
+from .agents.agentic_research_agent import create_research_supervisor_agent
 
 class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, mcp_server: MCPServer, query: str) -> None:
-        self.mcp_server = mcp_server
+    async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
+        self.fs_server = fs_server
+        self.dataprep_server = dataprep_server
+
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             self.printer.update_item(
@@ -36,6 +39,7 @@ class ResearchManager:
                 is_done=True,
                 hide_checkmark=True,
             )
+            
             search_plan = await self._plan_file_searches(query)
             search_results = await self._perform_file_searches(search_plan)
             report = await self._write_report(query, search_results)
@@ -61,7 +65,9 @@ class ResearchManager:
 
         result = await Runner.run(
             file_planner_agent,
-            f"Requête: {query}",
+            f"Demande: \n\n"
+            f"######\n"
+            f"{query}",
             run_config=run_config
         )
         self.printer.update_item(
@@ -89,7 +95,9 @@ class ResearchManager:
             return results
 
     async def _file_search(self, item: FileSearchItem) -> str | None:
+
         input_text = f"Terme de recherche: {item.query}\nRaison de la recherche: {item.reason}"
+        file_search_agent = create_file_search_agent(self.mcp_servers, item.vector_store_id)
         try:
             # Désactiver le tracing automatique pour cet appel
             run_config = RunConfig(tracing_disabled=False)
@@ -109,6 +117,8 @@ class ResearchManager:
         
         # Désactiver le tracing automatique pour cet appel
         run_config = RunConfig(tracing_disabled=False)
+
+        writer_agent = create_writer_agent([self.fs_server])
         
         result = Runner.run_streamed(
             writer_agent,

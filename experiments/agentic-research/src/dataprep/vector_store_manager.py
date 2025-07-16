@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 from openai import OpenAI
-from .config import get_config, VectorStoreConfig
+from ..config import get_config, VectorStoreConfig
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 class VectorStoreManager:
     """Gère automatiquement les vector stores par nom."""
     
-    def __init__(self, client: OpenAI, config: Optional[VectorStoreConfig] = None):
-        self.client = client
-        self.config = config or get_config().vector_store
+    def __init__(self, vector_store_name):
+        self.vector_store_name = vector_store_name
+        self.client = OpenAI()
         self._vector_store_id: Optional[str] = None
     
     def get_or_create_vector_store(self) -> str:
@@ -45,7 +45,7 @@ class VectorStoreManager:
             # Lister tous les vector stores
             response = self.client.vector_stores.list(limit=100)
             
-            target_name = self.config.name
+            target_name = self.vector_store_name
             for vs in response.data:
                 if vs.name == target_name:
                     logger.info(f"Vector store existant trouvé: {vs.id}")
@@ -61,10 +61,10 @@ class VectorStoreManager:
     def _create_new_vector_store(self) -> str:
         """Crée un nouveau vector store."""
         try:
-            logger.info(f"Création d'un nouveau vector store: {self.config.name}")
+            logger.info(f"Création d'un nouveau vector store: {self.vector_store_name}")
             response = self.client.vector_stores.create(
-                name=self.config.name,
-                expires_after={"anchor": "last_active_at", "days": self.config.expires_after_days}
+                name=self.vector_store_name,
+                expires_after={"anchor": "last_active_at", "days": 30} # Assuming a default expires_after_days
             )
             logger.info(f"Vector store créé avec succès: {response.id}")
             return response.id

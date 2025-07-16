@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pydantic import BaseModel
 from typing import Generic, Optional, TypeVar, List
 
@@ -33,3 +34,46 @@ class FileSearchPlan(SearchPlan[FileSearchItem]):
 
 class WebSearchPlan(SearchPlan[WebSearchItem]):
     pass
+
+
+class FileSearchResult(BaseModel):
+    file_name: str
+    "Le nom du fichier contenant les résultats de la recherche."
+
+
+class FileFinalReport(BaseModel):
+    absolute_file_path: str
+    "Le chemin absolu du fichier contenant le rapport final."
+
+    short_summary: str
+    "Le résumé court du rapport final."
+
+    follow_up_questions: list[str]
+    "Les questions suivantes à explorer."
+
+
+@dataclass
+class ResearchInfo:  
+    temp_dir: str
+    output_dir: str
+    max_search_plan: str = "1"
+    vector_store_name: Optional[str] = None
+    vector_store_id: Optional[str] = None
+
+
+class ReportData(BaseModel):
+    file_name: str
+    """The name of the file containing the final report."""
+
+    research_topic: str
+    """The main research topic following naming rules : no space (use `_` instead) or special caracter)."""
+
+
+    short_summary: str
+    """A short 2-3 sentence summary of the findings."""
+
+    markdown_report: str
+    """The final report"""
+
+    follow_up_questions: list[str]
+    """Suggested topics to research further"""

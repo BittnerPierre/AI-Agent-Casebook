@@ -15,12 +15,15 @@ agentic-research = "src.main:cli_main"
 dataprep = "src.dataprep.core:main"
 mcp-dataprep-workflow = "src.dataprep.workflow:run_workflow"
 dataprep_server = "src.mcp.dataprep_server:main"
+evaluate_writer = "evaluations.write_agent_eval:eval_main"
+test_trajectory = "evaluations.write_agent_eval:test_main"
+
 
 [tool.poetry.dependencies]
 python = "^3.12"
 pydantic = "^2.0"
 openai = ">=1.74.0"
-openai-agents = ">=0.0.17"
+openai-agents = {extras = ["litellm"], version = "^0.1.0"}
 dotenv = ">=0.9.9"
 fastmcp = "^2.9.2"
 mcp = "^1.9.4"

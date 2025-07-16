@@ -19,6 +19,7 @@ class VectorStoreConfig(BaseModel):
     name: str = Field(default="Agentic Research Vector Store")
     description: str = Field(default="Vector store for research")
     expires_after_days: int = Field(default=30)
+    vector_store_id: str = Field(default="")
 
 
 class DataConfig(BaseModel):
@@ -41,15 +42,23 @@ class LoggingConfig(BaseModel):
     format: str = Field(default="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
-class OpenAIConfig(BaseModel):
+class ModelsConfig(BaseModel):
     """Configuration for OpenAI."""
-    model: str = Field(default="gpt-4o")
-    reasoning_model: str = Field(default="o3-mini")
+    research_model: str = Field(default="openai/gpt-4.1-mini")
+    planning_model: str = Field(default="openai/gpt-4.1-mini")
+    search_model: str = Field(default="openai/gpt-4.1-mini")
+    writer_model: str = Field(default="openai/gpt-4.1-mini")
+    model: str = Field(default="openai/gpt-4.1-mini")
+    reasoning_model: str = Field(default="openai/o3-mini")
 
 class ManagerConfig(BaseModel):
     """Configuration for manager selection."""
     default_manager: str = Field(default="agentic_manager")
 
+class AgentsConfig(BaseModel):
+    """Configuration for agents."""
+    max_search_plan: str = Field(default="8-12")
+    output_dir: str = Field(default="output/")
 
 class Config(BaseModel):
     """Main configuration class."""
@@ -57,9 +66,9 @@ class Config(BaseModel):
     data: DataConfig = Field(default_factory=DataConfig)
     debug: DebugConfig = Field(default_factory=DebugConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
-    openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+    models: ModelsConfig = Field(default_factory=ModelsConfig)
     manager: ManagerConfig = Field(default_factory=ManagerConfig)
-
+    agents: AgentsConfig = Field(default_factory=AgentsConfig)
 
 class ConfigManager:
     """Manages configuration loading with environment variable override."""
@@ -98,12 +107,12 @@ class ConfigManager:
     
     def _apply_env_overrides(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
         """Apply environment variable overrides to configuration."""
-        # Permettre l'override du vector store name via la variable d'environnement
-        vector_store_name = os.getenv("VECTOR_STORE_NAME")
-        if vector_store_name:
-            if "vector_store" not in config_data:
-                config_data["vector_store"] = {}
-            config_data["vector_store"]["name"] = vector_store_name
+        # # Permettre l'override du vector store name via la variable d'environnement
+        # vector_store_name = os.getenv("VECTOR_STORE_NAME")
+        # if vector_store_name:
+        #     if "vector_store" not in config_data:
+        #         config_data["vector_store"] = {}
+        #     config_data["vector_store"]["name"] = vector_store_name
         
         # Override du mode debug via variable d'environnement
         debug_enabled = os.getenv("DEBUG")

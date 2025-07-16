@@ -1,30 +1,13 @@
-from pydantic import BaseModel
-from agents import Agent
-from agents.mcp import MCPServer
-from .schemas import FileSearchPlan 
-from .file_search_agent import file_search_agent
-from .web_search_agent import web_search_agent
-from .file_planner_agent import create_file_planner_agent
-from agents import Agent, FileSearchTool, WebSearchTool, ModelSettings
+
+from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
-from ..vector_store_manager import VectorStoreManager
-from ..config import get_config
-from .writer_agent import writer_agent, ReportData
+from agents.mcp import MCPServer
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from .utils import load_prompt_from_file
-import os
-
-# Chemin vers le fichier de prompt
-# Utiliser un chemin relatif par rapport au fichier actuel
-current_dir = os.path.dirname(os.path.abspath(__file__))
-RESEARCH_LEAD_PROMPT_PATH = os.path.join(current_dir, "prompts", "research_lead_agent.md")
-
-# Chargement du prompt depuis le fichier
-ORCHESTRATOR_PROMPT = load_prompt_from_file(RESEARCH_LEAD_PROMPT_PATH)
-
-if ORCHESTRATOR_PROMPT is None:
-    raise ValueError("ORCHESTRATOR_PROMPT is None")
+from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda
+from ..config import get_config
+from .schemas import FileFinalReport, ResearchInfo, ReportData
 
 
 ORCHESTRATOR_PROMP_V1 = """
@@ -55,20 +38,43 @@ config = get_config()
 client = OpenAI()
 # manager = VectorStoreManager(client, config.vector_store)
 #vector_store_id = manager.get_or_create_vector_store()
-model = config.openai.model   
+model = config.models.research_model
+
+
+prompt_file = "research_lead_agent_revised.md"
+
+# Chargement du prompt depuis le fichier
+ORCHESTRATOR_PROMPT = load_prompt_from_file("prompts", prompt_file)
+
+if ORCHESTRATOR_PROMPT is None:
+    raise ValueError(f"{prompt_file} is None")
+
+INSTRUCTIONS = (
+    f"{RECOMMENDED_PROMPT_PREFIX}"
+    f"{ORCHESTRATOR_PROMPT}"
+)
 
 # Factory function pour créer l'agent avec le serveur MCP
-def create_research_supervisor_agent(mcp_server=None):
-    mcp_servers = [mcp_server] if mcp_server else []
+def create_research_supervisor_agent(
+        mcp_servers:list[MCPServer],
+        file_planner_agent:Agent,
+        file_search_agent:Agent,
+        writer_agent:Agent):
 
-    file_planner_agent = create_file_planner_agent(mcp_server)
-    
-    return Agent(
+    def on_handoff(ctx: RunContextWrapper[None]):
+        print("Writer agent called")
+
+    handoff_obj = handoff(
+        agent=writer_agent,
+        on_handoff=on_handoff,
+    )
+
+    return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
-        model="gpt-4.1",
+        model=model,
         # handoffs=[
-        #     file_planner_agent, file_search_agent, writer_agent
+        #     writer_agent
         # ],
         tools=[
             file_planner_agent.as_tool(
@@ -81,8 +87,10 @@ def create_research_supervisor_agent(mcp_server=None):
             ),
             writer_agent.as_tool(
                 tool_name="write",
-                tool_description="Write the report based on the search results",
+                tool_description="Write the full report based on the search results",
             ),
+            fetch_vector_store_name,
+            display_agenda,
     ],
         output_type=ReportData,
         mcp_servers=mcp_servers,
