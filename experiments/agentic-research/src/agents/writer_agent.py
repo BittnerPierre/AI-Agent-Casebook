@@ -73,6 +73,7 @@ Next section fully expanded...
 Always aim for 3000–5000 words TOTAL, spread over multiple chunked outputs.
 This chunk should contribute at least 1500–2000 words.
 
+
 - Be complete. Be thorough. Be redundant if needed to maintain depth.
 - No partial summaries. Full expansions only.
     """
@@ -161,6 +162,7 @@ The report must be EXTREMELY DETAILED and COMPREHENSIVE. For each section:
 - Detail ALL advantages and limitations mentioned in sources.
 - Include ALL practical applications described.
 - Provide complete context and background information.
+
 
 **Forbidden practices:**
 - DO NOT summarize or condense information.

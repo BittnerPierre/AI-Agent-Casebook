@@ -102,6 +102,7 @@ Toute sortie de texte structuré doit passer par une fonction dédiée si une fo
 - Tant que `write` n’a pas été exécuté, NE PAS CONCLURE le processus.
 - `write`retournera les données du rapport incluant le nom du fichier contenant le rapport final.
 
+
 **Instructions spéciales pour le rédacteur** :
 "Rédige un rapport de recherche exhaustif et détaillé à partir de toutes les informations collectées.
 

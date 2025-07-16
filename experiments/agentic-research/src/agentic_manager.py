@@ -27,14 +27,15 @@ class ResearchManager:
         self.fs_server = fs_server
         self.dataprep_server = dataprep_server
 
+
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
-            self.printer.update_item(
-                "trace_id",
-                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-                is_done=True,
-                hide_checkmark=True,
-            )
+            # self.printer.update_item(
+            #     "trace_id",
+            #     f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
+            #     is_done=True,
+            #     hide_checkmark=True,
+            # )
 
             self.printer.update_item(
                 "starting",
@@ -61,12 +62,13 @@ class ResearchManager:
             self.printer.end()
 
         print("\n\n=====REPORT=====\n\n")
-        print(f"Report: {report.markdown_report}")
+        print(f"Report: {report.absolute_file_path}")
         print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
     async def _agentic_research(self, query: str, research_info: ResearchInfo) -> ReportData:
+
         self.printer.update_item("agentic_research", "Starting Agentic Research...")
         
         # Désactiver le tracing automatique pour cet appel
@@ -86,6 +88,7 @@ class ResearchManager:
             is_done=True,
         )
         return result.final_output_as(ReportData)
+
 
     # async def _perform_file_searches(self, search_plan: FileSearchPlan) -> list[str]:
     #     with custom_span("Recherche dans les fichiers"):

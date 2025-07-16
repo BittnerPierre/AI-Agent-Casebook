@@ -20,6 +20,7 @@ from .agents.utils import get_vector_store_id_by_name
 from .agents.schemas import ResearchInfo
 from .tracing.trace_processor import FileTraceProcessor
 
+
 def get_manager_class(manager_path: str):
     """Dynamically import and return a manager class from a path string."""
     if not manager_path or "." not in manager_path:
@@ -72,7 +73,6 @@ async def main() -> None:
         config.agents.max_search_plan = args.max_search_plan
         logger.info(f"Using custom max search plan: {args.max_search_plan}")
 
-
     if args.output_dir:
         config.agents.output_dir = args.output_dir
         logger.info(f"Using custom output directory: {args.output_dir}")
@@ -100,7 +100,6 @@ async def main() -> None:
         query = input("What would you like to research? ")
 
     # set_trace_processors([OpenAIAgentsTracingProcessor()])
-    # set_trace_processors([FileTraceProcessor(log_dir="traces")])
     debug_mode = config.debug.enabled
 
     with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:
@@ -139,7 +138,6 @@ async def main() -> None:
                 temp_dir=canonical_tmp_dir,
                 max_search_plan=config.agents.max_search_plan,
                 output_dir=config.agents.output_dir)
-            
             
             # print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
             await manager_class().run(dataprep_server=dataprep_server, fs_server=fs_server, query=query, research_info=research_info)

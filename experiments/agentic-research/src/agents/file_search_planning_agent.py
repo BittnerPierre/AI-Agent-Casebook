@@ -12,6 +12,7 @@ from .schemas import ResearchInfo
 from .utils import load_prompt_from_file
 
 
+
 PROMPT = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
     """You are a helpful research assistant. Given a query and a list of knowledge entries, generate a COMPREHENSIVE set of semantic searches to perform in vectorized files to exhaustively answer the query.
@@ -66,6 +67,7 @@ def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
 
     config = get_config()
     model = config.models.planning_model
+
 
     return Agent(
         name="file_planner_agent",

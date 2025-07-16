@@ -20,7 +20,6 @@ class ResearchManager:
         self.console = Console()
         self.printer = Printer(self.console)
 
-
     async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
         self.fs_server = fs_server
         self.dataprep_server = dataprep_server

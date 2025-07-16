@@ -4,6 +4,7 @@ from .schemas import ResearchInfo, ReportData, FileFinalReport
 from agents.mcp import ToolFilterContext
 
 
+
 def load_prompt_from_file(folder_path: str, file_path: str) -> str:
     """
     Charge un prompt depuis un fichier
@@ -140,3 +141,4 @@ def context_aware_filter(context: ToolFilterContext, tool) -> bool:
 
     # Implement your custom filtering logic here
     return some_filtering_logic(agent_name, server_name, tool)
+
