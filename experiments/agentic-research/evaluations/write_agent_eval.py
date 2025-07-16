@@ -12,12 +12,15 @@ from src.printer import Printer
 from langsmith.wrappers import OpenAIAgentsTracingProcessor
 from agents import add_trace_processor
 from src.config import get_config
-from src.agents.utils import context_aware_filter
-from .eval_utils import extract_full_trajectory, extract_tool_trajectory, evaluate_tools_trajectory, validate_trajectory_spec
+from src.agents.utils import context_aware_filter, generate_final_report_filename
+from .eval_utils import validate_trajectory_spec, format_trajectory_report, test_trajectory_from_existing_files, save_result_input_list_to_json, save_trajectory_evaluation_report
 from src.tracing.trace_processor import FileTraceProcessor
 import pprint
 import json
 import pprint
+import re
+from typing import List, Dict, Any
+import sys
 
 
 # Files used as knowledge base to generate the report
@@ -49,32 +52,13 @@ AGENDA = [
     # "Aspects théoriques et pratiques du système"
 ]
 
-# Spécification de la trajectoire attendue
-# Ce la correspond au CoT (Chain of Thought) + ReACT de l'agent writer.
-TRAJECTORY_SPEC_MODEL = {
+# ✅ ORDRE CORRIGÉ : read_multiple_files PUIS save_final_report PUIS generations
+TRAJECTORY_SPEC = {
     "trajectory_spec": [
         {
             "id": "load_data",
-            "type": "function_call",
+            "type": "function_call", 
             "name": "read_multiple_files",
-            "required": True
-        },
-        {
-            "id": "extract_raw_notes",
-            "type": "generation",
-            "match_regex": "^## Raw Notes",
-            "required": True
-        },
-        {
-            "id": "create_outline",
-            "type": "generation",
-            "match_regex": "^## Detailed Agenda",
-            "required": True
-        },
-        {
-            "id": "write_sections",
-            "type": "generation",
-            "match_regex": "^###",
             "required": True
         },
         {
@@ -84,20 +68,35 @@ TRAJECTORY_SPEC_MODEL = {
             "required": True
         },
         {
-            "id": "handoff_agent",
-            "type": "function_call",
-            "name_prefix": "transfer_to_",
-            "required": False
+            "id": "report_generation_raw_notes",
+            "type": "generation",
+            "match_regex": r"## Raw Notes",
+            "expected_content": "## Raw Notes",
+            "required": True
+        },
+        {
+            "id": "report_generation_detailed_agenda",
+            "type": "generation",
+            "match_regex": r"## Detailed Agenda",
+            "expected_content": "## Detailed Agenda",
+            "required": True
+        },
+        {
+            "id": "report_generation_final_report", 
+            "type": "generation", 
+            "match_regex": r"## Final Report",
+            "expected_content": "## Final Report",
+            "required": True
         }
     ]
 }
 
-spec = TRAJECTORY_SPEC_MODEL["trajectory_spec"]
+spec = TRAJECTORY_SPEC["trajectory_spec"]
 
 # répertoire où charger les notes intermédiaires de recherche
-temp_dir = "evaluations/temp_dir"
+temp_search_dir = "evaluations/temp_search_dir"
 # répertoire où enregistrer le rapport final
-output_dir = "evaluations/output"
+output_report_dir = "evaluations/output_report_dir"
 
 
 class EvaluationManager:
@@ -105,17 +104,6 @@ class EvaluationManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
-
-    def _save_result_input_list_to_json(self, report_file_name: str, messages: list) -> None:
-        """
-        Sauvegarde la liste des messages au format JSON dans le répertoire output_dir,
-        en adaptant le nom du fichier à partir du nom du rapport (remplace .txt par _messages.json).
-        """
-        base_file_name = os.path.basename(report_file_name).rsplit('.md', 1)[0]
-        messages_file_name = f"{base_file_name}_messages.json"
-        output_path = os.path.join(output_dir, messages_file_name)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(messages, f, ensure_ascii=False, indent=2)
 
 
     async def run(self, fs_server: MCPServer, research_info: ResearchInfo) -> None:
@@ -190,55 +178,49 @@ class EvaluationManager:
         messages = result.to_input_list()
         report = result.final_output_as(ReportData)
 
-        self._save_result_input_list_to_json(report.file_name, messages)
+        report_file_name = report.file_name if report.file_name else generate_final_report_filename(research_topic=report.research_topic)
 
-
-        # 1) extraire la trajectoire complète
-        # full_traj = extract_full_trajectory(messages)
-
-        # # 2) n'en garder que les tool calls
-        # tool_traj = extract_tool_trajectory(full_traj)
-
-        # # 3) comparer à la référence
-        # reference = ["read_multiple_files", "save_final_report"]
-        # report = evaluate_tools_trajectory(tool_traj, reference)
-
-        
-        # print(json.dumps({
-        #     "full_trajectory": full_traj,
-        #     "tool_trajectory": tool_traj,
-        #     "evaluation": report
-        # }, indent=2, ensure_ascii=False))
+        save_result_input_list_to_json(model_name=writer_agent.model, report_file_name=report_file_name, messages=messages, output_report_dir=output_report_dir)
 
         validation_report = validate_trajectory_spec(messages, spec)
+        
+        # Afficher le rapport lisible
+        human_readable_report = format_trajectory_report(model_name=writer_agent.model, evaluation=validation_report, title="Writer Agent Trajectory")
+        print("\n" + human_readable_report)
+        
 
-        pprint.pprint(validation_report)
-
+        # Utilisation de la fonction pour sauvegarder le rapport
+        save_trajectory_evaluation_report(output_report_dir, report_file_name, human_readable_report)
+        
         return report
 
 
 async def main() -> None:
-    add_trace_processor(OpenAIAgentsTracingProcessor())
+    # add_trace_processor(OpenAIAgentsTracingProcessor())
+    add_trace_processor(FileTraceProcessor(log_dir="traces"))
 
     config = get_config()
     # anthropic models does not seems to work (issue with json output)
     # "litellm/anthropic/claude-3-7-sonnet-latest"
     #"litellm/anthropic/claude-3-5-haiku-latest"
-    config.models.writer_model = "litellm/mistral/mistral-medium-latest"   # "openai/gpt-4.1-mini"
+    # Mistral is working very WELL
+    # "litellm/mistral/mistral-medium-latest" 
+    # OpenAI models
+    # "openai/gpt-4.1-mini" # does not call the function save_final_report
+    # "openai/gpt-4.1" does not call the function save_final_report
+    config.models.writer_model = "openai/gpt-4.1"
 
-    canonical_tmp_dir = os.path.realpath(temp_dir)
+    canonical_tmp_dir = os.path.realpath(temp_search_dir)
     print(f"Canonical tmp dir: {canonical_tmp_dir}")
     if not os.path.exists(canonical_tmp_dir):
         print("temp_dir does not exist, exiting")
         return
-    
-    set_trace_processors([FileTraceProcessor(log_dir="traces")])
 
     fs_server = MCPServerStdio(
         name="FS_MCP_SERVER",
         params={
             "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", temp_dir],
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", temp_search_dir],
         },
         tool_filter=context_aware_filter,
         cache_tools_list=True
@@ -247,18 +229,42 @@ async def main() -> None:
 
         research_info = ResearchInfo(
             temp_dir=canonical_tmp_dir,
-            output_dir=output_dir)
+            output_dir=output_report_dir)
         
         evaluation_manager = EvaluationManager()
         await evaluation_manager.run(fs_server, research_info)
 
-
-
-
-
 def eval_main():
     """Sync entrypoint for Poetry scripts."""
     asyncio.run(main())
+
+def test_main():
+    """
+    🚀 Point d'entrée pour tester la trajectoire sur des fichiers existants
+    Usage: poetry run test_trajectory <messages_file.json>
+    """
+    if len(sys.argv) != 2:
+        print("Usage: poetry run test_trajectory <messages_file.json>")
+        print("\nExemple:")
+        print("poetry run test_trajectory evaluations/output/agent_engineer_fondations_course_final_report_20250715_161950_messages.json")
+        return
+    
+    messages_file = sys.argv[1]
+    
+    print(f"🔍 Test de trajectoire sur: {messages_file}")
+    print("=" * 60)
+    
+    # Tester avec le spec actuel
+    spec = TRAJECTORY_SPEC["trajectory_spec"]
+    report = test_trajectory_from_existing_files(messages_file, spec)
+    print(report)
+    
+    # Sauvegarder le rapport
+    report_file = messages_file.replace('_messages.json', '_trajectory_test.txt')
+    with open(report_file, 'w', encoding='utf-8') as f:
+        f.write(report)
+    
+    print(f"\n💾 Rapport sauvegardé: {report_file}")
 
 if __name__ == "__main__":
     eval_main()

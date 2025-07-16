@@ -229,7 +229,7 @@ def dynamic_instructions(
     return (
             f"{dynamic_prompt}"
             f"The absolute path to **temporary filesystem** is `{context.context.temp_dir}`. "
-             " You MUST use it ONLY to READ temporary data. You MUST call `save_final_report` to save the final report.\n\n"
+             " You MUST use it ONLY to READ temporary data.\n\n"
         )
 
 

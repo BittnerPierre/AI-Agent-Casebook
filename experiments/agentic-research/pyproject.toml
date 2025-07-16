@@ -16,6 +16,7 @@ dataprep = "src.dataprep.core:main"
 mcp-dataprep-workflow = "src.dataprep.workflow:run_workflow"
 dataprep_server = "src.mcp.dataprep_server:main"
 evaluate_writer = "evaluations.write_agent_eval:eval_main"
+test_trajectory = "evaluations.write_agent_eval:test_main"
 
 [tool.poetry.dependencies]
 python = "^3.12"

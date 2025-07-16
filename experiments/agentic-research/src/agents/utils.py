@@ -50,28 +50,43 @@ async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) 
     return f"#### Cartographie des concepts à explorer\n\n{agenda}"
 
 
-@function_tool
-async def save_final_report(wrapper: RunContextWrapper[ResearchInfo], report: ReportData) -> str:  
+def generate_final_report_filename(research_topic: str) -> str:
     """
-    Write the final report.
-    Call this function to write the final report.
+    Génère un nom de fichier pour le rapport final selon les règles de nommage.
     """
+    import re
     import datetime
+    # Appliquer les règles de nommage
+    topic = research_topic.lower()
+    topic = re.sub(r'\s+', '_', topic)
+    topic = re.sub(r'[^a-z0-9_]', '', topic)
+    topic = topic[:50]
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_name = f"{report.research_topic}_final_report_{timestamp}.md"
+    return f"{topic}_final_report_{timestamp}.md"
+
+@function_tool
+async def save_final_report(wrapper: RunContextWrapper[ResearchInfo],
+                            research_topic: str,
+                            markdown_report: str,
+                            short_summary: str,
+                            follow_up_questions: list[str],
+                            ) -> ReportData:  
+    """
+    Écrit le rapport final.
+    Appelez cette fonction pour écrire le rapport final.
+    """
+    file_name = generate_final_report_filename(research_topic)
     output_dir = wrapper.context.output_dir
     file_path = os.path.join(output_dir, file_name)
     with open(file_path, "w", encoding="utf-8") as file:
-        file.write(report.markdown_report)
-        print(f"File written: {file_path}")
-        # print(f"Report: {report.markdown_report}")
-        
-    # absolute_file_path = os.path.abspath(file_path)
-    # file_final_report = FileFinalReport(absolute_file_path=absolute_file_path,
-    #                                     short_summary=report.short_summary,
-    #                                     follow_up_questions=report.follow_up_questions
-    #                                     )
-    return file_name
+        file.write(markdown_report)
+        # Remplacer print par logger si le framework de logging est en place
+        # print(f"File written: {file_path}")
+    return ReportData(file_name=file_name,
+                      markdown_report=markdown_report,
+                      research_topic=research_topic,
+                      short_summary=short_summary,
+                      follow_up_questions=follow_up_questions)
 
 MS_FS_TOOLS = [
     "read_file",

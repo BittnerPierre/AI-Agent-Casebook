@@ -63,7 +63,7 @@ class ResearchInfo:
 
 class ReportData(BaseModel):
     file_name: str
-    "The name of the file containing the final report."
+    """The name of the file containing the final report."""
 
     research_topic: str
     """The main research topic following naming rules : no space (use `_` instead) or special caracter)."""
