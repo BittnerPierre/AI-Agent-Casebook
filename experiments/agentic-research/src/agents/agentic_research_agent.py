@@ -1,5 +1,5 @@
 
-from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, RunContextWrapper, RunResult, ToolCallOutputItem, function_tool
 from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
 from agents.mcp import MCPServer
@@ -54,6 +54,16 @@ INSTRUCTIONS = (
     f"{ORCHESTRATOR_PROMPT}"
 )
 
+
+async def extract_json_payload(run_result: RunResult) -> str:
+    # Scan the agent’s outputs in reverse order until we find a JSON-like message from a tool call.
+    print(f"run_result: {run_result}")
+    for item in reversed(run_result.new_items):
+        if isinstance(item, ToolCallOutputItem) and item.output.strip().startswith("{"):
+            return item.output.strip()
+    # Fallback to an empty JSON object if nothing was found
+    return "{}"
+
 # Factory function pour créer l'agent avec le serveur MCP
 def create_research_supervisor_agent(
         mcp_servers:list[MCPServer],
@@ -86,8 +96,9 @@ def create_research_supervisor_agent(
                 tool_description="Search for relevant information in the knowledge base",
             ),
             writer_agent.as_tool(
-                tool_name="write",
+                tool_name="write_report",
                 tool_description="Write the full report based on the search results",
+                custom_output_extractor=extract_json_payload
             ),
             fetch_vector_store_name,
             display_agenda,

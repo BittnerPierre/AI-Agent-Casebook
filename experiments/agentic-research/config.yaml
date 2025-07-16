@@ -1,7 +1,7 @@
 # Configuration pour agentic-research
 vector_store:
   # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
-  name: "agentic-research-vector-store"
+  name: "agent-engineer-basic-course"
   description: "Vector store for agentic research experiments"
   expires_after_days: 30
 
@@ -33,15 +33,15 @@ logging:
 # Configuration Models
 models:
   research_model: "openai/gpt-4.1-mini"
-  planning_model: "litellm/anthropic/claude-3-5-haiku-latest"
+  planning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
   search_model: "openai/gpt-4.1-mini"
-  writer_model: "openai/gpt-4.1-mini"
-  reasoning_model: "litellm/anthropic/claude-3-7-sonnet-latest"
+  writer_model: "litellm/mistral/mistral-medium-latest"
+  reasoning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
 
 # Configuration du manager
 manager:
-  default_manager: "manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+  default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
 
 agents:
-  max_search_plan: "12"
+  max_search_plan: "2-3"
   ouput_dir: "output/"

@@ -61,7 +61,7 @@ class ResearchManager:
         # Désactiver le tracing automatique pour cet appel
         run_config = RunConfig(tracing_disabled=False)
         
-        file_planner_agent = create_file_planner_agent(self.mcp_server)
+        file_planner_agent = create_file_planner_agent([])
 
         result = await Runner.run(
             file_planner_agent,
@@ -97,7 +97,7 @@ class ResearchManager:
     async def _file_search(self, item: FileSearchItem) -> str | None:
 
         input_text = f"Terme de recherche: {item.query}\nRaison de la recherche: {item.reason}"
-        file_search_agent = create_file_search_agent(self.mcp_servers, item.vector_store_id)
+        file_search_agent = create_file_search_agent([self.fs_server], item.vector_store_id)
         try:
             # Désactiver le tracing automatique pour cet appel
             run_config = RunConfig(tracing_disabled=False)

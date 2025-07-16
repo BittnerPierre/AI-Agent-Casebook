@@ -9,11 +9,10 @@ import tempfile
 from .agentic_manager import ResearchManager as AgenticResearchManager
 from .manager import ResearchManager as StandardResearchManager
 from .config import get_config
-from agents import Agent, Runner, gen_trace_id, trace
+from agents import Agent, Runner, add_trace_processor
 from agents.mcp import MCPServerSse, MCPServerStdio  
 from agents.model_settings import ModelSettings
 # LangSmith tracing support
-from agents import set_trace_processors
 from langsmith.wrappers import OpenAIAgentsTracingProcessor
 from openai import OpenAI
 from .agents.utils import get_vector_store_id_by_name
@@ -99,7 +98,8 @@ async def main() -> None:
     else:
         query = input("What would you like to research? ")
 
-    # set_trace_processors([OpenAIAgentsTracingProcessor()])
+    add_trace_processor(OpenAIAgentsTracingProcessor())
+    add_trace_processor(FileTraceProcessor(log_dir="traces"))
     debug_mode = config.debug.enabled
 
     with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:
@@ -128,9 +128,10 @@ async def main() -> None:
                     name=config.vector_store.name
                 )
                 config.vector_store.vector_store_id = vector_store_obj.id
-                print(f"Vector store created: {config.vector_store.vector_store_id}")
+                print(f"Vector store created: '{config.vector_store.vector_store_id}'")
             else:
-                print(f"Vector store already exists: {config.vector_store.vector_store_id}")
+                config.vector_store.vector_store_id = vector_store_id
+                print(f"Vector store already exists: '{config.vector_store.vector_store_id}'")
 
             research_info = ResearchInfo(
                 vector_store_name=config.vector_store.name,

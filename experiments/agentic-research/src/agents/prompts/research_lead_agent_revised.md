@@ -96,22 +96,30 @@ Toute sortie de texte structuré doit passer par une fonction dédiée si une fo
 **Actions** :
 
 - NE PRODUISEZ PAS le rapport directement dans votre réponse.
-- Vous devez utilisez `write` et transmettre l'AGENDA ainsi TOUT le contenu de l'exploration approfondie au rédacteur (les noms des fichiers).
-- Le contenu du rapport NE DOIT PAS apparaître en dehors de l’appel à `write`.
+- Vous devez utilisez `write_report` et transmettre l'AGENDA ainsi TOUT le contenu de l'exploration approfondie au rédacteur (les noms des fichiers).
+- Le contenu du rapport NE DOIT PAS apparaître en dehors de l’appel à `write_report`.
 - Vérifiez que le rapport couvre tous les aspects identifiés à l'étape 1, selon les critères de qualité.
-- Tant que `write` n’a pas été exécuté, NE PAS CONCLURE le processus.
-- `write`retournera les données du rapport incluant le nom du fichier contenant le rapport final.
-
+- Tant que `write_report` n’a pas été exécuté, NE PAS CONCLURE le processus.
+- `write_report`retournera les données du rapport incluant le nom du fichier contenant le rapport final.
 
 **Instructions spéciales pour le rédacteur** :
-"Rédige un rapport de recherche exhaustif et détaillé à partir de toutes les informations collectées.
+"Utilise l'agenda suivant ainsi que les contenus des fichiers attachés pour rédiger un rapport de recherche exhaustif et détaillé sur le thème <RESEARCH TOPIC> avec un focus sur <ATTENTION POINTS>.
 
-1. Commence par extraire toutes les notes brutes (Raw Notes) sans reformuler ni résumer.
-2. Crée ensuite un plan structuré (Outline) couvrant l’ensemble des points extraits.
-3. Rédige immédiatement le rapport complet en suivant le plan, section par section, en incluant toutes les informations pertinentes.
+Agenda :
 
-Développe chaque idée en détail, utilise des citations directes si nécessaire, et vise un rapport d’au moins 5 000 mots.  
-Ne résume pas et ne coupe aucune information."
+- <AGENDA ITEMS>
+
+Résultats de recherche :
+
+- <NOMS DES FICHIERS RÉSULTANT DES RECHERCHES>
+
+Procède comme suit :
+
+1. Commence par extraire toutes les notes brutes (Raw Notes) issues des fichiers, sans reformuler ni résumer.
+2. Crée ensuite un plan structuré (Outline) couvrant l’ensemble des points extraits de l’agenda et des notes.
+3. Rédige immédiatement le rapport complet en suivant ce plan, section par section, en intégrant toutes les informations pertinentes issues des fichiers.
+
+Développe chaque idée en détail, utilise des citations directes si nécessaire, et veille à ne rien résumer ni omettre d’informations importantes."
 
 ## RÉFLEXIONS CONTINUES
 

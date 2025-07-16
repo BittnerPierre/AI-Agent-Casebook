@@ -15,13 +15,14 @@ from .agents.agentic_research_agent import create_research_supervisor_agent
 
 from .agents.schemas import FileFinalReport, ResearchInfo
 
+from .config import get_config
 
 class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
         self.mcp_server = None
-
+        self.config = get_config()
 
     async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
 
@@ -30,13 +31,13 @@ class ResearchManager:
 
 
         trace_id = gen_trace_id()
-        with trace("Research trace", trace_id=trace_id):
-            # self.printer.update_item(
-            #     "trace_id",
-            #     f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
-            #     is_done=True,
-            #     hide_checkmark=True,
-            # )
+        with trace("Research trace", trace_id=trace_id, metadata={"trace_type": "research"}):
+            self.printer.update_item(
+                "trace_id",
+                f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
+                is_done=True,
+                hide_checkmark=True,
+            )
 
             self.printer.update_item(
                 "starting",
@@ -62,8 +63,10 @@ class ResearchManager:
 
             self.printer.end()
 
+
+
         print("\n\n=====REPORT=====\n\n")
-        print(f"Report: {report.absolute_file_path}")
+        print(f"Report: {report.markdown_report}")
         print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
