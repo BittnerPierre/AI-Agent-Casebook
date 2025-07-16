@@ -12,10 +12,6 @@ from .schemas import ResearchInfo
 from .utils import load_prompt_from_file
 
 
-config = get_config()
-client = OpenAI()
-model = config.models.planning_model
-
 
 PROMPT = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
@@ -68,6 +64,11 @@ def dynamic_instructions(
 
 def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
     mcp_servers = mcp_servers if mcp_servers else []
+
+    config = get_config()
+    model = config.models.planning_model
+
+
     return Agent(
         name="file_planner_agent",
         instructions=dynamic_instructions,

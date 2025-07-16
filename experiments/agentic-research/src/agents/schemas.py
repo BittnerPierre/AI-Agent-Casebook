@@ -54,14 +54,21 @@ class FileFinalReport(BaseModel):
 
 @dataclass
 class ResearchInfo:  
-    vector_store_name: str
-    vector_store_id: str
     temp_dir: str
-    max_search_plan: str
     output_dir: str
+    max_search_plan: str = "1"
+    vector_store_name: Optional[str] = None
+    vector_store_id: Optional[str] = None
 
 
 class ReportData(BaseModel):
+    file_name: str
+    """The name of the file containing the final report."""
+
+    research_topic: str
+    """The main research topic following naming rules : no space (use `_` instead) or special caracter)."""
+
+
     short_summary: str
     """A short 2-3 sentence summary of the findings."""
 

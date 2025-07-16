@@ -92,7 +92,7 @@ def create_research_supervisor_agent(
             fetch_vector_store_name,
             display_agenda,
     ],
-        output_type=FileFinalReport,
+        output_type=ReportData,
         mcp_servers=mcp_servers,
         model_settings=ModelSettings(tool_choice="required"),
     ) 

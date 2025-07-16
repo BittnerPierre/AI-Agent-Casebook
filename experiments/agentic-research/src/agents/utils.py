@@ -1,6 +1,8 @@
 import os
 from agents import Agent, RunContextWrapper, function_tool
 from .schemas import ResearchInfo, ReportData, FileFinalReport
+from agents.mcp import ToolFilterContext
+
 
 
 def load_prompt_from_file(folder_path: str, file_path: str) -> str:
@@ -49,22 +51,94 @@ async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) 
     return f"#### Cartographie des concepts à explorer\n\n{agenda}"
 
 
+def generate_final_report_filename(research_topic: str) -> str:
+    """
+    Génère un nom de fichier pour le rapport final selon les règles de nommage.
+    """
+    import re
+    import datetime
+    # Appliquer les règles de nommage
+    topic = research_topic.lower()
+    topic = re.sub(r'\s+', '_', topic)
+    topic = re.sub(r'[^a-z0-9_]', '', topic)
+    topic = topic[:50]
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{topic}_final_report_{timestamp}.md"
+
 @function_tool
-async def write_final_report(wrapper: RunContextWrapper[ResearchInfo], report: ReportData, file_name: str) -> FileFinalReport:  
+async def save_final_report(wrapper: RunContextWrapper[ResearchInfo],
+                            research_topic: str,
+                            markdown_report: str,
+                            short_summary: str,
+                            follow_up_questions: list[str],
+                            ) -> ReportData:  
     """
-    Write the file to the output directory.
-    Call this function to write the file to the output directory.
+    Écrit le rapport final.
+    Appelez cette fonction pour écrire le rapport final.
     """
+    file_name = generate_final_report_filename(research_topic)
     output_dir = wrapper.context.output_dir
     file_path = os.path.join(output_dir, file_name)
     with open(file_path, "w", encoding="utf-8") as file:
-        file.write(report.markdown_report)
-        print(f"File written: {file_path}")
-        print(f"Report: {report.markdown_report}")
-        
-    absolute_file_path = os.path.abspath(file_path)
-    file_final_report = FileFinalReport(absolute_file_path=absolute_file_path,
-                                        short_summary=report.short_summary,
-                                        follow_up_questions=report.follow_up_questions
-                                        )
-    return file_final_report
+        file.write(markdown_report)
+        # Remplacer print par logger si le framework de logging est en place
+        # print(f"File written: {file_path}")
+    return ReportData(file_name=file_name,
+                      markdown_report=markdown_report,
+                      research_topic=research_topic,
+                      short_summary=short_summary,
+                      follow_up_questions=follow_up_questions)
+
+MS_FS_TOOLS = [
+    "read_file",
+    "read_multiple_files",
+    "write_file",
+    "edit_file",
+    "create_directory",
+    "list_directory",
+    "list_directory_with_sizes",
+    "directory_tree",
+    "move_file",
+    "search_files",
+    "get_file_info",
+    "list_allowed_directories"
+]
+
+MS_DATAPREP_TOOLS = [
+    "download_and_store_url_tool",
+    "upload_files_to_vectorstore_tool",
+    "get_knowledge_entries_tool",
+    "check_vectorstore_file_status"
+]
+
+WRITER_AGENT_TOOLS = [
+    "save_final_report",
+    "read_file",
+    "read_multiple_files",
+    "list_directory",
+]
+
+
+def some_filtering_logic(agent_name, server_name, tool) -> bool:
+    tool_name = tool.name
+    if agent_name == "writer_agent":
+        if tool_name in WRITER_AGENT_TOOLS:
+            return True
+        else:
+            return False
+    else:
+        return True
+
+
+# Context-aware filter
+def context_aware_filter(context: ToolFilterContext, tool) -> bool:
+    """Filter tools based on context information."""
+    # Access agent information
+    agent_name = context.agent.name
+
+    # Access server information  
+    server_name = context.server_name
+
+    # Implement your custom filtering logic here
+    return some_filtering_logic(agent_name, server_name, tool)
+

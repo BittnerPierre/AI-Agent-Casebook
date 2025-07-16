@@ -18,6 +18,8 @@ from langsmith.wrappers import OpenAIAgentsTracingProcessor
 from openai import OpenAI
 from .agents.utils import get_vector_store_id_by_name
 from .agents.schemas import ResearchInfo
+from .tracing.trace_processor import FileTraceProcessor
+
 
 def get_manager_class(manager_path: str):
     """Dynamically import and return a manager class from a path string."""
@@ -50,7 +52,7 @@ async def main() -> None:
     parser.add_argument("--manager", type=str, default=default_manager, 
                         help=f"Manager implementation to use (default: {default_manager})")
     parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
-    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)")
+    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)", default=config.vector_store.name)
     parser.add_argument("--max-search-plan", type=str, default=config.agents.max_search_plan,
                         help=f"Maximum number of search plans to generate (default: {config.agents.max_search_plan})") 
     parser.add_argument("--output-dir", type=str, default=config.agents.output_dir,
@@ -102,7 +104,7 @@ async def main() -> None:
 
     with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:
         fs_server = MCPServerStdio(
-            name="Filesystem Server, via npx",
+            name="FS_MCP_SERVER",
             params={
                 "command": "npx",
                 "args": ["-y", "@modelcontextprotocol/server-filesystem", temp_dir],
@@ -111,7 +113,7 @@ async def main() -> None:
         canonical_tmp_dir = os.path.realpath(temp_dir)
 
         dataprep_server = MCPServerSse(
-            name="SSE Dataprep Server",
+            name="DATAPREP_MCP_SERVER",
             params={
                 "url": "http://localhost:8001/sse",
             },
@@ -120,25 +122,23 @@ async def main() -> None:
             # trace_id = gen_trace_id()
             #with trace(workflow_name="SSE Example", trace_id=trace_id):
             client = OpenAI()
-            vector_store_name = config.vector_store.name    
-            vector_store_id = get_vector_store_id_by_name(client, vector_store_name)
+            vector_store_id = get_vector_store_id_by_name(client, config.vector_store.name)
+            if vector_store_id is None:
+                vector_store_obj = client.vector_stores.create(
+                    name=config.vector_store.name
+                )
+                config.vector_store.vector_store_id = vector_store_obj.id
+                print(f"Vector store created: {config.vector_store.vector_store_id}")
+            else:
+                print(f"Vector store already exists: {config.vector_store.vector_store_id}")
 
             research_info = ResearchInfo(
-                vector_store_name=vector_store_name,
-                vector_store_id=vector_store_id,
+                vector_store_name=config.vector_store.name,
+                vector_store_id=config.vector_store.vector_store_id,
                 temp_dir=canonical_tmp_dir,
                 max_search_plan=config.agents.max_search_plan,
                 output_dir=config.agents.output_dir)
             
-            if vector_store_id is None:
-                vector_store_obj = client.vector_stores.create(
-                    name=vector_store_name
-                )
-                vector_store_id = vector_store_obj.id
-                config.vector_store.vector_store_id = vector_store_id
-                print(f"Vector store created: {vector_store_id}")
-            else:
-                print(f"Vector store already exists: {vector_store_id}")
             # print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
             await manager_class().run(dataprep_server=dataprep_server, fs_server=fs_server, query=query, research_info=research_info)
 

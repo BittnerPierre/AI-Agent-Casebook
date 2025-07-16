@@ -24,6 +24,10 @@ class ResearchManager:
 
     async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
 
+        self.fs_server = fs_server
+        self.dataprep_server = dataprep_server
+
+
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             # self.printer.update_item(
@@ -40,11 +44,11 @@ class ResearchManager:
                 hide_checkmark=True,
             )
 
-            file_planner_agent = create_file_planner_agent([fs_server])
-            file_search_agent = create_file_search_agent([fs_server], research_info.vector_store_id)
-            writer_agent = create_writer_agent([fs_server])
+            file_planner_agent = create_file_planner_agent([self.fs_server])
+            file_search_agent = create_file_search_agent([self.fs_server], research_info.vector_store_id)
+            writer_agent = create_writer_agent([self.fs_server])
 
-            self.research_supervisor_agent = create_research_supervisor_agent([dataprep_server],
+            self.research_supervisor_agent = create_research_supervisor_agent([self.dataprep_server],
                                                                               file_planner_agent,
                                                                               file_search_agent,
                                                                               writer_agent)
@@ -63,7 +67,8 @@ class ResearchManager:
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
-    async def _agentic_research(self, query: str, research_info: ResearchInfo) -> FileFinalReport:
+    async def _agentic_research(self, query: str, research_info: ResearchInfo) -> ReportData:
+
         self.printer.update_item("agentic_research", "Starting Agentic Research...")
         
         # Désactiver le tracing automatique pour cet appel
@@ -82,7 +87,8 @@ class ResearchManager:
             f"Doing Agentic Research",
             is_done=True,
         )
-        return result.final_output_as(FileFinalReport)
+        return result.final_output_as(ReportData)
+
 
     # async def _perform_file_searches(self, search_plan: FileSearchPlan) -> list[str]:
     #     with custom_span("Recherche dans les fichiers"):

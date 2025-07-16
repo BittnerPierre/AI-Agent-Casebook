@@ -85,9 +85,6 @@ Toute sortie de texte structuré doit passer par une fonction dédiée si une fo
 
 - Effectuez TOUTES les recherches planifiées avec `file_search`
 - Pour chaque recherche, demandez explicitement des **détails complets**
-- Si une recherche renvoie des informations limitées, reformulez et relancez
-- Effectuez des recherches de suivi pour approfondir les points intéressants
-- Continuez jusqu'à avoir une **vision complète** de chaque aspect
 
 **Instructions spéciales pour les recherches** :
 "Recherche détaillée sur [SUJET]. Je veux toutes les informations disponibles : définitions, explications techniques, exemples concrets, avantages, inconvénients, cas d'usage, meilleures pratiques, et tout autre détail pertinent."
@@ -103,7 +100,8 @@ Toute sortie de texte structuré doit passer par une fonction dédiée si une fo
 - Le contenu du rapport NE DOIT PAS apparaître en dehors de l’appel à `write`.
 - Vérifiez que le rapport couvre tous les aspects identifiés à l'étape 1, selon les critères de qualité.
 - Tant que `write` n’a pas été exécuté, NE PAS CONCLURE le processus.
-- `write`retournera le nom du fichier contenant le rapport final.
+- `write`retournera les données du rapport incluant le nom du fichier contenant le rapport final.
+
 
 **Instructions spéciales pour le rédacteur** :
 "Rédige un rapport de recherche exhaustif et détaillé à partir de toutes les informations collectées.
