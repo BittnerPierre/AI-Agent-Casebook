@@ -72,7 +72,6 @@ class ReportData(BaseModel):
     research_topic: str
     """The main research topic following naming rules : no space (use `_` instead) or special caracter)."""
 
-
     short_summary: str
     """A short 2-3 sentence summary of the findings."""
 

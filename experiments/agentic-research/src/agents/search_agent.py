@@ -10,7 +10,7 @@ INSTRUCTIONS = (
     "itself."
 )
 
-web_search_agent = Agent(
+search_agent = Agent(
     name="Search agent",
     instructions=INSTRUCTIONS,
     tools=[WebSearchTool()],

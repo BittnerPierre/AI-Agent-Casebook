@@ -9,7 +9,7 @@ from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
 from agents.mcp import MCPServer
 from .agents.file_search_planning_agent import create_file_planner_agent
 from .agents.file_search_agent import create_file_search_agent
-from .agents.writer_agent import ReportData, create_writer_agent
+from .agents.file_writer_agent import ReportData, create_writer_agent
 from .printer import Printer
 from .agents.agentic_research_agent import create_research_supervisor_agent
 
@@ -56,7 +56,6 @@ class ResearchManager:
                                                                               writer_agent)
         
             report = await self._agentic_research(query, research_info)
-            # report = await self._write_report(query, search_results)
 
             final_report = f"Report summary\n\n{report.short_summary}"
             self.printer.update_item("final_report", final_report, is_done=True)

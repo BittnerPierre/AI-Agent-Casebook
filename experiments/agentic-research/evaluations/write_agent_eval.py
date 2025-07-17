@@ -4,7 +4,7 @@ import os
 import time
 
 from src.agents.schemas import ReportData, ResearchInfo
-from src.agents.writer_agent import create_writer_agent
+from src.agents.file_writer_agent import create_writer_agent
 from agents import Runner, RunConfig, gen_trace_id, trace
 from agents.mcp import MCPServerStdio,  MCPServer
 from rich.console import Console

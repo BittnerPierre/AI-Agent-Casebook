@@ -74,10 +74,22 @@ async def save_final_report(wrapper: RunContextWrapper[ResearchInfo],
                             ) -> ReportData:  
     """
     Écrit le rapport final.
+    Appelez cet outil pour écrire le rapport final.
+    """
+    return await save_final_report_function(wrapper.context.output_dir, research_topic, markdown_report, short_summary, follow_up_questions)
+
+
+async def save_final_report_function(output_dir: str,
+                            research_topic: str,
+                            markdown_report: str,
+                            short_summary: str,
+                            follow_up_questions: list[str],
+                            ) -> ReportData:  
+    """
+    Écrit le rapport final.
     Appelez cette fonction pour écrire le rapport final.
     """
     file_name = generate_final_report_filename(research_topic)
-    output_dir = wrapper.context.output_dir
     file_path = os.path.join(output_dir, file_name)
     with open(file_path, "w", encoding="utf-8") as file:
         file.write(markdown_report)
