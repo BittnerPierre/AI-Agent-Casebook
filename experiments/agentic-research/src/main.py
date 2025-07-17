@@ -37,6 +37,9 @@ def get_manager_class(manager_path: str):
     return getattr(module, class_name)
 
 async def main() -> None:
+
+    os.environ['OPENAI_AGENTS_DISABLE_TRACING'] = '1'
+
     # Configure logging and get config first
     config = get_config()
     logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
@@ -98,8 +101,8 @@ async def main() -> None:
     else:
         query = input("What would you like to research? ")
 
-    add_trace_processor(OpenAIAgentsTracingProcessor())
-    add_trace_processor(FileTraceProcessor(log_dir="traces"))
+    # add_trace_processor(OpenAIAgentsTracingProcessor())
+    add_trace_processor(FileTraceProcessor(log_dir="traces", log_file="trace.log"))
     debug_mode = config.debug.enabled
 
     with tempfile.TemporaryDirectory(delete=not debug_mode) as temp_dir:

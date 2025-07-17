@@ -52,6 +52,8 @@ class FileFinalReport(BaseModel):
     "Les questions suivantes à explorer."
 
 
+from dataclasses import dataclass, field
+
 @dataclass
 class ResearchInfo:  
     temp_dir: str
@@ -59,6 +61,8 @@ class ResearchInfo:
     max_search_plan: str = "1"
     vector_store_name: Optional[str] = None
     vector_store_id: Optional[str] = None
+    search_results: List[str] = field(default_factory=list)
+    """List of filenames resulting from research (e.g., .txt, .md, .pdf files)."""
 
 
 class ReportData(BaseModel):

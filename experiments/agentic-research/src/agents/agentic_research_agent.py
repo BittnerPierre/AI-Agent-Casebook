@@ -8,7 +8,8 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda
 from ..config import get_config
 from .schemas import FileFinalReport, ResearchInfo, ReportData
-
+from agents.extensions import handoff_filters
+from .writer_agent import WriterDirective
 
 ORCHESTRATOR_PROMP_V1 = """
     You are a helpful lead research assistant. 
@@ -71,21 +72,28 @@ def create_research_supervisor_agent(
         file_search_agent:Agent,
         writer_agent:Agent):
 
-    def on_handoff(ctx: RunContextWrapper[None]):
-        print("Writer agent called")
+    def on_handoff(ctx: RunContextWrapper[ResearchInfo], directive: WriterDirective):
+        print(f"Writer agent called with directive: {directive}")
+        ctx.context.search_results = directive.search_results
 
-    handoff_obj = handoff(
+
+    writer_handoff = handoff(
         agent=writer_agent,
         on_handoff=on_handoff,
+        input_type=WriterDirective,
+        tool_name_override="write_report",
+        tool_description_override="Write the full report based on the search results",
+        # no need to pass the history to the writer agent as it is handle via file, and it will failed with mistral due to the call id format (invalid_function_call error)
+        input_filter=handoff_filters.remove_all_tools, 
     )
 
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
         model=model,
-        # handoffs=[
-        #     writer_agent
-        # ],
+        handoffs=[
+            writer_handoff
+        ],
         tools=[
             file_planner_agent.as_tool(
                 tool_name="plan_file_search",
@@ -95,11 +103,11 @@ def create_research_supervisor_agent(
                 tool_name="file_search",
                 tool_description="Search for relevant information in the knowledge base",
             ),
-            writer_agent.as_tool(
-                tool_name="write_report",
-                tool_description="Write the full report based on the search results",
-                custom_output_extractor=extract_json_payload
-            ),
+            # writer_agent.as_tool(
+            #     tool_name="write_report",
+            #     tool_description="Write the full report based on the search results",
+            #     custom_output_extractor=extract_json_payload
+            # ),
             fetch_vector_store_name,
             display_agenda,
     ],

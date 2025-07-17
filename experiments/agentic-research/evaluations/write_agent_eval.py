@@ -204,11 +204,11 @@ async def main() -> None:
     # "litellm/anthropic/claude-3-7-sonnet-latest"
     #"litellm/anthropic/claude-3-5-haiku-latest"
     # Mistral is working very WELL
-    # "litellm/mistral/mistral-medium-latest" 
+    # 
     # OpenAI models
     # "openai/gpt-4.1-mini" # does not call the function save_final_report
     # "openai/gpt-4.1" does not call the function save_final_report
-    config.models.writer_model = "openai/gpt-4.1"
+    config.models.writer_model = "litellm/mistral/mistral-medium-latest"  # "openai/gpt-4.1"
 
     canonical_tmp_dir = os.path.realpath(temp_search_dir)
     print(f"Canonical tmp dir: {canonical_tmp_dir}")

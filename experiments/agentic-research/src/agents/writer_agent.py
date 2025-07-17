@@ -232,7 +232,53 @@ def dynamic_instructions(
             f"{dynamic_prompt}"
             f"The absolute path to **temporary filesystem** is `{context.context.temp_dir}`. "
              " You MUST use it ONLY to READ temporary data.\n\n"
+             f"The search results are: - " + "\n - ".join(context.context.search_results)
         )
+
+
+from typing import List, Optional
+from pydantic import BaseModel
+
+class WriterDirective(BaseModel):
+    # research_topic: str
+    # """Main research topic."""
+
+    # attention_points: Optional[str] = None
+    # """Specific attention points to address (optional)."""
+
+    # agenda_items: List[str]
+    # """List of agenda items or report sections to cover."""
+
+    search_results: List[str]
+    """List of filenames resulting from research (e.g., .txt, .md, .pdf files)."""
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "search_results": [
+                    "impact_ai_education.pdf",
+                    "bias_and_accessibility.txt",
+                    "case_study_universities.md"
+                ]
+            }
+        }
+        # json_schema_extra = {
+        #     "example": {
+        #         "research_topic": "The impact of generative AI on higher education",
+        #         "attention_points": "Ethics, accessibility, bias",
+        #         "agenda_items": [
+        #             "Introduction and context",
+        #             "Analysis of pedagogical impacts",
+        #             "Risks and opportunities",
+        #             "Future perspectives"
+        #         ],
+        #         "search_results": [
+        #             "impact_ai_education.pdf",
+        #             "bias_and_accessibility.txt",
+        #             "case_study_universities.md"
+        #         ]
+        #     }
+        # }
 
 
 def create_writer_agent(mcp_servers:list[MCPServer]=None):

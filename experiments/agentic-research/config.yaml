@@ -35,7 +35,7 @@ models:
   research_model: "openai/gpt-4.1-mini"
   planning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
   search_model: "openai/gpt-4.1-mini"
-  writer_model: "litellm/mistral/mistral-medium-latest"
+  writer_model: "litellm/mistral/mistral-medium-latest" # "openai/gpt-4.1-mini"
   reasoning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
 
 # Configuration du manager
