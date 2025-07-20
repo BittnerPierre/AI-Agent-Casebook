@@ -47,8 +47,9 @@ class ModelsConfig(BaseModel):
     research_model: str = Field(default="openai/gpt-4.1-mini")
     planning_model: str = Field(default="openai/gpt-4.1-mini")
     search_model: str = Field(default="openai/gpt-4.1-mini")
-    writer_model: str = Field(default="openai/gpt-4.1-mini")
-    model: str = Field(default="openai/gpt-4.1-mini")
+    writer_model: str = Field(default="litellm/mistral/mistral-medium-latest")
+    knowledge_preparation_model: str = Field(default="litellm/mistral/mistral-medium-latest")
+    # model: str = Field(default="openai/gpt-4.1-mini")
     reasoning_model: str = Field(default="openai/o3-mini")
 
 class ManagerConfig(BaseModel):

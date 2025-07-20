@@ -133,6 +133,7 @@ def validate_trajectory_spec(
       - Vérifie que les patterns apparaissent dans l'ordre spécifié dans le contenu généré
       - Tous les patterns peuvent être dans le MÊME message assistant final
       - ✅ NOUVEAU : Décode correctement les échappements JSON (\\n → \n)
+      - ✅ NOUVEAU : Recherche dans les arguments des function_calls (pour handoff workflow)
       - Exemple : "## Raw Notes" PUIS "## Detailed Agenda" PUIS "## Final Report"
     """
     
@@ -150,7 +151,8 @@ def validate_trajectory_spec(
                 "name": m.get("name", ""),
                 "call_id": call_id,
                 "successful": successful,
-                "index": i
+                "index": i,
+                "arguments": m.get("arguments", "")  # ✅ NOUVEAU : Garder les arguments
             })
         elif m.get("role") == "assistant":
             # Extraire le contenu assistant avec décodage des échappements
@@ -192,6 +194,29 @@ def validate_trajectory_spec(
                     if match:
                         matched = True
                         matched_event = ev
+                
+                # ✅ NOUVEAU : Recherche dans les arguments des function_calls (pour handoff workflow)
+                elif ev["type"] == "function_call":
+                    arguments = ev.get("arguments", "")
+                    if arguments:
+                        try:
+                            # Parser les arguments JSON
+                            args_dict = json.loads(arguments)
+                            # Chercher dans markdown_report si disponible
+                            markdown_content = args_dict.get("markdown_report", "")
+                            if markdown_content:
+                                # Décoder les échappements JSON
+                                decoded_content = _decode_json_escapes(markdown_content)
+                                match = re.search(step["match_regex"], decoded_content, re.MULTILINE)
+                                if match:
+                                    matched = True
+                                    matched_event = ev
+                        except (json.JSONDecodeError, KeyError):
+                            # Si pas de JSON valide, essayer de chercher directement dans les arguments
+                            match = re.search(step["match_regex"], arguments, re.MULTILINE)
+                            if match:
+                                matched = True
+                                matched_event = ev
                         
             if matched:
                 # Pour les function_calls, on avance la position pour forcer l'ordre temporel
@@ -200,6 +225,44 @@ def validate_trajectory_spec(
                 # Pour les generations, on garde la position car plusieurs patterns
                 # peuvent être dans le même message
                 break
+        
+        # ✅ CORRIGÉ : Si pas trouvé dans la plage actuelle, chercher à partir de la position actuelle
+        # pour respecter l'ordre temporel, sauf si c'est la première étape (pas d'étape précédente validée)
+        if not matched and step["type"] == "generation":
+            # Si c'est la première étape ou si aucune étape précédente n'a été trouvée, repartir du début
+            search_start = 0 if pos == 0 else pos
+            
+            for idx in range(search_start, len(events)):
+                ev = events[idx]
+                if ev["type"] == "generation":
+                    match = re.search(step["match_regex"], ev["content"], re.MULTILINE)
+                    if match:
+                        matched = True
+                        matched_event = ev
+                        pos = idx + 1  # Avancer la position pour l'étape suivante
+                        break
+                
+                elif ev["type"] == "function_call":
+                    arguments = ev.get("arguments", "")
+                    if arguments:
+                        try:
+                            args_dict = json.loads(arguments)
+                            markdown_content = args_dict.get("markdown_report", "")
+                            if markdown_content:
+                                decoded_content = _decode_json_escapes(markdown_content)
+                                match = re.search(step["match_regex"], decoded_content, re.MULTILINE)
+                                if match:
+                                    matched = True
+                                    matched_event = ev
+                                    pos = idx + 1  # Avancer la position pour l'étape suivante
+                                    break
+                        except (json.JSONDecodeError, KeyError):
+                            match = re.search(step["match_regex"], arguments, re.MULTILINE)
+                            if match:
+                                matched = True
+                                matched_event = ev
+                                pos = idx + 1  # Avancer la position pour l'étape suivante
+                                break
         
         # Construire le résultat pour cette étape
         if matched:
@@ -214,6 +277,8 @@ def validate_trajectory_spec(
                 pattern_display = _clean_regex_for_display(step["match_regex"])
                 found_text = f"'{pattern_display}'"
                 detail_text = f"Pattern trouvé dans le contenu"
+                if matched_event["type"] == "function_call":
+                    detail_text += f" (arguments de {matched_event['name']})"
                 expected_display = pattern_display
                 
             results.append({
@@ -334,7 +399,7 @@ def test_trajectory_from_existing_files(messages_file: str, spec: List[Dict[str,
             messages = json.load(f)
         
         evaluation = validate_trajectory_spec(messages, spec)
-        return format_trajectory_report(evaluation)
+        return format_trajectory_report("dummy_model", evaluation, "Test Trajectory")
         
     except FileNotFoundError:
         return f"❌ ERREUR: Fichier {messages_file} introuvable."

@@ -62,12 +62,6 @@ TRAJECTORY_SPEC = {
             "required": True
         },
         {
-            "id": "save_report",
-            "type": "function_call",
-            "name": "save_final_report",
-            "required": True
-        },
-        {
             "id": "report_generation_raw_notes",
             "type": "generation",
             "match_regex": r"## Raw Notes",
@@ -86,6 +80,12 @@ TRAJECTORY_SPEC = {
             "type": "generation", 
             "match_regex": r"## Final Report",
             "expected_content": "## Final Report",
+            "required": True
+        },
+        {
+            "id": "save_report",
+            "type": "function_call",
+            "name": "save_final_report",
             "required": True
         }
     ]
@@ -108,6 +108,8 @@ class EvaluationManager:
 
     async def run(self, fs_server: MCPServer, research_info: ResearchInfo) -> None:
         self.fs_server = fs_server
+        self.research_info = research_info
+
         trace_id = gen_trace_id()
         with trace("Writer Agent Evaluation trace", trace_id=trace_id, metadata={"trace_type": "evaluation"}):
             self.printer.update_item(
@@ -124,7 +126,9 @@ class EvaluationManager:
                 hide_checkmark=True,
             )
 
-            report = await self._write_report(fs_server, AGENDA, SEARCH_RESULTS, research_info)
+            self.writer_agent = create_writer_agent([self.fs_server])
+
+            report = await self._write_report(AGENDA, SEARCH_RESULTS)
 
             final_report = f"Report summary\n\n{report.short_summary}"
             self.printer.update_item("final_report", final_report, is_done=True)
@@ -133,12 +137,12 @@ class EvaluationManager:
             self.printer.end()
 
 
-    async def _write_report(self, fs_server: MCPServer, agenda: str, search_results: list[str], research_info: ResearchInfo) -> ReportData:
+    async def _write_report(self, query: str, search_results: list[str]) -> ReportData:
         self.printer.update_item("writing", "Thinking about report...")
         input = (  
                     "Utilise l'agenda suivant ainsi que les contenus des fichiers attachés pour rédiger un rapport de recherche exhaustif et détaillé"
                     " sur le thème \"Agent Engineer Fondations Course\" avec focus sur les systèmes multi-agents en IA."
-                    f"\n\nAgenda: \n- "+ "\n- ".join(agenda) + "\n"
+                    f"\n\nAgenda: \n- "+ "\n- ".join(query) + "\n"
                     f"\n\nSearch results: \n- "+ "\n- ".join(search_results) + "\n"
                 )
         
@@ -146,14 +150,12 @@ class EvaluationManager:
         run_config = RunConfig(tracing_disabled=False,
                                workflow_name="write_agent_eval",
                                trace_metadata={"run_type": "evaluation"})
-
-        writer_agent = create_writer_agent([self.fs_server])
         
         result = Runner.run_streamed(
-            writer_agent,
+            self.writer_agent,
             input,
             run_config=run_config,
-            context=research_info
+            context=self.research_info
         )
         update_messages = [
             "Thinking about report...",
@@ -175,19 +177,20 @@ class EvaluationManager:
 
         self.printer.mark_item_done("writing")
 
-        messages = result.to_input_list()
         report = result.final_output_as(ReportData)
 
+        ## EVALUATION SPECIFIC
+        messages = result.to_input_list()
+        model_name = self.writer_agent.model
         report_file_name = report.file_name if report.file_name else generate_final_report_filename(research_topic=report.research_topic)
 
-        save_result_input_list_to_json(model_name=writer_agent.model, report_file_name=report_file_name, messages=messages, output_report_dir=output_report_dir)
+        save_result_input_list_to_json(model_name=model_name, report_file_name=report_file_name, messages=messages, output_report_dir=output_report_dir)
 
         validation_report = validate_trajectory_spec(messages, spec)
         
         # Afficher le rapport lisible
-        human_readable_report = format_trajectory_report(model_name=writer_agent.model, evaluation=validation_report, title="Writer Agent Trajectory")
+        human_readable_report = format_trajectory_report(model_name=model_name, evaluation=validation_report, title="Writer Agent Trajectory")
         print("\n" + human_readable_report)
-        
 
         # Utilisation de la fonction pour sauvegarder le rapport
         save_trajectory_evaluation_report(output_report_dir, report_file_name, human_readable_report)

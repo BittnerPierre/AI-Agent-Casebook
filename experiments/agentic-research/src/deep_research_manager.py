@@ -15,6 +15,7 @@ from .printer import Printer
 from .agents.schemas import ReportData
 from .agents.agentic_research_agent import create_research_supervisor_agent
 from .agents.utils import save_final_report_function
+from .agents.knowledge_preparation_agent import create_knowledge_preparation_agent
 
 class ResearchManager:
     def __init__(self):
@@ -42,11 +43,18 @@ class ResearchManager:
                 hide_checkmark=True,
             )
 
+            self.knowledge_preparation_agent = create_knowledge_preparation_agent([self.dataprep_server])
             self.file_planner_agent = create_file_planner_agent([self.fs_server])
             self.file_search_agent = create_file_search_agent([self.fs_server], research_info.vector_store_id)
-            self.writer_agent = create_writer_agent([self.fs_server])
+            self.writer_agent = create_writer_agent([self.fs_server], save_report=False)
             
-            search_plan = await self._plan_file_searches(query)
+            agenda = await self._prepare_knowledge(query)
+            print("\n\n=====AGENDA=====\n\n")
+            print(agenda)
+            
+            search_plan = await self._plan_file_searches(agenda)
+            print("\n\n=====SEARCH PLAN=====\n\n")
+            print(search_plan)
             search_results = await self._perform_file_searches(search_plan)
             report = await self._write_report(query, search_results)
 
@@ -64,11 +72,18 @@ class ResearchManager:
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
+    async def _prepare_knowledge(self, query: str) -> None:
+        self.printer.update_item("preparing", "Préparation de la connaissance...")
+        result = await Runner.run(
+            self.knowledge_preparation_agent,
+            query,
+            context=self.research_info,
+        )
+        self.printer.update_item("preparing", "Préparation de la connaissance terminée", is_done=True)
+        return str(result.final_output)
+
     async def _plan_file_searches(self, query: str) -> FileSearchPlan:
         self.printer.update_item("planning", "Planification des recherches dans les fichiers...")
-        
-        # Désactiver le tracing automatique pour cet appel
-        run_config = RunConfig(tracing_disabled=False)
         
         result = await Runner.run(
             self.file_planner_agent,
@@ -76,7 +91,6 @@ class ResearchManager:
             f"######\n"
             f"{query}",
             context=self.research_info,
-            run_config=run_config
         )
         self.printer.update_item(
             "planning",
@@ -107,14 +121,11 @@ class ResearchManager:
         input_text = f"Terme de recherche: {item.query}\nRaison de la recherche: {item.reason}"
         
         try:
-            # Désactiver le tracing automatique pour cet appel
-            run_config = RunConfig(tracing_disabled=False)
             
             result = await Runner.run(
                 self.file_search_agent,
                 input_text,
                 context=self.research_info,
-                run_config=run_config
             )
             return str(result.final_output_as(FileSearchResult).file_name)
         except Exception:
@@ -127,17 +138,15 @@ class ResearchManager:
             "\n".join(f"- {fname}" for fname in search_results) if search_results else "None"
         )
         input = (
-            f"Utilise l'agenda suivant ainsi que les contenus des fichiers attachés pour rédiger un rapport de recherche exhaustif et détaillé: {query}\n\nSearch results:\n{formatted_results}"
+            f"Rédige un rapport de recherche exhaustif et détaullé Utilise l'agenda suivant ainsi que les contenus des fichiers attachés "
+            f" pour rédiger un rapport de recherche exhaustif et détaillé: {query}\n\n"
+            f"Search results:\n{formatted_results}"
         )
-        
-        # Désactiver le tracing automatique pour cet appel
-        run_config = RunConfig(tracing_disabled=False)
 
         result = Runner.run_streamed(
             self.writer_agent,
             input,
             context=self.research_info,
-            run_config=run_config
         )
         update_messages = [
             "Thinking about report...",

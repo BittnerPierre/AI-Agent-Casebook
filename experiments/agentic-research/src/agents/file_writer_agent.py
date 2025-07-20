@@ -8,7 +8,7 @@ from agents import RunContextWrapper
 from .schemas import FileFinalReport, ResearchInfo, ReportData
 from .utils import load_prompt_from_file, save_final_report
 from agents import ModelSettings
-
+from agents.agent import StopAtTools
 
 prompt_file = "write_prompt.md"
 
@@ -81,11 +81,27 @@ class WriterDirective(BaseModel):
         # }
 
 
-def create_writer_agent(mcp_servers:list[MCPServer]=None):
+
+
+
+def create_writer_agent(mcp_servers:list[MCPServer]=None, save_report:bool=True):
     mcp_servers = mcp_servers if mcp_servers else []
 
     config = get_config()
     model = config.models.writer_model
+
+    save_agent = None
+    if save_report:
+        save_agent = Agent(
+            name="save_agent",
+            instructions="Save the final report",
+            model=model,
+            output_type=ReportData,
+            tools=[
+                save_final_report,
+            ],
+            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_final_report"])
+        )
 
     model_settings = ModelSettings(
         #tool_choice="required",
@@ -98,9 +114,7 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None):
         model=model,
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        tools=[
-            save_final_report,
-        ],
+        handoffs=[save_agent],
         model_settings=model_settings
     )
     return writer_agent

@@ -1,6 +1,6 @@
 {RECOMMENDED_PROMPT_PREFIX}
 
-You are a helpful research assistant. Given a query and a list of knowledge entries, generate a COMPREHENSIVE set of semantic searches to perform in vectorized files to exhaustively answer the query.
+You are a helpful research assistant. Given a research plan with a list of knowledge entries, generate a COMPREHENSIVE set of semantic searches to perform in vectorized knowlegde base to exhaustively cover the agenda.
 
 Generate between {search_count} searches covering:
 
