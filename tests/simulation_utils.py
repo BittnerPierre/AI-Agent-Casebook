@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_core.runnables import chain as as_runnable
 from langchain_openai import ChatOpenAI
-from langgraph.pregel.io import AddableValuesDict
+
 from typing_extensions import TypedDict
 
 from langgraph.graph import END, StateGraph, START
@@ -293,21 +293,21 @@ def _swap_roles(state: SimulationState):
             else:
                 logging.debug("Ignored ToolMessage with empty content.")
 
-        elif isinstance(m, AddableValuesDict):
-            messages = m.get("messages", [])
-            if messages and messages[0].content == (new_messages[-1].content if new_messages else ""):
-                messages = messages[1:]
-            logging.debug(f"Processing AddableValuesDict type message. Messages: {messages}")
-            for item in messages:
-                if isinstance(item, HumanMessage) and item.content.strip():
-                    new_messages.append(AIMessage(content=item.content))
-                elif isinstance(item, AIMessage):
-                    if (not hasattr(item, 'tool_calls') or not item.tool_calls) and item.content.strip():
-                        new_messages.append(HumanMessage(content=item.content))
-                    else:
-                        logging.debug("Ignored AIMessage with tool call or empty content.")
-                elif isinstance(item, ToolMessage) and item.content.strip():
-                    new_messages.append(HumanMessage(content=item.content))
+        # elif isinstance(m, AddableValuesDict):
+        #     messages = m.get("messages", [])
+        #     if messages and messages[0].content == (new_messages[-1].content if new_messages else ""):
+        #         messages = messages[1:]
+        #     logging.debug(f"Processing AddableValuesDict type message. Messages: {messages}")
+        #     for item in messages:
+        #         if isinstance(item, HumanMessage) and item.content.strip():
+        #             new_messages.append(AIMessage(content=item.content))
+        #         elif isinstance(item, AIMessage):
+        #             if (not hasattr(item, 'tool_calls') or not item.tool_calls) and item.content.strip():
+        #                 new_messages.append(HumanMessage(content=item.content))
+        #             else:
+        #                 logging.debug("Ignored AIMessage with tool call or empty content.")
+        #         elif isinstance(item, ToolMessage) and item.content.strip():
+        #             new_messages.append(HumanMessage(content=item.content))
 
         else:
             logging.debug(f"Ignored message type: {type(m)}")

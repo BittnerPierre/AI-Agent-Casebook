@@ -2,18 +2,18 @@ from pathlib import Path
 
 from llama_index.core import Settings
 
-from ai_agents import RAGAgentType, RAGAgentFactory
-from core.commons import initiate_model, initiate_embeddings
-from core.base import SupportedModel
+from app.ai_agents import RAGAgentType, RAGAgentFactory
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.base import SupportedModel
 
 from llama_index.embeddings.mistralai import MistralAIEmbedding
 
-single_source_paths = Path("agents/res/example_file.txt")
+single_source_paths = Path("tests/agents/res/example_file.txt")
 
 multi_source_paths = [
-    Path("agents/res/example_file.txt"),
-    Path("agents/res/example_file_2.txt"),
-    Path("agents/res/example_file_3.txt"),
+    Path("tests/agents/res/example_file.txt"),
+    Path("tests/agents/res/example_file_2.txt"),
+    Path("tests/agents/res/example_file_3.txt"),
 ]
 
 model = initiate_model(SupportedModel.DEFAULT)
@@ -27,6 +27,7 @@ def test_simple_rag_agent():
     # Example of loading documents for llamaindex
 
     kwargs = {
+        "name": "SimpleRAGAgent",
         "model": model,
         "embeddings": embeddings,
         "source_paths": single_source_paths
@@ -42,6 +43,7 @@ def test_multi_document_rag_agent():
     # Example of loading documents for llamaindex
     source_path = "res"
     kwargs = {
+        "name": "MultiDocumentRAGAgent",
         "model": model,
         "embeddings": embeddings,
         "source_paths": multi_source_paths

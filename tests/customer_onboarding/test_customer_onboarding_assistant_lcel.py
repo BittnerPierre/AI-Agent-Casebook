@@ -1,5 +1,5 @@
-from core.base import SupportedModel
-from customer_onboarding.legacy_langchain import create_customer_onboarding_assistant_as_chain
+from app.core.base import SupportedModel
+from app.customer_onboarding.legacy_langchain import create_customer_onboarding_assistant_as_chain
 
 default_model = SupportedModel.DEFAULT
 

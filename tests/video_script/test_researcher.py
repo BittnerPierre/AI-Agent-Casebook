@@ -4,9 +4,9 @@ import pytest
 from langchain import hub
 from langchain_core.messages import HumanMessage, AIMessage
 
-from core.commons import initiate_model
-from core.base import SupportedModel
-from video_script.agents import Researcher
+from app.core.commons import initiate_model
+from app.core.base import SupportedModel
+from app.video_script.agents import Researcher
 
 default_model = SupportedModel.DEFAULT
 
@@ -47,7 +47,7 @@ def model():
 
 @pytest.fixture
 def agent(model):
-    researcher = Researcher(model=model)
+    researcher = Researcher(name="Researcher", model=model)
     return researcher
 
 

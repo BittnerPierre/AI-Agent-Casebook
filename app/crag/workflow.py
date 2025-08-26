@@ -2,10 +2,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import START, END
 from langgraph.graph import StateGraph
 
-from video_script.configuration import Configuration
-from ai_agents import InputState
-from crag import CragAgentState
-from crag import decide_to_generate, retrieve, grade_documents, generate, transform_query, web_search
+from app.crag import CragAgentState
+from app.crag import decide_to_generate, retrieve, grade_documents, generate, transform_query, web_search
 
 workflow = StateGraph(CragAgentState)
 

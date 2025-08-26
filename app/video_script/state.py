@@ -3,8 +3,8 @@ from typing import List, Literal, Optional
 
 from langgraph.managed import RemainingSteps
 
-from ai_agents.state import InputState
-from video_script.agents import Chapter
+from app.ai_agents.state import InputState
+from app.video_script.agents import Chapter
 
 
 @dataclass

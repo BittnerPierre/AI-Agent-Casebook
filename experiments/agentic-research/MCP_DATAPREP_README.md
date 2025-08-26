@@ -59,7 +59,7 @@ poetry run mcp-dataprep-workflow
 
 ```bash
 # Démarrer le serveur MCP DataPrep
-python -m src.mcp.dataprep_server
+poetry run dataprep_server
 ```
 
 Le serveur sera accessible sur `http://localhost:8001` avec transport SSE.

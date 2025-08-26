@@ -170,7 +170,7 @@ Project to demonstrate onboarding automation using agentic workflows.
 
 ### Testing
 
-- Use `pytest` with coverage across workflows
+- Use `poetry run pytest tests` with coverage across workflows
 - Some tests are expected to fail: they demonstrate edge cases or brittle logic under test
 
 ---

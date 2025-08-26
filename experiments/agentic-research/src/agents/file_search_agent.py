@@ -47,7 +47,7 @@ def create_file_search_agent(mcp_servers:list[MCPServer]=None, vector_store_id:s
         instructions=dynamic_instructions,
         tools=[FileSearchTool(vector_store_ids=[vector_store_id])],
         model=model,
-        model_settings=ModelSettings(tool_choice="required"),
+        model_settings=ModelSettings(tool_choice="auto"),
         mcp_servers=mcp_servers,
         output_type=FileSearchResult,   
     )

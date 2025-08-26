@@ -8,16 +8,16 @@ from fastapi import FastAPI, APIRouter, Query
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 
-from core.base import SupportedModel
+from app.core.base import SupportedModel
 
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
-from assistants.core import get_assistant
+from app.assistants.core import get_assistant
 
-from utils.prompt import ClientMessage, convert_to_openai_messages
-from utils.tools import get_current_weather
+from app.utils.prompt import ClientMessage, convert_to_openai_messages
+from app.utils.tools import get_current_weather
 from langchain.schema.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, BaseMessage
 
 import uvicorn

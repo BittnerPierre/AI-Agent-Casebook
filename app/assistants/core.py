@@ -2,9 +2,8 @@ from dataclasses import dataclass
 
 from langgraph.graph.state import CompiledStateGraph
 
-from video_script.assistant import video_script
-
-from customer_onboarding.assistants import customer_onboarding
+from app.video_script.assistant import video_script
+from app.customer_onboarding.assistant import customer_onboarding
 
 DEFAULT_ASSISTANT = "customer-onboarding"
 

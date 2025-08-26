@@ -10,7 +10,7 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import BaseNode
 
-from core.logger import logger
+from app.core.logger import logger
 
 
 class DocumentLoader:

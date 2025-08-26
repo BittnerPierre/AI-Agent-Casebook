@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from openai import OpenAI
 from ..config import get_config
-from ..vector_store_manager import VectorStoreManager
+from .vector_store_manager import VectorStoreManager
 #from .web_loader import WebDocument, load_documents_from_urls
 from .web_loader_improved import WebDocument, load_documents_from_urls
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 client = OpenAI()
 
-manager = VectorStoreManager(client, config.vector_store)
+manager = VectorStoreManager(config.vector_store.name, client)
 vector_store_id = manager.get_or_create_vector_store()
 
 

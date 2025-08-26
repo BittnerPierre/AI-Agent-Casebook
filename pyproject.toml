@@ -2,7 +2,7 @@
 name = "AI-Agent-Casebook"
 version = "0.1.0"
 description = "Project to showcase agentic paradigm on several use case."
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.12,<=3.13"
 authors = [
     {name = "Pierre Bittner", email = "pierre@bittner.fr"}
 ]
@@ -42,40 +42,43 @@ description = "Project to showcase agentic paradigm on several use case."
 authors = ["Pierre Bittner <pierre@bittner.fr>"]
 license = "Apache Licence"
 readme = "README.md"
-# packages = [{ include = "app" }]
-packages = [{ include = "customer_onboarding", from = "app" }]
+packages = [
+    { include = "app" }
+]
 
 
 [tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-langchain = "^0.3.14"
-langgraph = "^0.3.6"
+python = ">=3.12,<=3.13"
+langchain = ">=0.3.14"
+langgraph = ">=0.3.6"
 openai = "^1.59.7"
-mistralai =  "^1.8.0" # {path = "../mistralai-1.8.0rc0"}
+mistralai =  ">=1.8.0" # {path = "../mistralai-1.8.0rc0"}
 chromadb = ">=1.0.8"
 langchain-community = ">=0.3.14"
 langchain-openai = ">=0.3.8"
 langchain-mistralai = ">=0.2.4"
 langchain-chroma = ">=0.2.3"
 langsmith = ">=0.3.13"
-llama-index = ">=0.12.11"
+llama-index = "^0.12.52"
 llama-index-embeddings-langchain=">=0.3.0"
 llama-index-llms-mistralai=">=0.4.0"
 llama-index-embeddings-mistralai=">=0.3.0"
 pytest = "^8.3.4"
 bs4 = "^0.0.2"
-fastapi = "^0.115.6"
-uvicorn = "^0.34.0"
-langchain-experimental = "^0.3.4"
+fastapi = ">=0.115.6"
+uvicorn = ">=0.34.0"
 protobuf = ">=4.21.12, <5.0.0"
-langchain-anthropic = "^0.3.9"
-langgraph-prebuilt = "^0.1.2"
-openai-agents = {extras = ["viz"], version = ">=0.0.14"}
+langchain-anthropic = ">=0.3.9"
+langgraph-prebuilt = ">=0.1.2"
+openai-agents = {extras = ["litellm"], version = "^0.2.9"}
 litellm = ">=1.67.2"
 mcp = {extras = ["cli"], version = "^1.7.1"}
 langgraph-cli = {extras = ["inmem"], version = "^0.2.10"}
-ipykernel = "^6.29.5"
-dotenv = "^0.9.9"
+ipykernel = ">=6.29.5"
+dotenv = ">=0.9.9"
+langgraph-api = "^0.2.137"
+langchain-voyageai = "^0.1.7"
+langchain-tavily = "^0.2.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -96,3 +99,15 @@ pytest-asyncio = ">=0.25.3"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+pythonpath = [
+    ".",
+    "app",
+    "tests"
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "--import-mode=importlib"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]

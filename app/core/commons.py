@@ -8,9 +8,10 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
 
-from core.logger import logger
-from core.base import SupportedModel
+from app.core.logger import logger
+from app.core.base import SupportedModel
 
 _ = load_dotenv(find_dotenv())
 
@@ -63,6 +64,9 @@ def initiate_embeddings(model_name: Optional[SupportedModel] = None) -> Optional
     elif (_model_name.startswith("mistral")
           or _model_name.startswith("ministral")
           or _model_name.startswith("open-mistral")):
+        return MistralAIEmbeddings()
+    elif _model_name.startswith("claude"):
+        # return VoyageAIEmbeddings(model="voyage-3.5-lite")
         return MistralAIEmbeddings()
     print(f"Invalid or unsupported model type for embeddings: {model_name}")
     return None

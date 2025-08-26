@@ -9,11 +9,11 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableSerializable, RunnableWithMessageHistory
 from langchain_core.tools import tool
 
-from core.base import SupportedModel
-from core.commons import initiate_model, initiate_embeddings
-from core.config_loader import load_config
-from core.logger import get_logger
-from customer_onboarding.agents import ProblemSolverAgent, FAQAgent, EligibilityAgent
+from app.core.base import SupportedModel
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.config_loader import load_config
+from app.core.logger import get_logger
+from app.customer_onboarding.agents import ProblemSolverAgent, FAQAgent, EligibilityAgent
 
 _ = load_dotenv(find_dotenv())
 
@@ -43,7 +43,8 @@ model = initiate_model(default_model)
 embeddings = initiate_embeddings(default_model)
 
 
-faq_agent = FAQAgent(model=model,
+faq_agent = FAQAgent(name="FAQAgent", 
+                     model=model,
                      embeddings=embeddings,
                      source_paths=_faq_file
                      )
@@ -60,7 +61,7 @@ def faq_answerer(
     return faq_agent.invoke(input={"question": input})
 
 
-eligibility_agent = EligibilityAgent(model=model)
+eligibility_agent = EligibilityAgent(name="EligibilityAgent", model=model)
 
 @tool
 def eligibility_checker(
@@ -80,7 +81,8 @@ def eligibility_checker(
                                            "age": age})
 
 
-problem_solver_agent = ProblemSolverAgent(model=model,
+problem_solver_agent = ProblemSolverAgent(name="ProblemSolverAgent",
+                                          model=model,
                                           embeddings=embeddings,
                                           problem_directory=_problem_directory,
                                           persist_directory=_chroma_persist_directory,
@@ -180,6 +182,11 @@ __structured_chat_agent__ = '''Respond to the human as helpfully and accurately 
     {tools}
 
     # DIRECTIVES
+    - CRITICAL: Before calling any tool, ensure you have ALL required information.
+    - If ANY required information is missing, ask the user for it FIRST.
+    - NEVER call tools with empty or invalid parameters.
+    - For eligibility_checker, you need: nationality, country_of_tax_residence, has_an_european_bank_account, age
+    - Only call tools when you have complete, valid information.
     - Only use information provided in the context. Do not respond directly to question.
     - Keep conversation as short as possible.
     - Use tools to retrieve relevant information.

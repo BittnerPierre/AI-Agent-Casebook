@@ -25,12 +25,13 @@ from llama_index.core.schema import BaseNode
 from llama_index.embeddings.mistralai import MistralAIEmbedding
 from llama_index.llms.mistralai import MistralAI
 
-from ai_agents.base import AbstractAgent, Input, Output
-from ai_agents.utils import get_doc_tools
-from core.base import SupportedModel
-from core.logger import logger
+from app.ai_agents.base import AbstractAgent, Input, Output
+from app.ai_agents.utils import get_doc_tools
+from app.core.base import SupportedModel
+from app.core.logger import logger
 
-_RAG_AGENT_DEFAULT_COLLECTION_NAME = "ragagent"
+import time
+_RAG_AGENT_DEFAULT_COLLECTION_NAME = f"ragagent_{int(time.time())}"
 
 ##########
 # START FOR LLAMA-INDEX
@@ -162,7 +163,7 @@ class SimpleRAGAgent(AbstractRAGAgent):
 class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
     # TODO UGLY TO FIX THIS BUT LLAMA INDEX Settings is awsfull
     Settings.embed_model = MistralAIEmbedding()
-    Settings.llm = MistralAI(model=SupportedModel.DEFAULT.value)
+    Settings.llm = MistralAI(model=SupportedModel.MISTRAL_SMALL.value)
 
     def __init__(self,
                  name: str,
@@ -202,6 +203,7 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
         obj_index = ObjectIndex.from_objects(
             all_tools,
             index_cls=VectorStoreIndex,
+            embed_model=self.embeddings,
         )
 
         obj_retriever = obj_index.as_retriever(similarity_top_k=10)
@@ -236,6 +238,10 @@ class MultiDocumentRAGAgent(AbstractRAGAgent, ABC):
         # agent = create_react_agent(model=llm_with_tools, tools=lc_tools, state_modifier=modifier)
 
         return agent
+    
+    def _initiate_runnable(self) -> RunnableSerializable:
+        # return self._agent_runner.runnable
+        pass
 
     def invoke(self, input: Input, **kwargs: Any) -> Output:
         response = self._agent_runner.query(input)

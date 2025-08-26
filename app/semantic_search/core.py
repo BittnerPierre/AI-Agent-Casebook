@@ -9,7 +9,7 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
-from core.logger import logger
+from app.core.logger import logger
 
 class SearchStrategy(abc.ABC):
     """Abstract base strategy for semantic search"""

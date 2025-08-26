@@ -1,5 +1,5 @@
-from core.base import SupportedModel
-from customer_onboarding.assistants import customer_onboarding
+from app.core.base import SupportedModel
+from app.customer_onboarding.assistant import customer_onboarding
 
 
 # TODO should assert returned value

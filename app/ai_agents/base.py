@@ -12,7 +12,24 @@ from typing import Optional
 Input = TypeVar("Input", contravariant=True)
 
 
-Output = TypeVar("Output", covariant=True)
+# Output = TypeVar("Output", covariant=True)
+
+class Output:
+    """Simple wrapper class to encapsulate agent outputs"""
+    def __init__(self, data):
+        self.data = data
+    
+    def __getitem__(self, key):
+        return self.data[key]
+    
+    def __getattr__(self, name):
+        return getattr(self.data, name)
+    
+    def __str__(self):
+        return str(self.data)
+    
+    def __repr__(self):
+        return repr(self.data)
 
 
 class Agent(abc.ABC):

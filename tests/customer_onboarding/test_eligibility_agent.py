@@ -1,6 +1,6 @@
-from customer_onboarding.agents import EligibilityAgent
-from core.commons import initiate_model
-from core.base import SupportedModel
+from app.customer_onboarding.agents import EligibilityAgent
+from app.core.commons import initiate_model
+from app.core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 
@@ -9,7 +9,7 @@ model = initiate_model(default_model)
 def test_eligibility_agent():
     # TEST 1 SHOULD BE KO
     print("Test 1 - KO")
-    agent = EligibilityAgent(model=model)
+    agent = EligibilityAgent(name="EligibilityAgent", model=model)
     # chat_history = [
     #     HumanMessage(content="Je souhaite ouvrir un compte."),
     #     AIMessage(content="Question: Où résidez-vous actuellement ?"),
