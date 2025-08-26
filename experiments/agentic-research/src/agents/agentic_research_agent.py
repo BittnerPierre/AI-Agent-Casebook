@@ -1,5 +1,5 @@
 
-from agents import Agent, RunContextWrapper, RunResult, ToolCallOutputItem, function_tool
+from agents import Agent, HandoffInputData, RunContextWrapper, RunResult, ToolCallOutputItem, function_tool
 from agents import Agent, ModelSettings, handoff
 from openai import OpenAI
 from agents.mcp import MCPServer
@@ -30,6 +30,24 @@ INSTRUCTIONS = (
 )
 
 
+def remove_all_tools(handoff_input_data: HandoffInputData) -> HandoffInputData:
+    """Filters out all tool items: file search, web search and function calls+output."""
+
+    history = handoff_input_data.input_history
+    new_items = handoff_input_data.new_items
+
+    filtered_history = (
+        _remove_tool_types_from_input(history) if isinstance(history, tuple) else history
+    )
+    filtered_pre_handoff_items = _remove_tools_from_items(handoff_input_data.pre_handoff_items)
+    filtered_new_items = _remove_tools_from_items(new_items)
+
+    return HandoffInputData(
+        input_history=filtered_history,
+        pre_handoff_items=filtered_pre_handoff_items,
+        new_items=filtered_new_items,
+    )
+
 async def extract_json_payload(run_result: RunResult) -> str:
     # Scan the agent’s outputs in reverse order until we find a JSON-like message from a tool call.
     print(f"run_result: {run_result}")
@@ -58,7 +76,8 @@ def create_research_supervisor_agent(
         tool_name_override="write_report",
         tool_description_override="Write the full report based on the search results",
         # no need to pass the history to the writer agent as it is handle via file, and it will failed with mistral due to the call id format (invalid_function_call error)
-        input_filter=handoff_filters.remove_all_tools, 
+        # TRY TO PASS THE HISTORY TO THE WRITER AGENT TO CHECK ISSUE WITH GPT-5
+        # input_filter=handoff_filters.remove_all_tools, 
     )
 
     return Agent[ResearchInfo](
@@ -87,5 +106,5 @@ def create_research_supervisor_agent(
     ],
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        model_settings=ModelSettings(tool_choice="required"),
+        model_settings=ModelSettings(tool_choice="auto"),
     ) 

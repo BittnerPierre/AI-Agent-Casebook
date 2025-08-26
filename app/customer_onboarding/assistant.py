@@ -7,17 +7,16 @@ from langchain_core.tools import tool
 
 from dotenv import load_dotenv, find_dotenv
 from langgraph.graph import StateGraph, START, END
-from langgraph.graph.graph import CompiledGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 
-from core.config_loader import load_config
-from customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
-from customer_onboarding.state import State
-from core.commons import initiate_model, initiate_embeddings
-from core.base import SupportedModel
-from core.logger import get_logger
+from app.core.config_loader import load_config
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.base import SupportedModel
+from app.core.logger import get_logger
+from app.customer_onboarding.agents import FAQAgent, EligibilityAgent, ProblemSolverAgent
+from app.customer_onboarding.state import State
 from langgraph.checkpoint.memory import MemorySaver
 
 from langgraph.graph.message import MessagesState
@@ -150,7 +149,7 @@ def problem_solver(
 
 
 def create_customer_onboarding_assistant_as_react_graph(model_name: Optional[SupportedModel]
-                                                        ) -> CompiledGraph:
+                                                        ) -> CompiledStateGraph:
 
     llm = initiate_model(model_name)
 

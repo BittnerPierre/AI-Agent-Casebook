@@ -1,12 +1,12 @@
 import configparser
 
 
-from customer_onboarding.assistants import customer_onboarding
+from app.customer_onboarding.assistant import customer_onboarding
 
 
 
 # TODO should assert returned value
-def test_customer_onboarding_assistant_eligibility(assistant):
+def test_customer_onboarding_assistant_eligibility():
 
     # Note: Conversation is handled by Assistant so no need here
 
@@ -32,7 +32,7 @@ def test_customer_onboarding_assistant_eligibility(assistant):
     print(ai_msg_4)
 
 
-def test_customer_onboarding_assistant_faq(assistant):
+def test_customer_onboarding_assistant_faq():
     session_id = '97531'
     human_msg7 = "What should I do if my card is blocked at an ATM?"
     ai_msg_7 = customer_onboarding.invoke(input={'messages': human_msg7},
@@ -41,7 +41,7 @@ def test_customer_onboarding_assistant_faq(assistant):
     print(ai_msg_7)
 
 
-def test_customer_onboarding_assistant_problem(assistant):
+def test_customer_onboarding_assistant_problem():
     session_id = '13579'
     human_msg5 = "Je n'ai pas recu d'email pour confirmer l'ouverture de mon compte."
     ai_msg_5 = customer_onboarding.invoke(input={'messages': human_msg5},

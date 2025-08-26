@@ -47,7 +47,7 @@ def create_knowledge_preparation_agent(mcp_servers:list[MCPServer]=None):
         handoff_description=("Given a research topic, prepare the knowledge base and the agenda."),
         instructions=dynamic_instructions,
         model=model,
-        model_settings=ModelSettings(tool_choice="required"),
+        model_settings=ModelSettings(tool_choice="auto"),
         mcp_servers=mcp_servers,
         tools=[
             save_final_report,

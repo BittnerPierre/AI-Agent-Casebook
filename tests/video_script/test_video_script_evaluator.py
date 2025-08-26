@@ -7,9 +7,9 @@ from langchain_openai import OpenAI
 from langsmith import evaluate, wrappers
 from langsmith.evaluation import LangChainStringEvaluator
 
-from core.commons import initiate_model
-from core.base import SupportedModel
-from video_script.assistant import create_video_script_agent
+from app.core.commons import initiate_model
+from app.core.base import SupportedModel
+from app.video_script.assistant import create_video_script_agent
 
 default_model = SupportedModel.DEFAULT
 

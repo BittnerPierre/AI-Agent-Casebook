@@ -17,11 +17,11 @@ from langchain_core.runnables import RunnableSerializable, RunnableMap
 from langchain_core.tools import tool
 from pydantic import BaseModel, HttpUrl
 
-from core.commons import initiate_model, initiate_embeddings
-from core.base import SupportedModel
-from ai_agents import AbstractAgent, SimpleRAGAgent
-from core.config_loader import load_config
-from core.logger import logger
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.base import SupportedModel
+from app.ai_agents import AbstractAgent, SimpleRAGAgent
+from app.core.config_loader import load_config
+from app.core.logger import logger
 
 
 _config = load_config()
@@ -61,7 +61,9 @@ class FAQAgent(SimpleRAGAgent):
                  embeddings: Embeddings,
                  source_paths: Path,
                  ):
-        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=source_paths, collection_name="faq")
+        import time
+        collection_name = f"faq_agent_{int(time.time())}"
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=source_paths, collection_name=collection_name)
         # super().set_runnable(self._initiate_runnable())
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
@@ -228,8 +230,10 @@ def search_errors_in_vectordb(
     """
     model = initiate_model(SupportedModel.DEFAULT)
     embeddings = initiate_embeddings(SupportedModel.DEFAULT)
+    import time
+    collection_name = f"errors_tool_search_{int(time.time())}"
     vectorstore = Chroma(
-        collection_name="errors",
+        collection_name=collection_name,
         embedding_function=embeddings
     )
     retriever = vectorstore.as_retriever(
@@ -281,7 +285,9 @@ class ProblemSolverAgent(SimpleRAGAgent):
         self.problem_directory = Path(problem_directory)
         self.problem_file = Path(problem_file)
         self.source_paths = self.problem_directory / self.problem_file
-        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name="errors")
+        import time
+        collection_name = f"problem_agent_errors_{int(time.time())}"
+        super().__init__(name=name, model=model, embeddings=embeddings, source_paths=self.source_paths, collection_name=collection_name)
 
     def _initiate_docs(self, source_paths: Union[Path, List[Path]]) -> Dict[Path, List[Document]]:
         source_to_docs = {}

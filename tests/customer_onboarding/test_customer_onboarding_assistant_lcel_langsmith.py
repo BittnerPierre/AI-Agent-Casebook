@@ -3,16 +3,16 @@ from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
 from langchain_core.runnables import RunnableConfig
-from langgraph.pregel.io import AddableValuesDict
+# from langgraph.pregel.io import AddableValuesDict
 from langsmith import Client, evaluate
 
 from langchain_openai import ChatOpenAI
 
-from customer_onboarding.legacy_langchain import create_customer_onboarding_assistant_as_chain
-from core.base import SupportedModel
-from simulation_utils import create_simulated_user
+from app.customer_onboarding.legacy_langchain import create_customer_onboarding_assistant_as_chain
+from app.core.base import SupportedModel
+from tests.simulation_utils import create_simulated_user
 
-from simulation_utils import create_chat_simulator
+from tests.simulation_utils import create_chat_simulator
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import BaseModel, Field
@@ -34,19 +34,19 @@ def assistant(messages: list, config: Optional[RunnableConfig] = None) -> str:
     try:
         new_messages = []
 
-        for m in messages:
-            # should not occur anymore. Was happening because I was sending val and not val["output"]
-            if isinstance(m, AddableValuesDict):
-                # Extract messages and ignore the first one if it matches the last message
-                extracted_messages = m.get("messages", [])
-                if extracted_messages and (
-                    not new_messages or extracted_messages[0].content != new_messages[-1].content
-                ):
-                    extracted_messages = extracted_messages[1:]
+        # for m in messages:
+        #     # should not occur anymore. Was happening because I was sending val and not val["output"]
+        #     if isinstance(m, AddableValuesDict):
+        #         # Extract messages and ignore the first one if it matches the last message
+        #         extracted_messages = m.get("messages", [])
+        #         if extracted_messages and (
+        #             not new_messages or extracted_messages[0].content != new_messages[-1].content
+        #         ):
+        #             extracted_messages = extracted_messages[1:]
 
-                new_messages.extend(extracted_messages)
-            else:
-                new_messages.append(m)
+        #         new_messages.extend(extracted_messages)
+        #     else:
+        #         new_messages.append(m)
 
         session_id = config.configurable.get("session_id") if config and hasattr(config, 'configurable') else str(uuid.uuid4())
         thread_id = config.configurable.get("thread_id") if config and hasattr(config, 'configurable') else str(uuid.uuid4())

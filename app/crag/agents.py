@@ -4,7 +4,7 @@ from typing import Union, List, Dict, Any
 from langchain import hub
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.tools import TavilySearchResults
+from langchain_tavily import TavilySearch
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
@@ -14,11 +14,26 @@ from langchain_core.runnables import RunnableSerializable
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import Field, BaseModel
 
-from ai_agents import AbstractAgent
-from ai_agents.base import Input, Output, Agent
-from core import SupportedModel, initiate_model, logger, initiate_embeddings
-from semantic_search.core import SearchStrategy, SimpleVectorSearch, VectorStoreManager
-from semantic_search.factory import SemanticSearchFactory, SearchStrategyType
+from app.ai_agents import AbstractAgent
+from app.ai_agents.base import Input, Output, Agent
+from app.core.logger import get_logger
+from app.core import SupportedModel, initiate_model, initiate_embeddings
+from app.semantic_search.core import SearchStrategy, SimpleVectorSearch, VectorStoreManager
+from app.semantic_search.factory import SemanticSearchFactory, SearchStrategyType
+
+from dotenv import load_dotenv, find_dotenv
+from app.core.config_loader import load_config
+
+_ = load_dotenv(find_dotenv())
+
+_config = load_config()
+logger = get_logger()
+_model_name = _config.get('CorrectiveRAG', 'model', fallback="MISTRAL_SMALL")
+
+model_name = SupportedModel[_model_name]
+
+model = initiate_model(model_name)
+embeddings = initiate_embeddings(model_name)
 
 
 class Retriever(AbstractAgent):
@@ -168,13 +183,13 @@ class RAGChain(AbstractAgent):
         return _rag_chain
 
 
-model = initiate_model(SupportedModel.DEFAULT)
-embeddings = initiate_embeddings(SupportedModel.DEFAULT)
+
+
 
 search = SemanticSearchFactory.create_strategy(
     SearchStrategyType.SIMPLE_VECTOR,
     embeddings,
-    kwargs={"collection_name", "simple-vector-store"}
+    kwargs={"collection_name": "simple-vector-store"}
 )
 VectorStoreManager(search)
 
@@ -186,4 +201,4 @@ retrieval_grader = RetrievalGrader("retrieval_grader", model)
 
 question_rewriter = QuestionRewriter("question_writer", model)
 
-web_search_tool = TavilySearchResults(max_results=3)
+web_search_tool = TavilySearch(max_results=3)

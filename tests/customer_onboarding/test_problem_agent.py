@@ -2,9 +2,9 @@ from langchain import hub
 from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
-from customer_onboarding.agents import ProblemSolverAgent
-from core.commons import initiate_model, initiate_embeddings
-from core.base import SupportedModel
+from app.customer_onboarding.agents import ProblemSolverAgent
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 
@@ -19,7 +19,8 @@ def test_problem_solver_agent(config):
     _problem_file = config.get('ProblemSolverAgent', 'problem_file')
     _problem_database = config.get('ProblemSolverAgent', 'problem_database')
 
-    agent = ProblemSolverAgent(model=model,
+    agent = ProblemSolverAgent(name="ProblemSolverAgent",
+                               model=model,
                                embeddings=embeddings,
                                problem_directory=_problem_directory,
                                persist_directory=_chroma_persist_directory,
@@ -54,7 +55,8 @@ def test_problem_solver_agent_langsmith(config):
     _problem_directory = config.get('ProblemSolverAgent', 'problem_directory')
     _problem_file = config.get('ProblemSolverAgent', 'problem_file')
 
-    agent = ProblemSolverAgent(model=model,
+    agent = ProblemSolverAgent(name="ProblemSolverAgent",
+                               model=model,
                                embeddings=embeddings,
                                persist_directory=_chroma_persist_directory,
                                problem_directory=_problem_directory,

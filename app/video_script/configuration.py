@@ -23,7 +23,7 @@ class Configuration:
     )
 
     max_search_results: int = field(
-        default=10,
+        default=3,
         metadata={
             "description": "The maximum number of search results to return for each search query."
         },
@@ -43,7 +43,7 @@ class Configuration:
         },
     )
     max_revision: int = field(
-        default=2,
+        default=1,
         metadata={
             "description": "The maximum number of revision that the supervisor can accept for a chapter."
         },

@@ -72,7 +72,7 @@ class ResearchManager:
         follow_up_questions = "\n".join(report.follow_up_questions)
         print(f"Follow up questions: {follow_up_questions}")
 
-    async def _prepare_knowledge(self, query: str) -> None:
+    async def _prepare_knowledge(self, query: str) -> str:
         self.printer.update_item("preparing", "Préparation de la connaissance...")
         result = await Runner.run(
             self.knowledge_preparation_agent,

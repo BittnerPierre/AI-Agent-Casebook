@@ -1,6 +1,6 @@
 from langchain_core.documents import Document
 
-from crag import retriever, rag_chain, retrieval_grader, question_rewriter, web_search_tool, CragAgentState
+from app.crag import retriever, rag_chain, retrieval_grader, question_rewriter, web_search_tool, CragAgentState
 
 
 async def retrieve(state: CragAgentState):
@@ -55,6 +55,15 @@ async def grade_documents(state: CragAgentState):
     question = state["question"]
     documents = state["documents"]
 
+     # Vérifier si la liste de documents est vide
+    if not documents:
+        print("---NO DOCUMENTS TO GRADE - WEB SEARCH REQUIRED---")
+        return {
+            "documents": [], 
+            "question": question, 
+            "web_search": "Yes"
+        }
+
     # Score each doc
     filtered_docs = []
     web_search = "No"
@@ -70,6 +79,12 @@ async def grade_documents(state: CragAgentState):
             print("---GRADE: DOCUMENT NOT RELEVANT---")
             web_search = "Yes"
             continue
+
+        # Si tous les documents ont été filtrés, forcer web_search à "Yes"
+    if not filtered_docs:
+        print("---ALL DOCUMENTS FILTERED OUT - WEB SEARCH REQUIRED---")
+        web_search = "Yes"
+
     return {"documents": filtered_docs, "question": question, "web_search": web_search}
 
 
@@ -110,7 +125,22 @@ async def web_search(state: CragAgentState):
 
     # Web search
     docs = await web_search_tool.ainvoke({"query": query})
-    web_results = "\n".join([d["content"] for d in docs])
+    print(docs)
+    
+    # Extraire le contenu des résultats de recherche web avec les sources
+    if docs and "results" in docs and docs["results"]:
+        web_results_parts = []
+        for result in docs["results"]:
+            if result.get("content"):
+                # Formater chaque résultat avec titre, URL et contenu
+                source_info = f"[Source: {result.get('title', 'Sans titre')} - {result.get('url', 'URL non disponible')}]"
+                content = f"{source_info}\n{result['content']}"
+                web_results_parts.append(content)
+        
+        web_results = "\n\n---\n\n".join(web_results_parts)
+    else:
+        web_results = "Aucun résultat de recherche web trouvé."
+    
     web_results = Document(page_content=web_results)
     documents.append(web_results)
 

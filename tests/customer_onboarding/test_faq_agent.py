@@ -3,9 +3,9 @@ from langchain import hub
 from langsmith import evaluate
 from langsmith.evaluation import LangChainStringEvaluator
 
-from customer_onboarding.agents import FAQAgent
-from core.commons import initiate_model, initiate_embeddings
-from core.base import SupportedModel
+from app.customer_onboarding.agents import FAQAgent
+from app.core.commons import initiate_model, initiate_embeddings
+from app.core.base import SupportedModel
 
 default_model = SupportedModel.DEFAULT
 
@@ -17,7 +17,8 @@ embeddings = initiate_embeddings(default_model)
 def fag_agent(config):
     _faq_file = config.get('FAQAgent', 'faq_file')
 
-    agent = FAQAgent(model=model,
+    agent = FAQAgent(name="FAQAgent",
+                     model=model,
                      embeddings=embeddings,
                      source_paths=_faq_file)
 

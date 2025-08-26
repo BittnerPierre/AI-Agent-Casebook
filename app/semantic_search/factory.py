@@ -6,12 +6,12 @@ from typing import List, Dict, Union, Optional, Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
-from semantic_search.core import (
+from app.semantic_search.core import (
     SearchStrategy,
     SimpleVectorSearch,
     VectorStoreManager
 )
-from semantic_search.document_loaders import DocumentLoader, LlamaIndexDocumentLoader
+from app.semantic_search.document_loaders import DocumentLoader, LlamaIndexDocumentLoader
 
 class SearchStrategyType(Enum):
     """Types of search strategies available"""
