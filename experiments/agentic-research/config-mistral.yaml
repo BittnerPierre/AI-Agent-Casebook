@@ -32,11 +32,11 @@ logging:
 
 # Configuration Models
 models:
-  research_model: "openai/gpt-5-mini"
-  planning_model: "openai/gpt-5-mini"
-  search_model: "openai/gpt-5-mini"
-  writer_model: "openai/gpt-5-mini"
-  knowledge_preparation_model: "openai/gpt-5-mini"
+  research_model: "litellm/mistral/mistral-medium-latest"
+  planning_model: "litellm/mistral/magistral-medium-latest"
+  search_model: "openai/gpt-4.1-mini" # required for file search tool
+  writer_model: "litellm/mistral/mistral-medium-latest"
+  knowledge_preparation_model: "litellm/mistral/mistral-medium-latest"
 
 # Configuration du manager
 manager:

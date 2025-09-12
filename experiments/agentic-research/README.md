@@ -4,6 +4,7 @@ This is a simple example of a multi-agent research assistant with local MCP. To 
 
 ```bash
 poetry install
+poetry run dataprep_server
 poetry run agentic-research
 ```
 

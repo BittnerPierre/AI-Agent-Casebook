@@ -485,6 +485,9 @@ def create_video_script_agent() -> CompiledStateGraph:
     run_name = _config.get('VideoScript', 'run_name', fallback="run-001")
     tags = _config.get('VideoScript', 'tags', fallback=["gpt-5-mini"])
     video_script_app = workflow.compile() #.with_config(run_name=run_name, tags=tags) #checkpointer=memory)
+    mermaid_code = video_script_app.get_graph(xray=True).draw_mermaid()
+    with open("video_script_graph.mermaid", "w") as f:
+        f.write(mermaid_code)
     return video_script_app
 
 

@@ -34,7 +34,7 @@ logging:
 models:
   research_model: "openai/gpt-5-mini"
   planning_model: "openai/gpt-5-mini"
-  search_model: "openai/gpt-5-mini"
+  search_model: "openai/gpt-4.1-mini"
   writer_model: "openai/gpt-5-mini"
   knowledge_preparation_model: "openai/gpt-5-mini"
 
@@ -43,5 +43,5 @@ manager:
   default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
 
 agents:
-  max_search_plan: "2-3"
+  max_search_plan: "5-7"
   ouput_dir: "output/"

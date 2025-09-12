@@ -2,11 +2,12 @@
 from pydantic import BaseModel
 from ..config import get_config
 from agents import Agent
+from agents.models import get_default_model_settings
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import FileFinalReport, ResearchInfo, ReportData
-from .utils import load_prompt_from_file, save_final_report
+from .utils import load_prompt_from_file, save_report
 from agents import ModelSettings
 from agents.agent import StopAtTools
 
@@ -84,29 +85,33 @@ class WriterDirective(BaseModel):
 
 
 
-def create_writer_agent(mcp_servers:list[MCPServer]=None, save_report:bool=True):
+def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=True):
     mcp_servers = mcp_servers if mcp_servers else []
 
     config = get_config()
     model = config.models.writer_model
 
+
+
     save_agent = None
-    if save_report:
+    if do_save_report:
         save_agent = Agent(
             name="save_agent",
-            instructions="Save the final report",
+            instructions="Save the report",
             model=model,
             output_type=ReportData,
             tools=[
-                save_final_report,
+                save_report,
             ],
-            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_final_report"])
+            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_report"])
         )
 
-    model_settings = ModelSettings(
-        #tool_choice="required",
-        metadata={"agent_type": "sub-agent", "trace_type": "agent"}
-    )
+    model_settings = get_default_model_settings(model)
+
+    # model_settings = ModelSettings(
+    #     #tool_choice="required",
+    #     metadata={"agent_type": "sub-agent", "trace_type": "agent"}
+    # )
 
     writer_agent = Agent(
         name="writer_agent",
@@ -117,4 +122,5 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, save_report:bool=True)
         handoffs=[save_agent],
         model_settings=model_settings
     )
+    
     return writer_agent

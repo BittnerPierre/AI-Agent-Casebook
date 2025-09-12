@@ -1,11 +1,11 @@
-from agents import Agent, FileSearchTool
+from agents import Agent
 from agents.model_settings import ModelSettings
 
 from ..config import get_config
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
-from .schemas import ResearchInfo, FileSearchResult
+from .schemas import ResearchInfo
 from .utils import load_prompt_from_file
 from .utils import save_final_report, fetch_vector_store_name, display_agenda
 from agents.agent import StopAtTools

@@ -83,6 +83,7 @@ class ResearchManager:
             f"######\n"
             f"{query}",
             context=research_info,
+            max_turns=25,
             run_config=run_config
         )
         self.printer.update_item(

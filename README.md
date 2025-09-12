@@ -83,6 +83,46 @@ To activate the virtual environment:
 poetry shell
 ```
 
+### 4. Configure models and features
+
+The project uses `app/config.ini` for model configuration and feature settings. Alternative config files like `config-gpt-4o-mini.ini` are available for testing different models.
+
+#### Model Configuration
+
+```ini
+[CustomerOnboarding]
+model = GPT_5_MINI
+
+[VideoScript]
+# Planner uses Agents SDK (model name as-is, with litellm prefix for non-OpenAI)
+planner_model = gpt-4o-mini
+# Worker and producer use core enums (see app/core/base.py)
+worker_model = GPT_4_O_MINI
+producer_model = GPT_4_O_MINI
+
+[CorrectiveRAG]
+model = GPT_4_O_MINI
+# Pre-load documents at startup (comma-separated URLs)
+preload_urls = https://lilianweng.github.io/posts/2023-06-23-agent/,https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
+```
+
+#### Corrective RAG (CRAG) Configuration
+
+The CRAG system automatically pre-loads documents at startup from configured URLs:
+
+- **`preload_urls`**: Comma-separated list of URLs to load into the vector store
+- Documents are chunked and embedded using the same model specified in the config
+- This ensures the CRAG system has actual content instead of relying only on web search fallback
+- Useful for domain-specific knowledge that should be readily available
+
+**Example URLs that work well:**
+
+- Technical blog posts (markdown/HTML format)
+- Documentation pages
+- Research papers (if accessible as HTML)
+
+> ⚠️ Large documents (like PDFs) may hit embedding API token limits and require smaller chunk sizes.
+
 ## 🔒 Security & Vulnerability Scanning
 
 This project includes automated security scanning of dependencies to ensure a secure development environment.
@@ -142,6 +182,32 @@ State graph (LangGraph):
 
 ![LangGraph script state](res/video_script_state_graph.png)
 
+### Example Prompts
+
+**Simple prompt (web search only):**
+
+```
+"I'd like a 1-chapter video of 1 minute of 160 words on 'AI Won't Take Your Jobs. Those Who Use AI Will!', please!"
+```
+
+**Detailed prompt (tests CRAG system):**
+
+```
+"I'd like a YouTube Shorts script of about 3 minutes (~450 words) on the topic: The Memory Problem in AI Agents.
+
+Structure: Hook + 3 chapters.
+
+Chapter 1 (~150 words): What is the memory problem? Explain how current AI agents are stateless and forget context between interactions. Cover why this is a fundamental limitation for autonomous agents.
+
+Chapter 2 (~150 words): Memory system solutions. Explain the different types of memory being developed: short-term memory (conversation context), long-term memory (persistent knowledge), and external memory (vector stores, databases). Give concrete examples.
+
+Chapter 3 (~150 words): Real-world impact and future. How memory systems enable more sophisticated agent behaviors like learning from past interactions, building knowledge over time, and maintaining context across sessions. What this means for the future of AI agents.
+
+Target audience: Developers new to AI agents who want to understand the technical challenges."
+```
+
+> 💡 The first example will primarily use web search, while the second tests the Corrective RAG system with pre-loaded knowledge about AI agents.
+
 ---
 
 ## Customer Onboarding Assistant
@@ -189,8 +255,10 @@ The front-end (React/TypeScript) is available here:
 To run the agent workflows locally (development mode):
 
 ```bash
-poetry run langgraph dev
+poetry run langgraph dev --allow-blocking
 ```
+
+Note: --allow-blocking is required when used with GPT-5 and Agents SDK (planner) has it is doing asynchronous call with litellm.
 
 ---
 

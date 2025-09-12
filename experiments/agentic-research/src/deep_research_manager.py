@@ -46,7 +46,7 @@ class ResearchManager:
             self.knowledge_preparation_agent = create_knowledge_preparation_agent([self.dataprep_server])
             self.file_planner_agent = create_file_planner_agent([self.fs_server])
             self.file_search_agent = create_file_search_agent([self.fs_server], research_info.vector_store_id)
-            self.writer_agent = create_writer_agent([self.fs_server], save_report=False)
+            self.writer_agent = create_writer_agent([self.fs_server], do_save_report=False)
             
             agenda = await self._prepare_knowledge(query)
             print("\n\n=====AGENDA=====\n\n")
@@ -138,7 +138,7 @@ class ResearchManager:
             "\n".join(f"- {fname}" for fname in search_results) if search_results else "None"
         )
         input = (
-            f"Rédige un rapport de recherche exhaustif et détaullé Utilise l'agenda suivant ainsi que les contenus des fichiers attachés "
+            f"Rédige un rapport de recherche exhaustif et détaillé Utilise l'agenda suivant ainsi que les contenus des fichiers attachés "
             f" pour rédiger un rapport de recherche exhaustif et détaillé: {query}\n\n"
             f"Search results:\n{formatted_results}"
         )

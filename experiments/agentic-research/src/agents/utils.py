@@ -66,15 +66,15 @@ def generate_final_report_filename(research_topic: str) -> str:
     return f"{topic}_final_report_{timestamp}.md"
 
 @function_tool
-async def save_final_report(wrapper: RunContextWrapper[ResearchInfo],
+async def save_report(wrapper: RunContextWrapper[ResearchInfo],
                             research_topic: str,
                             markdown_report: str,
                             short_summary: str,
                             follow_up_questions: list[str],
                             ) -> ReportData:  
     """
-    Écrit le rapport final.
-    Appelez cet outil pour écrire le rapport final.
+    Sauvegarde le rapport .
+    Appelez cet outil pour sauvegarder le rapport.
     """
     return await save_final_report_function(wrapper.context.output_dir, research_topic, markdown_report, short_summary, follow_up_questions)
 

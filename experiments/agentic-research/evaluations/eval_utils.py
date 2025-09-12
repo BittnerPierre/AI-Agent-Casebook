@@ -94,7 +94,7 @@ def save_result_input_list_to_json(model_name: str, report_file_name: str, messa
 
     return messages_file_name
 
-def save_trajectory_evaluation_report(output_report_dir: str, report_file_name: str, human_readable_report: str) -> str:
+def save_trajectory_evaluation_report(model_name: str, output_report_dir: str, report_file_name: str, human_readable_report: str) -> str:
     """
     Sauvegarde le rapport d'évaluation de trajectoire dans un fichier texte détaillé.
 
@@ -107,7 +107,9 @@ def save_trajectory_evaluation_report(output_report_dir: str, report_file_name: 
         Le chemin complet du fichier de rapport sauvegardé.
     """
     base_file_name = os.path.basename(report_file_name).rsplit('.md', 1)[0]
-    report_file_path = os.path.join(output_report_dir, f"{base_file_name}_trajectory_evaluation.txt")
+    safe_model_name = model_name.replace('/', '-')
+    trajectory_evaluation_file_name = f"{base_file_name}_{safe_model_name}_trajectory_evaluation.txt"
+    report_file_path = os.path.join(output_report_dir, trajectory_evaluation_file_name)
     with open(report_file_path, 'w', encoding='utf-8') as f:
         f.write(human_readable_report)
     return report_file_path

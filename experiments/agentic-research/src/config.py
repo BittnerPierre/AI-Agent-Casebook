@@ -50,7 +50,7 @@ class ModelsConfig(BaseModel):
     writer_model: str = Field(default="litellm/mistral/mistral-medium-latest")
     knowledge_preparation_model: str = Field(default="litellm/mistral/mistral-medium-latest")
     # model: str = Field(default="openai/gpt-4.1-mini")
-    reasoning_model: str = Field(default="openai/o3-mini")
+    # reasoning_model: str = Field(default="openai/o3-mini")
 
 class ManagerConfig(BaseModel):
     """Configuration for manager selection."""
