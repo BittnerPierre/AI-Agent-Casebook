@@ -154,3 +154,101 @@ def context_aware_filter(context: ToolFilterContext, tool) -> bool:
     # Implement your custom filtering logic here
     return some_filtering_logic(agent_name, server_name, tool)
 
+
+def extract_model_name(model_string: str) -> str:
+    """
+    Extrait le vrai nom du modèle en éliminant les préfixes de providers.
+    
+    Formats supportés:
+    - "litellm/<provider>/<model_name>" -> "<model_name>"
+    - "openai/<model_name>" -> "<model_name>"
+    - "<model_name>" -> "<model_name>"
+    
+    Args:
+        model_string: Le nom complet du modèle avec potentiellement des préfixes
+        
+    Returns:
+        Le nom du modèle nettoyé
+        
+    Examples:
+        >>> extract_model_name("litellm/mistral/mistral-medium-latest")
+        "mistral-medium-latest"
+        >>> extract_model_name("openai/gpt-4.1-mini")
+        "gpt-4.1-mini"
+        >>> extract_model_name("gpt-5-mini")
+        "gpt-5-mini"
+        >>> extract_model_name("litellm/anthropic/claude-3-7-sonnet-20250219")
+        "claude-3-7-sonnet-20250219"
+    """
+    if not model_string:
+        return model_string
+    
+    # Format litellm: "litellm/<provider>/<model_name>"
+    if model_string.startswith("litellm/"):
+        parts = model_string.split("/")
+        if len(parts) >= 3:
+            return parts[2]  # Récupère la partie après "litellm/<provider>/"
+        
+    # Format openai: "openai/<model_name>"
+    elif model_string.startswith("openai/"):
+        parts = model_string.split("/")
+        if len(parts) >= 2:
+            return parts[1]  # Récupère la partie après "openai/"
+    
+    # Format direct: "<model_name>" (pas de préfixe)
+    return model_string
+
+
+def is_mistral_model(model_string: str) -> bool:
+    """
+    Vérifie si le modèle est un modèle Mistral.
+    
+    Args:
+        model_string: Le nom complet du modèle
+        
+    Returns:
+        True si c'est un modèle Mistral, False sinon
+    """
+    # Vérification par préfixe litellm
+    if model_string.startswith("litellm/mistral/"):
+        return True
+    
+    # Vérification par nom de modèle
+    model_name = extract_model_name(model_string).lower()
+    return "mistral" in model_name
+
+
+def is_gpt5_model(model_string: str) -> bool:
+    """
+    Vérifie si le modèle est un modèle GPT-5.
+    
+    Args:
+        model_string: Le nom complet du modèle
+        
+    Returns:
+        True si c'est un modèle GPT-5, False sinon
+    """
+    model_name = extract_model_name(model_string).lower()
+    return model_name.startswith("gpt-5")
+
+
+def should_apply_tool_filter(model_string: str) -> bool:
+    """
+    Détermine si le filtre remove_all_tools doit être appliqué pour un modèle donné.
+    
+    Logique:
+    - Mistral: Applique le filtre (problèmes avec les IDs d'appels d'outils)
+    - GPT-5: Pas de filtre (nécessite la cohérence des messages)
+    - Autres: Applique le filtre par défaut
+    
+    Args:
+        model_string: Le nom complet du modèle
+        
+    Returns:
+        True si le filtre doit être appliqué, False sinon
+    """
+    if is_gpt5_model(model_string):
+        return False  # GPT-5 ne supporte pas le filtrage des outils
+    
+    return True  # Par défaut, applique le filtre (Mistral, GPT-4, Claude, etc.)
+

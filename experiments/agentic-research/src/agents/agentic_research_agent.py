@@ -6,7 +6,7 @@ from openai import OpenAI
 from agents.mcp import MCPServer
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda
+from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda, should_apply_tool_filter
 from ..config import get_config
 from .schemas import FileFinalReport, ResearchInfo, ReportData
 from agents.extensions import handoff_filters
@@ -47,6 +47,14 @@ def create_research_supervisor_agent(
         print(f"Writer agent called with directive: {directive}")
         ctx.context.search_results = directive.search_results
 
+    config = get_config()
+    writer_model = config.models.writer_model
+
+    # Déterminer le filtre à appliquer selon le modèle du writer_agent
+    input_filter = None
+    if should_apply_tool_filter(writer_model):
+        input_filter = handoff_filters.remove_all_tools
+    # Si should_apply_tool_filter retourne False (GPT-5), input_filter reste None
 
     writer_handoff = handoff(
         agent=writer_agent,
@@ -54,12 +62,9 @@ def create_research_supervisor_agent(
         input_type=WriterDirective,
         tool_name_override="write_report",
         tool_description_override="Write the full report based on the search results",
-        # no need to pass the history to the writer agent as it is handle via file, and it will failed with mistral due to the call id format (invalid_function_call error)
-        # TRY TO PASS THE HISTORY TO THE WRITER AGENT TO CHECK ISSUE WITH GPT-5
-        # input_filter=handoff_filters.remove_all_tools, 
+        input_filter=input_filter,  # Application conditionnelle du filtre selon le modèle
     )
 
-    config = get_config()
     model_settings = get_default_model_settings(config.models.research_model)
 
     return Agent[ResearchInfo](
@@ -78,11 +83,6 @@ def create_research_supervisor_agent(
                 tool_name="file_search",
                 tool_description="Search for relevant information in the knowledge base",
             ),
-            # writer_agent.as_tool(
-            #     tool_name="write_report",
-            #     tool_description="Write the full report based on the search results",
-            #     custom_output_extractor=extract_json_payload
-            # ),
             fetch_vector_store_name,
             display_agenda,
     ],
