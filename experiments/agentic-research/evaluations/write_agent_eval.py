@@ -56,7 +56,7 @@ AGENDA = [
     # "Aspects théoriques et pratiques du système"
 ]
 
-# ✅ ORDRE CORRIGÉ : read_multiple_files PUIS save_final_report PUIS generations
+# ✅ ORDRE CORRIGÉ : read_multiple_files PUIS save_report PUIS generations
 TRAJECTORY_SPEC = {
     "trajectory_spec": [
         {
@@ -275,8 +275,8 @@ async def main(writer_model: str = None) -> None:
     # Mistral is working very WELL
     # Mistral small is working very WELL
     # OpenAI models
-    # "openai/gpt-4.1-mini" # does not call the function save_final_report
-    # "openai/gpt-4.1" does not call the function save_final_report
+    # "openai/gpt-4.1-mini" # does not call the function save_report
+    # "openai/gpt-4.1" does not call the function save_report
     if writer_model:
         config.models.writer_model = writer_model
 

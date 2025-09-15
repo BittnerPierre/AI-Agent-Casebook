@@ -1,4 +1,5 @@
 import os
+from agents.models import get_default_model_settings
 from pydantic import BaseModel
 
 from agents import Agent
@@ -44,6 +45,7 @@ def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
     config = get_config()
     model = config.models.planning_model
 
+    model_settings = get_default_model_settings(model)
 
     return Agent(
         name="file_planner_agent",
@@ -51,4 +53,5 @@ def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
         model=model,
         # mcp_servers=mcp_servers,  
         output_type=FileSearchPlan,
+        model_settings=model_settings,
     )

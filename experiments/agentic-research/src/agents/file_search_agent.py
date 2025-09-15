@@ -1,5 +1,6 @@
 from agents import Agent, FileSearchTool
 from agents.model_settings import ModelSettings
+from agents.models import get_default_model_settings
 
 from ..config import get_config
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
@@ -40,6 +41,8 @@ def create_file_search_agent(mcp_servers:list[MCPServer]=None, vector_store_id:s
     config = get_config()
 
     model = config.models.search_model
+    
+    model_settings = get_default_model_settings(model)
 
     file_search_agent = Agent(
         name="file_search_agent",
@@ -47,7 +50,7 @@ def create_file_search_agent(mcp_servers:list[MCPServer]=None, vector_store_id:s
         instructions=dynamic_instructions,
         tools=[FileSearchTool(vector_store_ids=[vector_store_id])],
         model=model,
-        model_settings=ModelSettings(tool_choice="auto"),
+        model_settings=model_settings,
         mcp_servers=mcp_servers,
         output_type=FileSearchResult,   
     )

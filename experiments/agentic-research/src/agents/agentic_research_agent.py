@@ -1,6 +1,7 @@
 
 from agents import Agent, HandoffInputData, RunContextWrapper, RunResult, ToolCallOutputItem, function_tool
 from agents import Agent, ModelSettings, handoff
+from agents.models import get_default_model_settings
 from openai import OpenAI
 from agents.mcp import MCPServer
 
@@ -11,10 +12,7 @@ from .schemas import FileFinalReport, ResearchInfo, ReportData
 from agents.extensions import handoff_filters
 from .file_writer_agent import WriterDirective
 
-config = get_config()
-client = OpenAI()
-
-model = config.models.research_model
+# Plus de variables globales - utilisation directe de get_config() dans les fonctions
 
 prompt_file = "research_lead_agent_revised.md"
 
@@ -28,25 +26,6 @@ INSTRUCTIONS = (
     f"{RECOMMENDED_PROMPT_PREFIX}"
     f"{ORCHESTRATOR_PROMPT}"
 )
-
-
-def remove_all_tools(handoff_input_data: HandoffInputData) -> HandoffInputData:
-    """Filters out all tool items: file search, web search and function calls+output."""
-
-    history = handoff_input_data.input_history
-    new_items = handoff_input_data.new_items
-
-    filtered_history = (
-        _remove_tool_types_from_input(history) if isinstance(history, tuple) else history
-    )
-    filtered_pre_handoff_items = _remove_tools_from_items(handoff_input_data.pre_handoff_items)
-    filtered_new_items = _remove_tools_from_items(new_items)
-
-    return HandoffInputData(
-        input_history=filtered_history,
-        pre_handoff_items=filtered_pre_handoff_items,
-        new_items=filtered_new_items,
-    )
 
 async def extract_json_payload(run_result: RunResult) -> str:
     # Scan the agent’s outputs in reverse order until we find a JSON-like message from a tool call.
@@ -80,10 +59,13 @@ def create_research_supervisor_agent(
         # input_filter=handoff_filters.remove_all_tools, 
     )
 
+    config = get_config()
+    model_settings = get_default_model_settings(config.models.research_model)
+
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
-        model=model,
+        model=config.models.research_model,
         handoffs=[
             writer_handoff
         ],
@@ -106,5 +88,5 @@ def create_research_supervisor_agent(
     ],
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        model_settings=ModelSettings(tool_choice="auto"),
+        model_settings=model_settings,
     ) 

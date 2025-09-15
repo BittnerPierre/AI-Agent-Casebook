@@ -91,7 +91,9 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
     config = get_config()
     model = config.models.writer_model
 
-
+    model_settings = get_default_model_settings(model)
+    # if (not model.startswith("gpt-5")):
+    #   model_settings.tool_choice="required"
 
     save_agent = None
     if do_save_report:
@@ -103,10 +105,11 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
             tools=[
                 save_report,
             ],
-            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_report"])
+            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_report"]),
+            model_settings=model_settings
         )
 
-    model_settings = get_default_model_settings(model)
+    
 
     # model_settings = ModelSettings(
     #     #tool_choice="required",
@@ -119,7 +122,10 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
         model=model,
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        handoffs=[save_agent],
+        # handoffs=[save_agent],
+        tools=[
+                save_report,
+            ],
         model_settings=model_settings
     )
     

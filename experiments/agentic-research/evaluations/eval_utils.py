@@ -129,7 +129,7 @@ def validate_trajectory_spec(
       - Vérifie que les appels de fonction se succèdent dans l'ordre spécifié
       - Chaque function_call doit apparaître APRÈS la précédente dans la chronologie
       - ✅ NOUVEAU : Vérifie que l'appel a réussi (pas d'erreur dans l'output)
-      - Exemple : read_multiple_files PUIS save_final_report
+      - Exemple : read_multiple_files PUIS save_report
     
     • GENERATIONS : Ordre dans le contenu final 
       - Vérifie que les patterns apparaissent dans l'ordre spécifié dans le contenu généré

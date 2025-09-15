@@ -10,14 +10,9 @@ from .vector_store_manager import VectorStoreManager
 from .web_loader_improved import WebDocument, load_documents_from_urls
 
 # Configuration du logger
-
-config = get_config()
 logger = logging.getLogger(__name__)
 
-client = OpenAI()
-
-manager = VectorStoreManager(config.vector_store.name, client)
-vector_store_id = manager.get_or_create_vector_store()
+# Plus de variables globales - utilisation directe de get_config() dans les fonctions
 
 
 def format_document_as_markdown(doc: WebDocument) -> str:
@@ -302,6 +297,11 @@ def main():
                 
                 # Upload vers le vector store
                 logger.info("Upload vers le vector store OpenAI...")
+                config = get_config()
+                client = OpenAI()
+                manager = VectorStoreManager(config.vector_store.name, client)
+                vector_store_id = manager.get_or_create_vector_store()
+                
                 upload_results = upload_files_to_vector_store(
                     client, 
                     saved_files, 

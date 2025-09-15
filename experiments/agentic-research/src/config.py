@@ -2,6 +2,8 @@
 
 import os
 import yaml
+import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
@@ -79,6 +81,9 @@ class ConfigManager:
             # Par défaut, chercher config.yaml dans le dossier du projet
             project_root = Path(__file__).parent.parent
             config_path = project_root / "config.yaml"
+            self.config_file_name = "config.yaml"
+        else:
+            self.config_file_name = config_path.name
         
         self.config_path = config_path
         self._config: Optional[Config] = None
@@ -139,13 +144,57 @@ class ConfigManager:
         return self._config
 
 
-# Instance globale pour l'accès facile
-config_manager = ConfigManager()
+# Instance globale pour l'accès facile - sera initialisée via le pattern singleton
+_global_config_manager: Optional[ConfigManager] = None
+_config_lock = threading.Lock()
 
 
-def get_config() -> Config:
-    """Get the global configuration instance."""
-    return config_manager.config
+def get_config(config_file: Optional[str] = None) -> Config:
+    """Get the global configuration instance with singleton pattern.
+    Thread-safe implementation using double-checked locking pattern.
+    
+    Args:
+        config_file: Optional path to configuration file. If None, uses default 'config.yaml'.
+                    If provided and differs from already loaded config, shows warning.
+    
+    Returns:
+        Config: The configuration instance.
+    """
+    global _global_config_manager
+    
+    logger = logging.getLogger(__name__)
+    
+    # Premier check (performance optimization) - pas besoin de lock si déjà initialisé
+    if _global_config_manager is not None:
+        if config_file is None:
+            # Appel sans paramètre (module) -> Normal, pas de message
+            logger.debug(f"Accès à la configuration existante: {_global_config_manager.config_file_name}")
+            return _global_config_manager.config
+        elif _global_config_manager.config_file_name == config_file:
+            # Même fichier demandé -> Normal
+            logger.debug(f"Configuration déjà initialisée avec le fichier: {config_file}")
+            return _global_config_manager.config
+        else:
+            # Fichier différent demandé (main qui arrive après) -> Warning
+            logger.warning(f"Configuration déjà initialisée avec '{_global_config_manager.config_file_name}', "
+                          f"impossible de charger '{config_file}'. Utilisation de la configuration existante.")
+            return _global_config_manager.config
+    
+    # Double-checked locking pattern pour thread safety
+    with _config_lock:
+        # Deuxième check dans le lock au cas où un autre thread l'aurait initialisé
+        if _global_config_manager is None:
+            # Laisser ConfigManager gérer le chemin par défaut si config_file est None
+            if config_file is not None:
+                project_root = Path(__file__).parent.parent
+                config_path = project_root / config_file
+                _global_config_manager = ConfigManager(config_path)
+            else:
+                _global_config_manager = ConfigManager()  # Utilise le défaut de ConfigManager
+                
+            logger.info(f"Configuration initialisée avec le fichier: {_global_config_manager.config_file_name}")
+        
+        return _global_config_manager.config
 
 
 def get_vector_store_name() -> str:

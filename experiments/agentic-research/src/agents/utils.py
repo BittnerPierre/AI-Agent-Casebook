@@ -124,7 +124,7 @@ MS_DATAPREP_TOOLS = [
 ]
 
 WRITER_AGENT_TOOLS = [
-    "save_final_report",
+    "save_report",
     "read_file",
     "read_multiple_files",
     "list_directory",

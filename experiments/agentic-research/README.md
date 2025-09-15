@@ -55,7 +55,7 @@ Le manager par défaut peut être configuré dans le fichier `config.yaml` :
 
 ```yaml
 manager:
-  default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+  default_manager: "agentic_manager" # Options: agentic_manager, manager (simple example), DeepResearchManager, ou chemin.vers.ClasseManager
 ```
 
 Vous pouvez également définir le manager par défaut via la variable d'environnement `DEFAULT_MANAGER`.

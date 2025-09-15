@@ -1,5 +1,6 @@
 from agents import Agent
 from agents.model_settings import ModelSettings
+from agents.models import get_default_model_settings
 
 from ..config import get_config
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
@@ -7,7 +8,7 @@ from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import ResearchInfo
 from .utils import load_prompt_from_file
-from .utils import save_final_report, fetch_vector_store_name, display_agenda
+from .utils import save_report, fetch_vector_store_name, display_agenda
 from agents.agent import StopAtTools
 
 prompt_file = "knowledge_preparation.md"
@@ -42,15 +43,17 @@ def create_knowledge_preparation_agent(mcp_servers:list[MCPServer]=None):
 
     model = config.models.knowledge_preparation_model
 
+    model_settings = get_default_model_settings(model)
+
     knowledge_preparation_agent = Agent(
         name="knowledge_preparation_agent",
         handoff_description=("Given a research topic, prepare the knowledge base and the agenda."),
         instructions=dynamic_instructions,
         model=model,
-        model_settings=ModelSettings(tool_choice="auto"),
+        model_settings=model_settings,
         mcp_servers=mcp_servers,
         tools=[
-            save_final_report,
+            # save_report,
             fetch_vector_store_name,
             display_agenda,
         ],

@@ -43,28 +43,36 @@ async def main() -> None:
 
     os.environ['OPENAI_AGENTS_DISABLE_TRACING'] = '1'
 
-    # Configure logging and get config first
-    config = get_config()
+    # Parse command line arguments first (without defaults that depend on config)
+    parser = argparse.ArgumentParser(description="Agentic Research CLI")
+    parser.add_argument("--syllabus", type=str, help="Path to a syllabus file")
+    parser.add_argument("--manager", type=str, help="Manager implementation to use")
+    parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
+    parser.add_argument("--config", type=str, help="Configuration file to use (default: config.yaml)")
+    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)")
+    parser.add_argument("--max-search-plan", type=str, help="Maximum number of search plans to generate") 
+    parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--debug", action="store_true", help="Debug mode")
+    args = parser.parse_args()
+
+    # Get configuration (potentially with custom config file)
+    config = get_config(args.config)
+    
+    # Configure logging
     logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
     logger = logging.getLogger(__name__)
     
-    # Get default manager from config
-    default_manager = config.manager.default_manager
-    
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Agentic Research CLI")
-    parser.add_argument("--syllabus", type=str, help="Path to a syllabus file")
-    parser.add_argument("--manager", type=str, default=default_manager, 
-                        help=f"Manager implementation to use (default: {default_manager})")
-    parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
-    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)", default=config.vector_store.name)
-    parser.add_argument("--max-search-plan", type=str, default=config.agents.max_search_plan,
-                        help=f"Maximum number of search plans to generate (default: {config.agents.max_search_plan})") 
-    parser.add_argument("--output-dir", type=str, default=config.agents.output_dir,
-                        help=f"Output directory (default: {config.agents.output_dir})")
-    parser.add_argument("--debug", action="store_true", default=config.debug.enabled,
-                        help=f"Debug mode (default: {config.debug.enabled})")
-    args = parser.parse_args()
+    # Set defaults from config if not provided via CLI
+    if not args.manager:
+        args.manager = config.manager.default_manager
+    if not args.vector_store:
+        args.vector_store = config.vector_store.name
+    if not args.max_search_plan:
+        args.max_search_plan = config.agents.max_search_plan
+    if not args.output_dir:
+        args.output_dir = config.agents.output_dir
+    if not args.debug:
+        args.debug = config.debug.enabled
 
     # Override vector store name if provided
     if args.vector_store:
