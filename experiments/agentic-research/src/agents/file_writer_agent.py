@@ -7,7 +7,7 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import FileFinalReport, ResearchInfo, ReportData
-from .utils import load_prompt_from_file, save_report
+from .utils import extract_model_name, load_prompt_from_file, save_report
 from agents import ModelSettings
 from agents.agent import StopAtTools
 
@@ -91,9 +91,8 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
     config = get_config()
     model = config.models.writer_model
 
-    model_settings = get_default_model_settings(model)
-    # if (not model.startswith("gpt-5")):
-    #   model_settings.tool_choice="required"
+    model_name = extract_model_name(model)
+    model_settings = get_default_model_settings(model_name)
 
     save_agent = None
     if do_save_report:
@@ -108,13 +107,6 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
             tool_use_behavior=StopAtTools(stop_at_tool_names=["save_report"]),
             model_settings=model_settings
         )
-
-    
-
-    # model_settings = ModelSettings(
-    #     #tool_choice="required",
-    #     metadata={"agent_type": "sub-agent", "trace_type": "agent"}
-    # )
 
     writer_agent = Agent(
         name="writer_agent",

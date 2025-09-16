@@ -6,7 +6,7 @@ from openai import OpenAI
 from agents.mcp import MCPServer
 
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda, should_apply_tool_filter
+from .utils import extract_model_name, load_prompt_from_file, fetch_vector_store_name, display_agenda, should_apply_tool_filter
 from ..config import get_config
 from .schemas import FileFinalReport, ResearchInfo, ReportData
 from agents.extensions import handoff_filters
@@ -65,7 +65,8 @@ def create_research_supervisor_agent(
         input_filter=input_filter,  # Application conditionnelle du filtre selon le modèle
     )
 
-    model_settings = get_default_model_settings(config.models.research_model)
+    model_name = extract_model_name(config.models.research_model)
+    model_settings = get_default_model_settings(model_name)
 
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",

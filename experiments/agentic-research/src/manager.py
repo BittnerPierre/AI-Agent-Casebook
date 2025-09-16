@@ -14,7 +14,7 @@ from .printer import Printer
 from .agents.schemas import ResearchInfo
 from agents.mcp import MCPServer
 
-class ResearchManager:
+class StandardResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)

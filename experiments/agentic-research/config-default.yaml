@@ -1,4 +1,6 @@
 # Configuration pour agentic-research
+config_name: "default (mixed models)"
+
 vector_store:
   # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
   name: "agent-engineer-basic-course"
@@ -34,7 +36,7 @@ logging:
 models:
   research_model: "openai/gpt-4.1-mini"
   planning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
-  search_model: "openai/gpt-4.1-mini"
+  search_model: "openai/gpt-4.1-mini" # GPT-4.1-mini is required for file search tool
   writer_model: "litellm/mistral/mistral-medium-latest"
   knowledge_preparation_model: "openai/gpt-4.1-mini"
 

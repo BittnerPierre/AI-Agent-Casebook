@@ -17,12 +17,18 @@ from .agents.schemas import FileFinalReport, ResearchInfo
 
 from .config import get_config
 
-class ResearchManager:
+class AgenticResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
         self.mcp_server = None
-        self.config = get_config()
+        self._config = get_config()
+        # self._run_config = RunConfig(
+        #     workflow_name="agentic_research",
+        #     tracing_disabled=False,             
+        #     trace_metadata= {
+        #         "config_name": self._config.config_name
+        #     })
 
     async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
 
@@ -31,7 +37,9 @@ class ResearchManager:
 
 
         trace_id = gen_trace_id()
-        with trace("Research trace", trace_id=trace_id, metadata={"trace_type": "research"}):
+        with trace("Agentic Research", trace_id=trace_id, metadata= {
+                 "config_name": self._config.config_name
+             }):
             self.printer.update_item(
                 "trace_id",
                 f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
@@ -73,9 +81,9 @@ class ResearchManager:
     async def _agentic_research(self, query: str, research_info: ResearchInfo) -> ReportData:
 
         self.printer.update_item("agentic_research", "Starting Agentic Research...")
-        
+
         # Désactiver le tracing automatique pour cet appel
-        run_config = RunConfig(tracing_disabled=False)
+
         
         result = await Runner.run(
             self.research_supervisor_agent,
@@ -84,7 +92,6 @@ class ResearchManager:
             f"{query}",
             context=research_info,
             max_turns=25,
-            run_config=run_config
         )
         self.printer.update_item(
             "agentic_research",

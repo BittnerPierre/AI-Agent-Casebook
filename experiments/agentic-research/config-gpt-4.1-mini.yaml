@@ -1,5 +1,5 @@
 # Configuration pour agentic-research
-config_name: "default (mixed models)"
+config_name: "mistral (medium-latest)"
 
 vector_store:
   # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
@@ -35,9 +35,9 @@ logging:
 # Configuration Models
 models:
   research_model: "openai/gpt-4.1-mini"
-  planning_model: "litellm/anthropic/claude-3-7-sonnet-20250219"
+  planning_model: "openai/gpt-4.1-mini"
   search_model: "openai/gpt-4.1-mini" # GPT required for file search tool
-  writer_model: "litellm/mistral/mistral-medium-latest"
+  writer_model: "openai/gpt-4.1-mini"
   knowledge_preparation_model: "openai/gpt-4.1-mini"
 
 # Configuration du manager

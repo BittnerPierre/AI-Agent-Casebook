@@ -10,7 +10,7 @@ from openai import OpenAI
 from agents.mcp import MCPServer
 from agents import RunContextWrapper
 from .schemas import ResearchInfo
-from .utils import load_prompt_from_file
+from .utils import extract_model_name, load_prompt_from_file
 
 
 prompt_file = "file_search_planning_prompt.md"
@@ -45,7 +45,8 @@ def create_file_planner_agent(mcp_servers:list[MCPServer]=None):
     config = get_config()
     model = config.models.planning_model
 
-    model_settings = get_default_model_settings(model)
+    model_name = extract_model_name(model)
+    model_settings = get_default_model_settings(model_name)
 
     return Agent(
         name="file_planner_agent",

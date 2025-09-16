@@ -1,4 +1,6 @@
 # Configuration pour agentic-research
+config_name: "gpt-5-mini"
+
 vector_store:
   # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
   name: "agent-engineer-basic-course"
@@ -34,7 +36,7 @@ logging:
 models:
   research_model: "gpt-5-mini"
   planning_model: "gpt-5-mini"
-  search_model: "gpt-5-mini"
+  search_model: "gpt-5-mini" # GPT required for file search tool
   writer_model: "gpt-5-mini"
   knowledge_preparation_model: "gpt-5-mini"
 

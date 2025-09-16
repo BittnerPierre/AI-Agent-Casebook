@@ -6,10 +6,9 @@ import os.path
 from pathlib import Path
 import tempfile
 
-from .agentic_manager import ResearchManager as AgenticResearchManager
-from .manager import ResearchManager as StandardResearchManager
-from .deep_research_manager import ResearchManager as DeepResearchManager
-from .config import get_config
+from .agentic_manager import AgenticResearchManager
+from .manager import StandardResearchManager
+from .deep_research_manager import DeepResearchManager
 from agents import Agent, Runner, add_trace_processor
 from agents.mcp import MCPServerSse, MCPServerStdio  
 from agents.model_settings import ModelSettings
@@ -19,6 +18,7 @@ from openai import OpenAI
 from .agents.utils import get_vector_store_id_by_name, context_aware_filter
 from .agents.schemas import ResearchInfo
 from .tracing.trace_processor import FileTraceProcessor
+from .config import get_config
 
 
 def get_manager_class(manager_path: str):
@@ -29,7 +29,7 @@ def get_manager_class(manager_path: str):
             return AgenticResearchManager
         elif manager_path == "manager":
             return StandardResearchManager
-        elif manager_path == "DeepResearchManager":
+        elif manager_path == "deep_manager":
             return DeepResearchManager
         else:
             raise ValueError(f"Unknown manager: {manager_path}")
@@ -112,7 +112,7 @@ async def main() -> None:
     else:
         query = input("What would you like to research? ")
 
-    # add_trace_processor(OpenAIAgentsTracingProcessor())
+    add_trace_processor(OpenAIAgentsTracingProcessor())
     add_trace_processor(FileTraceProcessor(log_dir="traces", log_file="trace.log"))
     debug_mode = config.debug.enabled
 

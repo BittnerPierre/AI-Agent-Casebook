@@ -65,6 +65,7 @@ class AgentsConfig(BaseModel):
 
 class Config(BaseModel):
     """Main configuration class."""
+    config_name: str
     vector_store: VectorStoreConfig
     data: DataConfig = Field(default_factory=DataConfig)
     debug: DebugConfig = Field(default_factory=DebugConfig)

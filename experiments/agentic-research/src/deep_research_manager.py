@@ -16,11 +16,22 @@ from .agents.schemas import ReportData
 from .agents.agentic_research_agent import create_research_supervisor_agent
 from .agents.utils import save_final_report_function
 from .agents.knowledge_preparation_agent import create_knowledge_preparation_agent
+from .config import get_config
 
-class ResearchManager:
+class DeepResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
+        self._config = get_config()
+        # Désactiver le tracing automatique pour cet appel
+        # self._run_config = RunConfig(
+        #     workflow_name="deep_research",
+        #     tracing_disabled=False,             
+        #     trace_metadata= {
+        #         "config_name": self._config.config_name
+        #     })
+
+
 
     async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
         self.fs_server = fs_server
@@ -28,7 +39,9 @@ class ResearchManager:
         self.research_info = research_info
 
         trace_id = gen_trace_id()
-        with trace("Research trace", trace_id=trace_id):
+        with trace("Deep Research", trace_id=trace_id,  metadata= {
+                 "config_name": self._config.config_name
+             }):
             self.printer.update_item(
                 "trace_id",
                 f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
