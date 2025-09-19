@@ -1,0 +1,49 @@
+# Configuration pour agentic-research
+config_name: "claude-sonnet-4-0"
+
+vector_store:
+  # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
+  name: "agent-engineer-basic-course"
+  description: "Vector store for agentic research experiments"
+  expires_after_days: 30
+
+# Configuration des données d'entrée
+data:
+  # Fichier contenant les URLs à traiter (une par ligne)
+  urls_file: "urls.txt"
+  # Base de connaissances locale (JSON)
+  knowledge_db_path: "data/knowledge_db.json"
+  # Dossier de stockage local des fichiers .md
+  local_storage_dir: "data/"
+
+# Configuration de debug
+debug:
+  # Active le mode debug (garde les fichiers temporaires, logs verbeux)
+  enabled: false # Activé pour utiliser le stockage local
+  # Dossier pour sauvegarder les fichiers en mode debug
+  output_dir: "debug_output"
+  # Sauvegarder les rapports finaux en markdown
+  save_reports: true
+  # Afficher l'aperçu du contenu dans les logs
+  show_content_preview: true
+
+# Configuration du logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Configuration Models
+models:
+  research_model: "litellm/anthropic/claude-sonnet-4-0"
+  planning_model: "litellm/anthropic/claude-sonnet-4-0"
+  search_model: "openai/gpt-4.1-mini" # GPT-4.1-mini is required for file search tool
+  writer_model: "litellm/anthropic/claude-sonnet-4-0"
+  knowledge_preparation_model: "litellm/anthropic/claude-sonnet-4-0"
+
+# Configuration du manager
+manager:
+  default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+
+agents:
+  max_search_plan: "5-7"
+  ouput_dir: "output/"

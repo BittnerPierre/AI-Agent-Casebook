@@ -45,5 +45,5 @@ manager:
   default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
 
 agents:
-  max_search_plan: "2-3"
+  max_search_plan: "5-7"
   ouput_dir: "output/"

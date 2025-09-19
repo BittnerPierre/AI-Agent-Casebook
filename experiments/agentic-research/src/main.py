@@ -105,12 +105,12 @@ async def main() -> None:
         
         with open(syllabus_path, 'r', encoding='utf-8') as f:
             syllabus_content = f.read()
-            query = (f"<syllabus>\n{syllabus_content}\n</syllabus>")
+            query = (f"<research_request>\n{syllabus_content}\n</research_request>")
         logger.info(f"Using syllabus from file: {args.syllabus}")
     elif args.query:
-        query = args.query
+        query = (f"<research_request>\n{args.query}\n</research_request>")
     else:
-        query = input("What would you like to research? ")
+        query = (f"<research_request>\n{input("What would you like to research? ")}\n</research_request>")
 
     add_trace_processor(OpenAIAgentsTracingProcessor())
     add_trace_processor(FileTraceProcessor(log_dir="traces", log_file="trace.log"))

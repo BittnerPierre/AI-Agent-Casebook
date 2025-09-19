@@ -100,8 +100,6 @@ class DeepResearchManager:
         
         result = await Runner.run(
             self.file_planner_agent,
-            f"Demande: \n\n"
-            f"######\n"
             f"{query}",
             context=self.research_info,
         )
@@ -151,8 +149,9 @@ class DeepResearchManager:
             "\n".join(f"- {fname}" for fname in search_results) if search_results else "None"
         )
         input = (
-            f"Rédige un rapport de recherche exhaustif et détaillé Utilise l'agenda suivant ainsi que les contenus des fichiers attachés "
-            f" pour rédiger un rapport de recherche exhaustif et détaillé: {query}\n\n"
+            f"Rédige un rapport de recherche exhaustif et détaillé repondant à la demande suivante:\n\n {query}.\n\n"
+            f"Utilise l'agenda produit ainsi que les contenus des fichiers attachés "
+            f" pour rédiger un rapport conforme aux attentes.\n\n"
             f"Search results:\n{formatted_results}"
         )
 

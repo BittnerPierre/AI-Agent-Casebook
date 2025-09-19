@@ -1,5 +1,5 @@
 # Configuration pour agentic-research
-config_name: "mistral (medium-latest)"
+config_name: "gpt-4.1-mini"
 
 vector_store:
   # OpenAI Vector Store ID - https://platform.openai.com/storage/vector_stores/
@@ -45,5 +45,5 @@ manager:
   default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
 
 agents:
-  max_search_plan: "2-3"
+  max_search_plan: "5-7"
   ouput_dir: "output/"

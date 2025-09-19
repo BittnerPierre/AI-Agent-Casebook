@@ -115,9 +115,9 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, do_save_report:bool=Tr
         output_type=ReportData,
         mcp_servers=mcp_servers,
         # handoffs=[save_agent],
-        tools=[
-                save_report,
-            ],
+        # tools=[
+        #         save_report,
+        #     ],
         model_settings=model_settings
     )
     
