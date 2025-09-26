@@ -1,8 +1,9 @@
 import os
-from agents import Agent, RunContextWrapper, function_tool
-from .schemas import ResearchInfo, ReportData, FileFinalReport
+
+from agents import RunContextWrapper, function_tool
 from agents.mcp import ToolFilterContext
 
+from .schemas import ReportData, ResearchInfo
 
 
 def load_prompt_from_file(folder_path: str, file_path: str) -> str:
@@ -12,12 +13,11 @@ def load_prompt_from_file(folder_path: str, file_path: str) -> str:
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_path = os.path.join(current_dir, folder_path, file_path)
-        with open(prompt_path, "r", encoding="utf-8") as file:
+        with open(prompt_path, encoding="utf-8") as file:
             return file.read()
     except FileNotFoundError:
         print(f"Attention: Le fichier de prompt {file_path} n'a pas été trouvé.")
         return None
-    
 
 
 def get_vector_store_id_by_name(client, vector_store_name):
@@ -28,13 +28,13 @@ def get_vector_store_id_by_name(client, vector_store_name):
     for vector_store in vector_stores:
         if vector_store.name == vector_store_name:
             return vector_store.id
-    
+
     # Si le vector store n'est pas trouvé, retourner None
     return None
 
 
 @function_tool
-async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> str:  
+async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> str:
     """
     Fetch the name of the vector store.
     Call this function to get the vector store name to upload file.
@@ -43,7 +43,7 @@ async def fetch_vector_store_name(wrapper: RunContextWrapper[ResearchInfo]) -> s
 
 
 @function_tool
-async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) -> str:  
+async def display_agenda(wrapper: RunContextWrapper[ResearchInfo], agenda: str) -> str:
     """
     Display the agenda in the conversation.
     Call this function to display the agenda in the conversation.
@@ -55,36 +55,46 @@ def generate_final_report_filename(research_topic: str) -> str:
     """
     Génère un nom de fichier pour le rapport final selon les règles de nommage.
     """
-    import re
     import datetime
+    import re
+
     # Appliquer les règles de nommage
     topic = research_topic.lower()
-    topic = re.sub(r'\s+', '_', topic)
-    topic = re.sub(r'[^a-z0-9_]', '', topic)
+    topic = re.sub(r"\s+", "_", topic)
+    topic = re.sub(r"[^a-z0-9_]", "", topic)
     topic = topic[:50]
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{topic}_final_report_{timestamp}.md"
 
+
 @function_tool
-async def save_report(wrapper: RunContextWrapper[ResearchInfo],
-                            research_topic: str,
-                            markdown_report: str,
-                            short_summary: str,
-                            follow_up_questions: list[str],
-                            ) -> ReportData:  
+async def save_report(
+    wrapper: RunContextWrapper[ResearchInfo],
+    research_topic: str,
+    markdown_report: str,
+    short_summary: str,
+    follow_up_questions: list[str],
+) -> ReportData:
     """
     Sauvegarde le rapport .
     Appelez cet outil pour sauvegarder le rapport.
     """
-    return await save_final_report_function(wrapper.context.output_dir, research_topic, markdown_report, short_summary, follow_up_questions)
+    return await save_final_report_function(
+        wrapper.context.output_dir,
+        research_topic,
+        markdown_report,
+        short_summary,
+        follow_up_questions,
+    )
 
 
-async def save_final_report_function(output_dir: str,
-                            research_topic: str,
-                            markdown_report: str,
-                            short_summary: str,
-                            follow_up_questions: list[str],
-                            ) -> ReportData:  
+async def save_final_report_function(
+    output_dir: str,
+    research_topic: str,
+    markdown_report: str,
+    short_summary: str,
+    follow_up_questions: list[str],
+) -> ReportData:
     """
     Écrit le rapport final.
     Appelez cette fonction pour écrire le rapport final.
@@ -95,11 +105,14 @@ async def save_final_report_function(output_dir: str,
         file.write(markdown_report)
         # Remplacer print par logger si le framework de logging est en place
         # print(f"File written: {file_path}")
-    return ReportData(file_name=file_name,
-                      markdown_report=markdown_report,
-                      research_topic=research_topic,
-                      short_summary=short_summary,
-                      follow_up_questions=follow_up_questions)
+    return ReportData(
+        file_name=file_name,
+        markdown_report=markdown_report,
+        research_topic=research_topic,
+        short_summary=short_summary,
+        follow_up_questions=follow_up_questions,
+    )
+
 
 MS_FS_TOOLS = [
     "read_file",
@@ -113,14 +126,14 @@ MS_FS_TOOLS = [
     "move_file",
     "search_files",
     "get_file_info",
-    "list_allowed_directories"
+    "list_allowed_directories",
 ]
 
 MS_DATAPREP_TOOLS = [
     "download_and_store_url_tool",
     "upload_files_to_vectorstore_tool",
     "get_knowledge_entries_tool",
-    "check_vectorstore_file_status"
+    "check_vectorstore_file_status",
 ]
 
 WRITER_AGENT_TOOLS = [
@@ -148,7 +161,7 @@ def context_aware_filter(context: ToolFilterContext, tool) -> bool:
     # Access agent information
     agent_name = context.agent.name
 
-    # Access server information  
+    # Access server information
     server_name = context.server_name
 
     # Implement your custom filtering logic here
@@ -158,18 +171,18 @@ def context_aware_filter(context: ToolFilterContext, tool) -> bool:
 def extract_model_name(model_string: str) -> str:
     """
     Extrait le vrai nom du modèle en éliminant les préfixes de providers.
-    
+
     Formats supportés:
     - "litellm/<provider>/<model_name>" -> "<model_name>"
     - "openai/<model_name>" -> "<model_name>"
     - "<model_name>" -> "<model_name>"
-    
+
     Args:
         model_string: Le nom complet du modèle avec potentiellement des préfixes
-        
+
     Returns:
         Le nom du modèle nettoyé
-        
+
     Examples:
         >>> extract_model_name("litellm/mistral/mistral-medium-latest")
         "mistral-medium-latest"
@@ -182,19 +195,19 @@ def extract_model_name(model_string: str) -> str:
     """
     if not model_string:
         return model_string
-    
+
     # Format litellm: "litellm/<provider>/<model_name>"
     if model_string.startswith("litellm/"):
         parts = model_string.split("/")
         if len(parts) >= 3:
             return parts[2]  # Récupère la partie après "litellm/<provider>/"
-        
+
     # Format openai: "openai/<model_name>"
     elif model_string.startswith("openai/"):
         parts = model_string.split("/")
         if len(parts) >= 2:
             return parts[1]  # Récupère la partie après "openai/"
-    
+
     # Format direct: "<model_name>" (pas de préfixe)
     return model_string
 
@@ -202,17 +215,17 @@ def extract_model_name(model_string: str) -> str:
 def is_mistral_model(model_string: str) -> bool:
     """
     Vérifie si le modèle est un modèle Mistral.
-    
+
     Args:
         model_string: Le nom complet du modèle
-        
+
     Returns:
         True si c'est un modèle Mistral, False sinon
     """
     # Vérification par préfixe litellm
     if model_string.startswith("litellm/mistral/"):
         return True
-    
+
     # Vérification par nom de modèle
     model_name = extract_model_name(model_string).lower()
     return "mistral" in model_name
@@ -221,10 +234,10 @@ def is_mistral_model(model_string: str) -> bool:
 def is_gpt5_model(model_string: str) -> bool:
     """
     Vérifie si le modèle est un modèle GPT-5.
-    
+
     Args:
         model_string: Le nom complet du modèle
-        
+
     Returns:
         True si c'est un modèle GPT-5, False sinon
     """
@@ -235,20 +248,19 @@ def is_gpt5_model(model_string: str) -> bool:
 def should_apply_tool_filter(model_string: str) -> bool:
     """
     Détermine si le filtre remove_all_tools doit être appliqué pour un modèle donné.
-    
+
     Logique:
     - Mistral: Applique le filtre (problèmes avec les IDs d'appels d'outils)
     - GPT-5: Pas de filtre (nécessite la cohérence des messages)
     - Autres: Applique le filtre par défaut
-    
+
     Args:
         model_string: Le nom complet du modèle
-        
+
     Returns:
         True si le filtre doit être appliqué, False sinon
     """
     if is_gpt5_model(model_string):
         return False  # GPT-5 ne supporte pas le filtrage des outils
-    
-    return True  # Par défaut, applique le filtre (Mistral, GPT-4, Claude, etc.)
 
+    return True  # Par défaut, applique le filtre (Mistral, GPT-4, Claude, etc.)

@@ -5,18 +5,24 @@ import time
 
 from rich.console import Console
 
-from agents import Runner, custom_span, gen_trace_id, trace, RunConfig
+from agents import Runner, custom_span, gen_trace_id, trace
 from agents.mcp import MCPServer
-from .agents.file_search_planning_agent import create_file_planner_agent
+
 from .agents.file_search_agent import create_file_search_agent
+from .agents.file_search_planning_agent import create_file_planner_agent
 from .agents.file_writer_agent import create_writer_agent
-from .agents.schemas import FileSearchPlan, FileSearchItem, FileSearchResult, ResearchInfo
-from .printer import Printer
-from .agents.schemas import ReportData
-from .agents.agentic_research_agent import create_research_supervisor_agent
-from .agents.utils import save_final_report_function
 from .agents.knowledge_preparation_agent import create_knowledge_preparation_agent
+from .agents.schemas import (
+    FileSearchItem,
+    FileSearchPlan,
+    FileSearchResult,
+    ReportData,
+    ResearchInfo,
+)
+from .agents.utils import save_final_report_function
 from .config import get_config
+from .printer import Printer
+
 
 class DeepResearchManager:
     def __init__(self):
@@ -26,22 +32,26 @@ class DeepResearchManager:
         # Désactiver le tracing automatique pour cet appel
         # self._run_config = RunConfig(
         #     workflow_name="deep_research",
-        #     tracing_disabled=False,             
+        #     tracing_disabled=False,
         #     trace_metadata= {
         #         "config_name": self._config.config_name
         #     })
 
-
-
-    async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
+    async def run(
+        self,
+        fs_server: MCPServer,
+        dataprep_server: MCPServer,
+        query: str,
+        research_info: ResearchInfo,
+    ) -> None:
         self.fs_server = fs_server
         self.dataprep_server = dataprep_server
         self.research_info = research_info
 
         trace_id = gen_trace_id()
-        with trace("Deep Research", trace_id=trace_id,  metadata= {
-                 "config_name": self._config.config_name
-             }):
+        with trace(
+            "Deep Research", trace_id=trace_id, metadata={"config_name": self._config.config_name}
+        ):
             self.printer.update_item(
                 "trace_id",
                 f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}",
@@ -56,15 +66,19 @@ class DeepResearchManager:
                 hide_checkmark=True,
             )
 
-            self.knowledge_preparation_agent = create_knowledge_preparation_agent([self.dataprep_server])
+            self.knowledge_preparation_agent = create_knowledge_preparation_agent(
+                [self.dataprep_server]
+            )
             self.file_planner_agent = create_file_planner_agent([self.fs_server])
-            self.file_search_agent = create_file_search_agent([self.fs_server], research_info.vector_store_id)
+            self.file_search_agent = create_file_search_agent(
+                [self.fs_server], research_info.vector_store_id
+            )
             self.writer_agent = create_writer_agent([self.fs_server], do_save_report=False)
-            
+
             agenda = await self._prepare_knowledge(query)
             print("\n\n=====AGENDA=====\n\n")
             print(agenda)
-            
+
             search_plan = await self._plan_file_searches(agenda)
             print("\n\n=====SEARCH PLAN=====\n\n")
             print(search_plan)
@@ -77,7 +91,13 @@ class DeepResearchManager:
             self.printer.end()
 
         print("\n\n=====SAVING REPORT=====\n\n")
-        _new_report = await save_final_report_function(self.research_info.output_dir, report.research_topic, report.markdown_report, report.short_summary, report.follow_up_questions)
+        _new_report = await save_final_report_function(
+            self.research_info.output_dir,
+            report.research_topic,
+            report.markdown_report,
+            report.short_summary,
+            report.follow_up_questions,
+        )
         print(f"Report saved: {_new_report.file_name}")
         print("\n\n=====REPORT=====\n\n")
         print(f"Report: {report.markdown_report}")
@@ -92,12 +112,14 @@ class DeepResearchManager:
             query,
             context=self.research_info,
         )
-        self.printer.update_item("preparing", "Préparation de la connaissance terminée", is_done=True)
+        self.printer.update_item(
+            "preparing", "Préparation de la connaissance terminée", is_done=True
+        )
         return str(result.final_output)
 
     async def _plan_file_searches(self, query: str) -> FileSearchPlan:
         self.printer.update_item("planning", "Planification des recherches dans les fichiers...")
-        
+
         result = await Runner.run(
             self.file_planner_agent,
             f"{query}",
@@ -128,11 +150,9 @@ class DeepResearchManager:
             return results
 
     async def _file_search(self, item: FileSearchItem) -> str | None:
-
         input_text = f"Terme de recherche: {item.query}\nRaison de la recherche: {item.reason}"
-        
+
         try:
-            
             result = await Runner.run(
                 self.file_search_agent,
                 input_text,

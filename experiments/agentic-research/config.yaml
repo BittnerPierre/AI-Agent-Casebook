@@ -46,4 +46,4 @@ manager:
 
 agents:
   max_search_plan: "2-3"
-  ouput_dir: "output/"
+  output_dir: "output/"
