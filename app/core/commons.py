@@ -38,7 +38,12 @@ def initiate_model(model_name: Optional[SupportedModel] = None,
     # self.model = model or SupportedModel.MISTRAL_LARGE  # Set a default if I need to
     if _model_name.startswith("gpt"):
         # naming of model parameter (alias) is inconsistent in mistral and openAI
-        return ChatOpenAI(model=_model_name, temperature=temperature, tags=tags)
+        reasoning_effort = None
+        verbosity = None
+        if _model_name.startswith("gpt-5"):
+            reasoning_effort = "low"
+            verbosity = "low"
+        return ChatOpenAI(model=_model_name, temperature=temperature, tags=tags, reasoning_effort=reasoning_effort, verbosity=verbosity)
     elif (_model_name.startswith("mistral")
           or _model_name.startswith("ministral")
           or _model_name.startswith("open-mistral")):

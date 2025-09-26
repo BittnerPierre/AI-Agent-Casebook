@@ -4,6 +4,7 @@ This is a simple example of a multi-agent research assistant with local MCP. To 
 
 ```bash
 poetry install
+poetry run dataprep_server
 poetry run agentic-research
 ```
 
@@ -54,7 +55,7 @@ Le manager par défaut peut être configuré dans le fichier `config.yaml` :
 
 ```yaml
 manager:
-  default_manager: "agentic_manager" # Options: agentic_manager, manager, ou chemin.vers.ClasseManager
+  default_manager: "agentic_manager" # Options: agentic_manager (Supervisor with CoT), deep_manager (Deep Agents approach), manager (simple example), ou chemin.vers.ClasseManager
 ```
 
 Vous pouvez également définir le manager par défaut via la variable d'environnement `DEFAULT_MANAGER`.

@@ -61,6 +61,7 @@ __langgraph_chat_agent__ = '''You are an customer onboarding AI chatbot for an o
     # DIRECTIVES
     - NEVER respond directly to a user question and use tools to retrieve relevant information.
     - Keep conversation as short as possible.
+    - Only check eligibility if required.
     - Ask question to user if information is missing or if his question needs clarification.
     - Do NOT make any reference to tools to user.
     - Never mention to user: session_id, thread_id, action_name, tool_name,
@@ -105,7 +106,7 @@ def eligibility_checker(
         age: Annotated[int, "Age"],
 ) -> str:
     """
-    MUST be used to check ELIGIBILITY.
+    Usefull if you need to check ELIGIBILITY.
     You must provide 'nationality', 'country_of_tax_residence', 'est_titulaire_compte_bancaire'.
     If eligibility cannot be confirmed, gracefully inform the user and suggest to contact support.
     """
@@ -127,9 +128,9 @@ def problem_solver(
         input: Annotated[str, "User input which could be a question or an answer."]
 ) -> str:
     """
-    YOU MUST CHECK eligibility of user FIRST.
     Useful to solve a problem with application.
     You must provide user input.
+    you must check eligibility of user before solving a problem.
     DO NOT USE MULTI-ARGUMENTS INPUT.
     """
     # TODO session_id and message handling should disappear

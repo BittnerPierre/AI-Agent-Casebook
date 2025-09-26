@@ -34,6 +34,7 @@ lxml = "^6.0.0"
 chardet = "^5.2.0"
 portalocker = "^2.8.2"
 langsmith = "^0.4.4"
+litellm = "^1.76.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"

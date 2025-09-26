@@ -1,20 +1,21 @@
-
-from agents import Agent, HandoffInputData, RunContextWrapper, RunResult, ToolCallOutputItem, function_tool
-from agents import Agent, ModelSettings, handoff
-from openai import OpenAI
-from agents.mcp import MCPServer
-
-from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from .utils import load_prompt_from_file, fetch_vector_store_name, display_agenda
-from ..config import get_config
-from .schemas import FileFinalReport, ResearchInfo, ReportData
+from agents import Agent, RunContextWrapper, RunResult, ToolCallOutputItem, handoff
 from agents.extensions import handoff_filters
+from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+from agents.mcp import MCPServer
+from agents.models import get_default_model_settings
+
+from ..config import get_config
 from .file_writer_agent import WriterDirective
+from .schemas import ReportData, ResearchInfo
+from .utils import (
+    display_agenda,
+    extract_model_name,
+    fetch_vector_store_name,
+    load_prompt_from_file,
+    should_apply_tool_filter,
+)
 
-config = get_config()
-client = OpenAI()
-
-model = config.models.research_model
+# Plus de variables globales - utilisation directe de get_config() dans les fonctions
 
 prompt_file = "research_lead_agent_revised.md"
 
@@ -24,29 +25,8 @@ ORCHESTRATOR_PROMPT = load_prompt_from_file("prompts", prompt_file)
 if ORCHESTRATOR_PROMPT is None:
     raise ValueError(f"{prompt_file} is None")
 
-INSTRUCTIONS = (
-    f"{RECOMMENDED_PROMPT_PREFIX}"
-    f"{ORCHESTRATOR_PROMPT}"
-)
+INSTRUCTIONS = f"{RECOMMENDED_PROMPT_PREFIX}" f"{ORCHESTRATOR_PROMPT}"
 
-
-def remove_all_tools(handoff_input_data: HandoffInputData) -> HandoffInputData:
-    """Filters out all tool items: file search, web search and function calls+output."""
-
-    history = handoff_input_data.input_history
-    new_items = handoff_input_data.new_items
-
-    filtered_history = (
-        _remove_tool_types_from_input(history) if isinstance(history, tuple) else history
-    )
-    filtered_pre_handoff_items = _remove_tools_from_items(handoff_input_data.pre_handoff_items)
-    filtered_new_items = _remove_tools_from_items(new_items)
-
-    return HandoffInputData(
-        input_history=filtered_history,
-        pre_handoff_items=filtered_pre_handoff_items,
-        new_items=filtered_new_items,
-    )
 
 async def extract_json_payload(run_result: RunResult) -> str:
     # Scan the agent’s outputs in reverse order until we find a JSON-like message from a tool call.
@@ -57,17 +37,26 @@ async def extract_json_payload(run_result: RunResult) -> str:
     # Fallback to an empty JSON object if nothing was found
     return "{}"
 
+
 # Factory function pour créer l'agent avec le serveur MCP
 def create_research_supervisor_agent(
-        mcp_servers:list[MCPServer],
-        file_planner_agent:Agent,
-        file_search_agent:Agent,
-        writer_agent:Agent):
-
+    mcp_servers: list[MCPServer],
+    file_planner_agent: Agent,
+    file_search_agent: Agent,
+    writer_agent: Agent,
+):
     def on_handoff(ctx: RunContextWrapper[ResearchInfo], directive: WriterDirective):
         print(f"Writer agent called with directive: {directive}")
         ctx.context.search_results = directive.search_results
 
+    config = get_config()
+    writer_model = config.models.writer_model
+
+    # Déterminer le filtre à appliquer selon le modèle du writer_agent
+    input_filter = None
+    if should_apply_tool_filter(writer_model):
+        input_filter = handoff_filters.remove_all_tools
+    # Si should_apply_tool_filter retourne False (GPT-5), input_filter reste None
 
     writer_handoff = handoff(
         agent=writer_agent,
@@ -75,18 +64,17 @@ def create_research_supervisor_agent(
         input_type=WriterDirective,
         tool_name_override="write_report",
         tool_description_override="Write the full report based on the search results",
-        # no need to pass the history to the writer agent as it is handle via file, and it will failed with mistral due to the call id format (invalid_function_call error)
-        # TRY TO PASS THE HISTORY TO THE WRITER AGENT TO CHECK ISSUE WITH GPT-5
-        # input_filter=handoff_filters.remove_all_tools, 
+        input_filter=input_filter,  # Application conditionnelle du filtre selon le modèle
     )
+
+    model_name = extract_model_name(config.models.research_model)
+    model_settings = get_default_model_settings(model_name)
 
     return Agent[ResearchInfo](
         name="ResearchSupervisorAgent",
         instructions=ORCHESTRATOR_PROMPT,
-        model=model,
-        handoffs=[
-            writer_handoff
-        ],
+        model=config.models.research_model,
+        handoffs=[writer_handoff],
         tools=[
             file_planner_agent.as_tool(
                 tool_name="plan_file_search",
@@ -96,15 +84,10 @@ def create_research_supervisor_agent(
                 tool_name="file_search",
                 tool_description="Search for relevant information in the knowledge base",
             ),
-            # writer_agent.as_tool(
-            #     tool_name="write_report",
-            #     tool_description="Write the full report based on the search results",
-            #     custom_output_extractor=extract_json_payload
-            # ),
             fetch_vector_store_name,
             display_agenda,
-    ],
+        ],
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        model_settings=ModelSettings(tool_choice="auto"),
-    ) 
+        model_settings=model_settings,
+    )

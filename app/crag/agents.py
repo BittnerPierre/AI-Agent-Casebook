@@ -193,6 +193,27 @@ search = SemanticSearchFactory.create_strategy(
 )
 VectorStoreManager(search)
 
+# Pre-load documents from config
+preload_urls = _config.get('CorrectiveRAG', 'preload_urls', fallback='').split(',')
+
+if preload_urls and preload_urls[0].strip():  # Check not empty
+    from app.semantic_search.document_loaders import DocumentLoader
+    logger.info(f"🔄 Pre-loading {len(preload_urls)} documents into CRAG...")
+    
+    try:
+        # Load with smaller chunks to avoid token limits
+        docs = DocumentLoader.load_from_urls([url.strip() for url in preload_urls], chunk_size=500)
+        
+        # Add in batches to handle embedding API limits
+        batch_size = 50
+        for i in range(0, len(docs), batch_size):
+            batch = docs[i:i + batch_size]
+            search.add_documents(batch)
+        
+        logger.info(f"✅ Pre-loaded {len(docs)} document chunks")
+    except Exception as e:
+        logger.error(f"❌ Error pre-loading documents: {e}")
+
 retriever = Retriever2("retriever", search)
 
 rag_chain = RAGChain("rag_chain", model)

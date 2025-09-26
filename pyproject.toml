@@ -32,7 +32,8 @@ dependencies = [
     "langgraph-prebuilt>=0.1.2",
     "openai-agents>=0.0.14",
     "litellm>=1.67.2",
-    "mcp>=1.7.1"
+    "mcp>=1.7.1",
+    "langchain_openai>=0.3.33"
 ]
 
 [tool.poetry]

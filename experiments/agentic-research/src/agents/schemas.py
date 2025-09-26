@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Generic, TypeVar
+
 from pydantic import BaseModel
-from typing import Generic, Optional, TypeVar, List
 
 
 class SearchItem(BaseModel):
@@ -8,13 +9,14 @@ class SearchItem(BaseModel):
     "Votre raisonnement de pourquoi cette recherche est importante pour la requête et le résultat attendu."
 
     query: str
-    "La requête à utiliser pour la recherche." 
+    "La requête à utiliser pour la recherche."
 
 
-T = TypeVar('T', bound=SearchItem)
+T = TypeVar("T", bound=SearchItem)
+
 
 class SearchPlan(BaseModel, Generic[T]):
-    searches: List[T]
+    searches: list[T]
     """Une liste de recherches à effectuer pour mieux répondre à la requête."""
 
 
@@ -24,7 +26,7 @@ class FileSearchItem(SearchItem):
     # "Le nom du fichier à rechercher dans la base de connaissances."
 
 
-class WebSearchItem(SearchItem):    
+class WebSearchItem(SearchItem):
     pass
 
 
@@ -52,16 +54,17 @@ class FileFinalReport(BaseModel):
     "Les questions suivantes à explorer."
 
 
-from dataclasses import dataclass, field
+from dataclasses import field
+
 
 @dataclass
-class ResearchInfo:  
+class ResearchInfo:
     temp_dir: str
     output_dir: str
     max_search_plan: str = "1"
-    vector_store_name: Optional[str] = None
-    vector_store_id: Optional[str] = None
-    search_results: List[str] = field(default_factory=list)
+    vector_store_name: str | None = None
+    vector_store_id: str | None = None
+    search_results: list[str] = field(default_factory=list)
     """List of filenames resulting from research (e.g., .txt, .md, .pdf files)."""
 
 

@@ -43,7 +43,7 @@ class Configuration:
         },
     )
     max_revision: int = field(
-        default=1,
+        default=2,
         metadata={
             "description": "The maximum number of revision that the supervisor can accept for a chapter."
         },

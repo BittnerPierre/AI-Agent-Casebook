@@ -1,23 +1,24 @@
-import asyncio
-import logging
 import argparse
+import asyncio
 import importlib
-import os.path  
-from pathlib import Path
+import logging
+import os.path
 import tempfile
+from pathlib import Path
 
-from .agentic_manager import ResearchManager as AgenticResearchManager
-from .manager import ResearchManager as StandardResearchManager
-from .deep_research_manager import ResearchManager as DeepResearchManager
-from .config import get_config
-from agents import Agent, Runner, add_trace_processor
-from agents.mcp import MCPServerSse, MCPServerStdio  
-from agents.model_settings import ModelSettings
 # LangSmith tracing support
 from langsmith.wrappers import OpenAIAgentsTracingProcessor
 from openai import OpenAI
-from .agents.utils import get_vector_store_id_by_name, context_aware_filter
+
+from agents import add_trace_processor
+from agents.mcp import MCPServerSse, MCPServerStdio
+
+from .agentic_manager import AgenticResearchManager
 from .agents.schemas import ResearchInfo
+from .agents.utils import context_aware_filter, get_vector_store_id_by_name
+from .config import get_config
+from .deep_research_manager import DeepResearchManager
+from .manager import StandardResearchManager
 from .tracing.trace_processor import FileTraceProcessor
 
 
@@ -29,42 +30,58 @@ def get_manager_class(manager_path: str):
             return AgenticResearchManager
         elif manager_path == "manager":
             return StandardResearchManager
-        elif manager_path == "DeepResearchManager":
+        elif manager_path == "deep_manager":
             return DeepResearchManager
         else:
             raise ValueError(f"Unknown manager: {manager_path}")
-    
+
     # For custom managers with format like "module.ClassName"
     module_path, class_name = manager_path.rsplit(".", 1)
     module = importlib.import_module(f".{module_path}", package="src")
     return getattr(module, class_name)
 
+
 async def main() -> None:
+    os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
 
-    os.environ['OPENAI_AGENTS_DISABLE_TRACING'] = '1'
-
-    # Configure logging and get config first
-    config = get_config()
-    logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
-    logger = logging.getLogger(__name__)
-    
-    # Get default manager from config
-    default_manager = config.manager.default_manager
-    
-    # Parse command line arguments
+    # Parse command line arguments first (without defaults that depend on config)
     parser = argparse.ArgumentParser(description="Agentic Research CLI")
     parser.add_argument("--syllabus", type=str, help="Path to a syllabus file")
-    parser.add_argument("--manager", type=str, default=default_manager, 
-                        help=f"Manager implementation to use (default: {default_manager})")
-    parser.add_argument("--query", type=str, help="Research query (alternative to interactive input)")
-    parser.add_argument("--vector-store", type=str, help="Name of the vector store to use (overrides config)", default=config.vector_store.name)
-    parser.add_argument("--max-search-plan", type=str, default=config.agents.max_search_plan,
-                        help=f"Maximum number of search plans to generate (default: {config.agents.max_search_plan})") 
-    parser.add_argument("--output-dir", type=str, default=config.agents.output_dir,
-                        help=f"Output directory (default: {config.agents.output_dir})")
-    parser.add_argument("--debug", action="store_true", default=config.debug.enabled,
-                        help=f"Debug mode (default: {config.debug.enabled})")
+    parser.add_argument("--manager", type=str, help="Manager implementation to use")
+    parser.add_argument(
+        "--query", type=str, help="Research query (alternative to interactive input)"
+    )
+    parser.add_argument(
+        "--config", type=str, help="Configuration file to use (default: config.yaml)"
+    )
+    parser.add_argument(
+        "--vector-store", type=str, help="Name of the vector store to use (overrides config)"
+    )
+    parser.add_argument(
+        "--max-search-plan", type=str, help="Maximum number of search plans to generate"
+    )
+    parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--debug", action="store_true", help="Debug mode")
     args = parser.parse_args()
+
+    # Get configuration (potentially with custom config file)
+    config = get_config(args.config)
+
+    # Configure logging
+    logging.basicConfig(level=getattr(logging, config.logging.level), format=config.logging.format)
+    logger = logging.getLogger(__name__)
+
+    # Set defaults from config if not provided via CLI
+    if not args.manager:
+        args.manager = config.manager.default_manager
+    if not args.vector_store:
+        args.vector_store = config.vector_store.name
+    if not args.max_search_plan:
+        args.max_search_plan = config.agents.max_search_plan
+    if not args.output_dir:
+        args.output_dir = config.agents.output_dir
+    if not args.debug:
+        args.debug = config.debug.enabled
 
     # Override vector store name if provided
     if args.vector_store:
@@ -73,7 +90,7 @@ async def main() -> None:
 
     # Get the appropriate manager class
     manager_class = get_manager_class(args.manager)
-    
+
     if args.max_search_plan:
         config.agents.max_search_plan = args.max_search_plan
         logger.info(f"Using custom max search plan: {args.max_search_plan}")
@@ -94,17 +111,19 @@ async def main() -> None:
         if not syllabus_path.exists():
             logger.error(f"Syllabus file not found: {args.syllabus}")
             return
-        
-        with open(syllabus_path, 'r', encoding='utf-8') as f:
+
+        with open(syllabus_path, encoding="utf-8") as f:
             syllabus_content = f.read()
-            query = (f"<syllabus>\n{syllabus_content}\n</syllabus>")
+            query = f"<research_request>\n{syllabus_content}\n</research_request>"
         logger.info(f"Using syllabus from file: {args.syllabus}")
     elif args.query:
-        query = args.query
+        query = f"<research_request>\n{args.query}\n</research_request>"
     else:
-        query = input("What would you like to research? ")
+        query = (
+            f"<research_request>\n{input("What would you like to research? ")}\n</research_request>"
+        )
 
-    # add_trace_processor(OpenAIAgentsTracingProcessor())
+    add_trace_processor(OpenAIAgentsTracingProcessor())
     add_trace_processor(FileTraceProcessor(log_dir="traces", log_file="trace.log"))
     debug_mode = config.debug.enabled
 
@@ -116,7 +135,7 @@ async def main() -> None:
                 "args": ["-y", "@modelcontextprotocol/server-filesystem", temp_dir],
             },
             tool_filter=context_aware_filter,
-        cache_tools_list=True
+            cache_tools_list=True,
         )
         canonical_tmp_dir = os.path.realpath(temp_dir)
 
@@ -128,13 +147,11 @@ async def main() -> None:
         )
         async with fs_server, dataprep_server:
             # trace_id = gen_trace_id()
-            #with trace(workflow_name="SSE Example", trace_id=trace_id):
+            # with trace(workflow_name="SSE Example", trace_id=trace_id):
             client = OpenAI()
             vector_store_id = get_vector_store_id_by_name(client, config.vector_store.name)
             if vector_store_id is None:
-                vector_store_obj = client.vector_stores.create(
-                    name=config.vector_store.name
-                )
+                vector_store_obj = client.vector_stores.create(name=config.vector_store.name)
                 config.vector_store.vector_store_id = vector_store_obj.id
                 print(f"Vector store created: '{config.vector_store.vector_store_id}'")
             else:
@@ -146,14 +163,22 @@ async def main() -> None:
                 vector_store_id=config.vector_store.vector_store_id,
                 temp_dir=canonical_tmp_dir,
                 max_search_plan=config.agents.max_search_plan,
-                output_dir=config.agents.output_dir)
-            
+                output_dir=config.agents.output_dir,
+            )
+
             # print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
-            await manager_class().run(dataprep_server=dataprep_server, fs_server=fs_server, query=query, research_info=research_info)
+            await manager_class().run(
+                dataprep_server=dataprep_server,
+                fs_server=fs_server,
+                query=query,
+                research_info=research_info,
+            )
+
 
 def cli_main():
     """Sync entrypoint for Poetry scripts."""
     asyncio.run(main())
+
 
 if __name__ == "__main__":
     cli_main()

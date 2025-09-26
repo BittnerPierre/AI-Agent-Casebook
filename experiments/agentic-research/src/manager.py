@@ -6,20 +6,27 @@ import time
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace
+from agents.mcp import MCPServer
 
 from .agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
+from .agents.schemas import ResearchInfo
 from .agents.search_agent import search_agent
 from .agents.writer_agent import ReportData, writer_agent
 from .printer import Printer
-from .agents.schemas import ResearchInfo
-from agents.mcp import MCPServer
 
-class ResearchManager:
+
+class StandardResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, fs_server: MCPServer, dataprep_server: MCPServer, query: str, research_info: ResearchInfo) -> None:
+    async def run(
+        self,
+        fs_server: MCPServer,
+        dataprep_server: MCPServer,
+        query: str,
+        research_info: ResearchInfo,
+    ) -> None:
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id):
             self.printer.update_item(

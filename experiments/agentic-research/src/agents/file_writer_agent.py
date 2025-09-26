@@ -1,29 +1,28 @@
 # Agent used to synthesize a final report from the individual summaries.
 from pydantic import BaseModel
-from ..config import get_config
-from agents import Agent
+
+from agents import Agent, RunContextWrapper
+from agents.agent import StopAtTools
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.mcp import MCPServer
-from agents import RunContextWrapper
-from .schemas import FileFinalReport, ResearchInfo, ReportData
-from .utils import load_prompt_from_file, save_final_report
-from agents import ModelSettings
-from agents.agent import StopAtTools
+from agents.models import get_default_model_settings
+
+from ..config import get_config
+from .schemas import ReportData, ResearchInfo
+from .utils import extract_model_name, load_prompt_from_file, save_report
 
 prompt_file = "write_prompt.md"
+
 
 def dynamic_instructions(
     context: RunContextWrapper[ResearchInfo], agent: Agent[ResearchInfo]
 ) -> str:
-    
     prompt_template = load_prompt_from_file("prompts", prompt_file)
 
     if prompt_template is None:
         raise ValueError(f"{prompt_file} is None")
 
-    dynamic_prompt = prompt_template.format(
-        RECOMMENDED_PROMPT_PREFIX=RECOMMENDED_PROMPT_PREFIX
-    )
+    dynamic_prompt = prompt_template.format(RECOMMENDED_PROMPT_PREFIX=RECOMMENDED_PROMPT_PREFIX)
 
     prompt = (
         f"{dynamic_prompt}"
@@ -36,9 +35,6 @@ def dynamic_instructions(
     return prompt
 
 
-from typing import List, Optional
-from pydantic import BaseModel
-
 class WriterDirective(BaseModel):
     # research_topic: str
     # """Main research topic."""
@@ -49,7 +45,7 @@ class WriterDirective(BaseModel):
     # agenda_items: List[str]
     # """List of agenda items or report sections to cover."""
 
-    search_results: List[str]
+    search_results: list[str]
     """List of filenames resulting from research (e.g., .txt, .md, .pdf files)."""
 
     class Config:
@@ -58,7 +54,7 @@ class WriterDirective(BaseModel):
                 "search_results": [
                     "impact_ai_education.pdf",
                     "bias_and_accessibility.txt",
-                    "case_study_universities.md"
+                    "case_study_universities.md",
                 ]
             }
         }
@@ -81,32 +77,28 @@ class WriterDirective(BaseModel):
         # }
 
 
-
-
-
-def create_writer_agent(mcp_servers:list[MCPServer]=None, save_report:bool=True):
+def create_writer_agent(mcp_servers: list[MCPServer] = None, do_save_report: bool = True):
     mcp_servers = mcp_servers if mcp_servers else []
 
     config = get_config()
     model = config.models.writer_model
 
+    model_name = extract_model_name(model)
+    model_settings = get_default_model_settings(model_name)
+
     save_agent = None
-    if save_report:
+    if do_save_report:
         save_agent = Agent(
             name="save_agent",
-            instructions="Save the final report",
+            instructions="Save the report",
             model=model,
             output_type=ReportData,
             tools=[
-                save_final_report,
+                save_report,
             ],
-            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_final_report"])
+            tool_use_behavior=StopAtTools(stop_at_tool_names=["save_report"]),
+            model_settings=model_settings,
         )
-
-    model_settings = ModelSettings(
-        #tool_choice="required",
-        metadata={"agent_type": "sub-agent", "trace_type": "agent"}
-    )
 
     writer_agent = Agent(
         name="writer_agent",
@@ -114,7 +106,11 @@ def create_writer_agent(mcp_servers:list[MCPServer]=None, save_report:bool=True)
         model=model,
         output_type=ReportData,
         mcp_servers=mcp_servers,
-        handoffs=[save_agent],
-        model_settings=model_settings
+        # handoffs=[save_agent],
+        # tools=[
+        #         save_report,
+        #     ],
+        model_settings=model_settings,
     )
+
     return writer_agent

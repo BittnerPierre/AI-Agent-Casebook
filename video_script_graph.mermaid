@@ -1,0 +1,35 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	planning(planning)
+	supervisor(supervisor)
+	writer(writer)
+	reviewer(reviewer)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> planning;
+	planning --> supervisor;
+	researcher_generate --> writer;
+	reviewer -.-> supervisor;
+	supervisor -.-> __end__;
+	supervisor -.-> researcher_retrieve;
+	supervisor -.-> writer;
+	writer -.-> reviewer;
+	subgraph researcher
+	researcher_retrieve(retrieve)
+	researcher_grade_documents(grade_documents)
+	researcher_generate(generate)
+	researcher_transform_query(transform_query)
+	researcher_web_search_node(web_search_node)
+	researcher_grade_documents -.-> researcher_generate;
+	researcher_grade_documents -.-> researcher_transform_query;
+	researcher_retrieve --> researcher_grade_documents;
+	researcher_transform_query --> researcher_web_search_node;
+	researcher_web_search_node --> researcher_generate;
+	end
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
