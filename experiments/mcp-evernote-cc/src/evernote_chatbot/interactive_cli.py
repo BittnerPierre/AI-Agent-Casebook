@@ -35,58 +35,64 @@ class ChatbotCLI:
 
     async def initialize(self) -> bool:
         """Initialize MCP client and Evernote handler."""
-        # Setup progress tracking with log file
+        # Setup progress tracking with log file (but don't start it yet)
         log_file = Path.home() / ".evernote_chatbot" / "debug.log"
         progress = self.formatter.init_progress_tracker(log_file)
 
         try:
-            progress.start()
-            progress.start_task("connect", "Connecting to Evernote MCP server...")
+            # Use progress only during initialization, then stop it
+            with progress:
+                progress.start_task("connect", "Connecting to Evernote MCP server...")
 
-            # Initialize MCP client
-            self.mcp_client = MCPClient(
-                container_name=self.config.container_name,
-                timeout=self.config.mcp_timeout,
-            )
+                # Initialize MCP client
+                self.mcp_client = MCPClient(
+                    container_name=self.config.container_name,
+                    timeout=self.config.mcp_timeout,
+                )
 
-            # Initialize connection
-            await self.mcp_client.initialize()
-            progress.update_task("connect", "Verifying MCP server capabilities...")
+                # Initialize connection
+                await self.mcp_client.initialize()
+                progress.update_task("connect", "Verifying MCP server capabilities...")
 
-            # List available tools
-            tools_list = await self.mcp_client.list_tools()
-            available_tool_names = [tool.name for tool in tools_list]
+                # List available tools
+                tools_list = await self.mcp_client.list_tools()
+                available_tool_names = [tool.name for tool in tools_list]
 
-            # Check for required tools
-            required_tools = {"createSearch", "getSearch", "getNote", "getNoteContent"}
-            missing_tools = required_tools - set(available_tool_names)
+                # Check for required tools
+                required_tools = {"createSearch", "getSearch", "getNote", "getNoteContent"}
+                missing_tools = required_tools - set(available_tool_names)
 
-            if missing_tools:
-                progress.fail_task("connect", f"Missing required tools: {', '.join(missing_tools)}")
-                return False
+                if missing_tools:
+                    progress.fail_task("connect", f"Missing required tools: {', '.join(missing_tools)}")
+                    return False
 
-            progress.update_task("connect", "Initializing Evernote handler...")
+                progress.update_task("connect", "Initializing Evernote handler...")
 
-            # Initialize Evernote handler
-            self.evernote_handler = EvernoteHandler(
-                mcp_client=self.mcp_client,
-                max_notes_per_query=self.config.max_notes_per_query,
-                allowed_notebooks=self.config.allowed_notebooks,
-                prefer_html=self.config.prefer_html,
-            )
+                # Initialize Evernote handler
+                self.evernote_handler = EvernoteHandler(
+                    mcp_client=self.mcp_client,
+                    max_notes_per_query=self.config.max_notes_per_query,
+                    allowed_notebooks=self.config.allowed_notebooks,
+                    prefer_html=self.config.prefer_html,
+                )
 
-            # Initialize session
-            self.session = ChatSession(
-                config=self.config,
-                save_history=self.config.save_history,
-                history_file=self.config.history_file,
-            )
+                # Initialize session
+                self.session = ChatSession(
+                    config=self.config,
+                    save_history=self.config.save_history,
+                    history_file=self.config.history_file,
+                )
 
-            progress.complete_task("connect", "Connected to Evernote MCP server!")
+                progress.complete_task("connect", "Connected to Evernote MCP server!")
+
+            # Progress tracker stops here - terminal is free for interactive prompts
             return True
 
         except Exception as e:
-            progress.fail_task("connect", f"Connection failed: {str(e)}")
+            if progress:
+                progress.fail_task("connect", f"Connection failed: {str(e)}")
+            else:
+                self.formatter.display_error(e, "initialization")
             return False
 
     async def run_interactive(self) -> None:
@@ -158,16 +164,25 @@ class ChatbotCLI:
             return
 
         try:
-            # Start progress tracking for search
-            self.formatter.start_progress_task("search", f"Searching for: {query}")
+            # Create a new progress context for this query
+            progress = self.formatter.progress
+            if progress:
+                with progress:
+                    progress.start_task("search", f"Searching for: {query}")
 
-            # Search for notes
-            search_result = await self.evernote_handler.search_notes(query)
-            self.formatter.complete_progress_task("search", f"Found {search_result.total_notes} notes")
+                    # Search for notes
+                    search_result = await self.evernote_handler.search_notes(query)
+                    progress.complete_task("search", f"Found {search_result.total_notes} notes")
+
+                    # Progress stops here, results display normally
+            else:
+                # Fallback if no progress system
+                self.formatter.display_info(f"Searching for: {query}")
+                search_result = await self.evernote_handler.search_notes(query)
 
             if search_result.total_notes == 0:
                 response = self.formatter.format_search_results(search_result)
-                self.formatter.show_final_results(response)
+                self.formatter.print_markdown(response)
                 self.session.add_assistant_message(f"No notes found for query: {query}")
                 return
 
@@ -208,16 +223,26 @@ class ChatbotCLI:
             # Get detailed content if requested
             if get_content:
                 note_count = len(search_result.notes)
-                self.formatter.start_progress_task("content", f"Retrieving content for {note_count} notes...")
 
-                note_guids = [note.guid for note in search_result.notes]
-                notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
+                # Use progress context for content retrieval
+                progress = self.formatter.progress
+                if progress:
+                    with progress:
+                        progress.start_task("content", f"Retrieving content for {note_count} notes...")
 
-                self.formatter.complete_progress_task("content", f"Retrieved content for {len(notes_with_content)} notes")
+                        note_guids = [note.guid for note in search_result.notes]
+                        notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
+
+                        progress.complete_task("content", f"Retrieved content for {len(notes_with_content)} notes")
+                else:
+                    # Fallback without progress
+                    self.formatter.display_info("Retrieving note contents...")
+                    note_guids = [note.guid for note in search_result.notes]
+                    notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
 
                 # Format and display results
                 response = self.formatter.format_search_results(search_result, notes_with_content)
-                self.formatter.show_final_results(response)
+                self.formatter.print_markdown(response)
 
                 # Create summary
                 summary_text = self._create_query_summary(query, search_result, notes_with_content)
@@ -225,7 +250,7 @@ class ChatbotCLI:
             else:
                 # Just show search results
                 response = self.formatter.format_search_results(search_result)
-                self.formatter.show_final_results(response)
+                self.formatter.print_markdown(response)
                 self.session.add_assistant_message(f"Found {search_result.total_notes} notes for: {query}")
 
         except Exception as e:
