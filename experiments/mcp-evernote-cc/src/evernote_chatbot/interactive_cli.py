@@ -5,6 +5,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+try:
+    import readline
+    readline.set_history_length(1000)
+except ImportError:
+    # readline not available on some systems
+    readline = None
+
 import typer
 from rich.console import Console
 from rich.prompt import Prompt
@@ -202,14 +209,18 @@ class ChatbotCLI:
                         progress.start_task("content", f"Retrieving content for {note_count} notes...")
 
                         note_guids = [note.guid for note in selected_notes]
-                        notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
+                        # Create metadata dict to avoid re-fetching
+                        existing_metadata = {note.guid: note for note in selected_notes}
+                        notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids, existing_metadata)
 
                         progress.complete_task("content", f"Retrieved content for {len(notes_with_content)} notes")
                 else:
                     # Fallback without progress
                     self.formatter.display_info("Retrieving note contents...")
                     note_guids = [note.guid for note in selected_notes]
-                    notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
+                    # Create metadata dict to avoid re-fetching
+                    existing_metadata = {note.guid: note for note in selected_notes}
+                    notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids, existing_metadata)
 
                 # Display results based on mode
                 if display_mode == "full":

@@ -92,13 +92,13 @@ async def search_evernote(query: str, get_content: bool = False, limit: int = 10
 
 
 def main():
-    """Main entry point for simple CLI."""
+    """Main entry point for Search CLI."""
     if len(sys.argv) < 2:
-        print("Usage: poetry run python -m evernote_chatbot.simple_cli \"your search query\" [--content] [--limit N]")
+        print("Usage: poetry run python -m evernote_chatbot.search_cli \"your search query\" [--content] [--limit N]")
         print("\nExamples:")
-        print('  poetry run python -m evernote_chatbot.simple_cli "LLM"')
-        print('  poetry run python -m evernote_chatbot.simple_cli "project planning" --content')
-        print('  poetry run python -m evernote_chatbot.simple_cli "meeting notes" --limit 5')
+        print('  poetry run python -m evernote_chatbot.search_cli "LLM"')
+        print('  poetry run python -m evernote_chatbot.search_cli "project planning" --content')
+        print('  poetry run python -m evernote_chatbot.search_cli "meeting notes" --limit 5')
         sys.exit(1)
 
     query = sys.argv[1]

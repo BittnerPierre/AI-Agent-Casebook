@@ -126,9 +126,10 @@ class ProperMCPClient:
         prefer_html: bool = False,
     ) -> Any:
         """Get full note content."""
-        arguments = {"noteGuid": note_guid}
-        if prefer_html:
-            arguments["format"] = "html"
+        arguments = {
+            "noteGuid": note_guid,
+            "format": "html" if prefer_html else "text"
+        }
         return await self.call_tool("getNoteContent", arguments)
 
     @property

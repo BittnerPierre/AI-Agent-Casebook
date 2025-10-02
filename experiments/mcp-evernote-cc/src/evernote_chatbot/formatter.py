@@ -64,7 +64,7 @@ class ResponseFormatter:
             summary_parts.append("---")
             summary_parts.append("💡 **Tip**: For detailed summaries, ask me to analyze specific notes by title or ask follow-up questions about the content.")
 
-        return "\\n".join(summary_parts)
+        return "\n".join(summary_parts)
 
     def format_note_content(
         self,
@@ -97,7 +97,7 @@ class ResponseFormatter:
         cleaned_content = self._clean_note_content(content)
         parts.append(cleaned_content)
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def format_summary_with_citations(
         self,
@@ -126,7 +126,7 @@ class ResponseFormatter:
                 citation = self._format_citation(note, i)
                 parts.append(citation)
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def display_search_results_table(self, search_result: SearchResult) -> None:
         """Display search results as a rich table."""
@@ -251,7 +251,7 @@ class ResponseFormatter:
                 f"**Note**: Search is limited to notebooks: {', '.join(sorted(self.config.allowed_notebooks))}",
             ])
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def _format_note_summary(
         self,
@@ -275,7 +275,7 @@ class ResponseFormatter:
                 parts.append("")
                 parts.append(preview)
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def _format_note_metadata_line(self, note: NoteMetadata) -> str:
         """Format metadata line for a note."""
@@ -310,7 +310,7 @@ class ResponseFormatter:
         if citation_parts:
             parts.append(f"    {' | '.join(citation_parts)}")
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def _create_content_preview(self, content: str) -> str:
         """Create a preview of note content."""
@@ -392,7 +392,7 @@ class ResponseFormatter:
             return self.format_note_content(metadata, content, include_metadata=True)
         else:
             # Fallback if content not available
-            return f"# {note.title}\\n\\n*Content could not be retrieved*"
+            return f"# {note.title}\n\n*Content could not be retrieved*"
 
     def format_multiple_notes_summary(
         self,
@@ -401,12 +401,14 @@ class ResponseFormatter:
     ) -> str:
         """Format multiple notes with summaries and clear separators."""
         parts = []
-        parts.append(f"## Selected {len(selected_notes)} Notes\\n")
+        parts.append(f"## Selected {len(selected_notes)} Notes")
 
         for i, note in enumerate(selected_notes, 1):
             # Clear separator between notes
             if i > 1:
-                parts.append("\\n" + "─" * 80 + "\\n")
+                parts.append("")
+                parts.append("─" * 80)
+                parts.append("")
 
             # Note header
             parts.append(f"### {i}. {note.title}")
@@ -430,10 +432,12 @@ class ResponseFormatter:
                 parts.append("")
 
         # Add tip for full content viewing
-        parts.append("\\n" + "─" * 80)
-        parts.append("\\n💡 **Tip**: To view full content of a note, search again and select just one note number.")
+        parts.append("")
+        parts.append("─" * 80)
+        parts.append("")
+        parts.append("💡 **Tip**: To view full content of a note, search again and select just one note number.")
 
-        return "\\n".join(parts)
+        return "\n".join(parts)
 
     def print_markdown(self, text: str) -> None:
         """Print text as markdown."""

@@ -255,38 +255,56 @@ class EvernoteHandler:
             raise Exception(f"Failed to get note content for {note_guid}: {e}")
 
     async def get_notes_with_content(
-        self, note_guids: list[str]
+        self, note_guids: list[str], existing_metadata: dict[str, NoteMetadata] | None = None
     ) -> dict[str, tuple[NoteMetadata, str]]:
         """
         Get multiple notes with their content in parallel.
 
         Args:
             note_guids: List of note GUIDs
+            existing_metadata: Optional dict of GUID -> NoteMetadata to avoid re-fetching
 
         Returns:
             Dict mapping GUID to (metadata, content) tuple
         """
-        # Fetch metadata and content in parallel
-        metadata_tasks = [self.get_note_metadata(guid) for guid in note_guids]
-        content_tasks = [self.get_note_content(guid) for guid in note_guids]
+        # Use existing metadata if provided, otherwise fetch it
+        if existing_metadata:
+            # Only fetch content, reuse existing metadata
+            content_tasks = [self.get_note_content(guid) for guid in note_guids]
+            content_results = await asyncio.gather(*content_tasks, return_exceptions=True)
 
-        metadata_results = await asyncio.gather(*metadata_tasks, return_exceptions=True)
-        content_results = await asyncio.gather(*content_tasks, return_exceptions=True)
+            results = {}
+            for i, guid in enumerate(note_guids):
+                if guid in existing_metadata:
+                    metadata = existing_metadata[guid]
+                    content = content_results[i]
 
-        results = {}
-        for i, guid in enumerate(note_guids):
-            metadata = metadata_results[i]
-            content = content_results[i]
+                    # Use available content or fallback message
+                    if isinstance(content, Exception) or content is None:
+                        content = "Note content not available (MCP server issue - try using search summaries instead)"
+                    results[guid] = (metadata, content)
+        else:
+            # Fetch metadata and content in parallel (fallback to original behavior)
+            metadata_tasks = [self.get_note_metadata(guid) for guid in note_guids]
+            content_tasks = [self.get_note_content(guid) for guid in note_guids]
 
-            # Skip only if metadata failed - we can work with missing content
-            if isinstance(metadata, Exception):
-                continue
+            metadata_results = await asyncio.gather(*metadata_tasks, return_exceptions=True)
+            content_results = await asyncio.gather(*content_tasks, return_exceptions=True)
 
-            if metadata:
-                # Use available content or fallback message
-                if isinstance(content, Exception) or content is None:
-                    content = "Note content not available (MCP server issue - try using search summaries instead)"
-                results[guid] = (metadata, content)
+            results = {}
+            for i, guid in enumerate(note_guids):
+                metadata = metadata_results[i]
+                content = content_results[i]
+
+                # Skip only if metadata failed - we can work with missing content
+                if isinstance(metadata, Exception):
+                    continue
+
+                if metadata:
+                    # Use available content or fallback message
+                    if isinstance(content, Exception) or content is None:
+                        content = "Note content not available (MCP server issue - try using search summaries instead)"
+                    results[guid] = (metadata, content)
 
         return results
 

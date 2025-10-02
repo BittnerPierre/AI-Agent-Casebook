@@ -15,8 +15,7 @@ class TestChatbotConfig:
         """Test default configuration values."""
         config = ChatbotConfig()
 
-        assert config.mcp_url == "https://localhost:3443/mcp"
-        assert config.mcp_headers == {}
+        assert config.container_name == "evernote-mcp-server-evernote-mcp-server-1"
         assert config.mcp_timeout == 30.0
         assert config.max_notes_per_query == 20
         assert config.allowed_notebooks == set()
@@ -26,12 +25,12 @@ class TestChatbotConfig:
         assert config.show_notebook is True
         assert config.max_content_preview == 200
         assert config.save_history is True
+        assert config.history_file is None
 
     def test_from_env(self):
         """Test creating config from environment variables."""
         env_vars = {
-            "MCP_URL": "https://example.com:8443/mcp",
-            "MCP_HEADERS": '{"Authorization": "Bearer token123"}',
+            "CONTAINER_NAME": "custom-evernote-container",
             "MCP_TIMEOUT": "60.0",
             "MAX_NOTES_PER_QUERY": "50",
             "ALLOWED_NOTEBOOKS": "Work,Personal,Research",
@@ -47,8 +46,7 @@ class TestChatbotConfig:
         with patch.dict(os.environ, env_vars, clear=True):
             config = ChatbotConfig.from_env()
 
-        assert config.mcp_url == "https://example.com:8443/mcp"
-        assert config.mcp_headers == {"Authorization": "Bearer token123"}
+        assert config.container_name == "custom-evernote-container"
         assert config.mcp_timeout == 60.0
         assert config.max_notes_per_query == 50
         assert config.allowed_notebooks == {"Work", "Personal", "Research"}
@@ -60,15 +58,6 @@ class TestChatbotConfig:
         assert config.save_history is False
         assert config.history_file == "/tmp/history.json"
 
-    def test_parse_headers_json_string(self):
-        """Test parsing headers from JSON string."""
-        config = ChatbotConfig(mcp_headers='{"Content-Type": "application/json"}')
-        assert config.mcp_headers == {"Content-Type": "application/json"}
-
-    def test_parse_headers_invalid_json(self):
-        """Test parsing invalid JSON headers."""
-        config = ChatbotConfig(mcp_headers='{invalid json}')
-        assert config.mcp_headers == {}
 
     def test_parse_notebooks_string(self):
         """Test parsing notebooks from comma-separated string."""
@@ -90,16 +79,12 @@ class TestChatbotConfig:
         base_config = ChatbotConfig(max_notes_per_query=10)
 
         merged = base_config.merge_cli_args(
-            mcp_url="https://new.example.com/mcp",
             notebooks="Project1,Project2",
-            headers='{"X-Custom": "value"}',
             max_notes_per_query=30,
             prefer_html=True,
         )
 
-        assert merged.mcp_url == "https://new.example.com/mcp"
         assert merged.allowed_notebooks == {"Project1", "Project2"}
-        assert merged.mcp_headers == {"X-Custom": "value"}
         assert merged.max_notes_per_query == 30
         assert merged.prefer_html is True
 
@@ -111,33 +96,31 @@ class TestChatbotConfig:
         base_config = ChatbotConfig(max_notes_per_query=10)
 
         merged = base_config.merge_cli_args(
-            mcp_url=None,
+            container_name=None,
             max_notes_per_query=20,
             prefer_html=None,
         )
 
-        assert merged.mcp_url == "https://localhost:3443/mcp"  # unchanged
+        assert merged.container_name == "evernote-mcp-server-evernote-mcp-server-1"  # unchanged
         assert merged.max_notes_per_query == 20  # changed
         assert merged.prefer_html is False  # unchanged
 
     def test_to_display_dict(self):
         """Test converting config to display dictionary."""
         config = ChatbotConfig(
-            mcp_url="https://test.com/mcp",
+            container_name="test-container",
             max_notes_per_query=15,
             allowed_notebooks={"Work", "Personal"},
             prefer_html=True,
-            mcp_headers={"Auth": "token"},
             mcp_timeout=45.0,
         )
 
         display_dict = config.to_display_dict()
 
-        assert display_dict["MCP URL"] == "https://test.com/mcp"
+        assert display_dict["Container Name"] == "test-container"
         assert display_dict["Max Notes"] == "15"
         assert display_dict["Allowed Notebooks"] == "Personal, Work"
         assert display_dict["Prefer HTML"] == "Yes"
-        assert display_dict["Custom Headers"] == "Yes"
         assert display_dict["Timeout"] == "45.0s"
 
     def test_validation_max_notes_positive(self):
