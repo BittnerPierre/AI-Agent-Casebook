@@ -214,6 +214,10 @@ class EvernoteHandler:
                     # Try to parse as JSON first
                     data = json.loads(raw_content)
                     if isinstance(data, dict):
+                        # Check if there's an error first - fall back to None so we can try other methods
+                        if data.get("error"):
+                            return None  # Let caller handle fallback to search content
+
                         # Look for actual content in various possible fields
                         content = (
                             data.get("content") or
@@ -223,9 +227,19 @@ class EvernoteHandler:
                         )
                         if content and isinstance(content, str):
                             return content
+                        # Check if we have nested data structure
+                        if "data" in data and isinstance(data["data"], dict):
+                            nested_data = data["data"]
+                            nested_content = (
+                                nested_data.get("content") or
+                                nested_data.get("text") or
+                                nested_data.get("body")
+                            )
+                            if nested_content and isinstance(nested_content, str):
+                                return nested_content
                         # If no content field found, it might be metadata only
                         if "status" in data and "timestamp" in data:
-                            return "Note content could not be retrieved - may be a web capture or protected content."
+                            return None  # Let caller handle fallback
                     return raw_content
                 except (json.JSONDecodeError, TypeError):
                     # If it's not JSON, treat as plain text
@@ -264,11 +278,14 @@ class EvernoteHandler:
             metadata = metadata_results[i]
             content = content_results[i]
 
-            # Skip if either operation failed
-            if isinstance(metadata, Exception) or isinstance(content, Exception):
+            # Skip only if metadata failed - we can work with missing content
+            if isinstance(metadata, Exception):
                 continue
 
-            if metadata and content:
+            if metadata:
+                # Use available content or fallback message
+                if isinstance(content, Exception) or content is None:
+                    content = "Note content not available (MCP server issue - try using search summaries instead)"
                 results[guid] = (metadata, content)
 
         return results
