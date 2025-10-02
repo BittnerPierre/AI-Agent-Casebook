@@ -381,6 +381,60 @@ class ResponseFormatter:
         for tip in tips:
             self.console.print(tip)
 
+    def format_single_note_full(
+        self,
+        note: "NoteMetadata",
+        notes_with_content: dict[str, tuple["NoteMetadata", str]],
+    ) -> str:
+        """Format a single note with full content display."""
+        if note.guid in notes_with_content:
+            metadata, content = notes_with_content[note.guid]
+            return self.format_note_content(metadata, content, include_metadata=True)
+        else:
+            # Fallback if content not available
+            return f"# {note.title}\\n\\n*Content could not be retrieved*"
+
+    def format_multiple_notes_summary(
+        self,
+        selected_notes: list["NoteMetadata"],
+        notes_with_content: dict[str, tuple["NoteMetadata", str]],
+    ) -> str:
+        """Format multiple notes with summaries and clear separators."""
+        parts = []
+        parts.append(f"## Selected {len(selected_notes)} Notes\\n")
+
+        for i, note in enumerate(selected_notes, 1):
+            # Clear separator between notes
+            if i > 1:
+                parts.append("\\n" + "─" * 80 + "\\n")
+
+            # Note header
+            parts.append(f"### {i}. {note.title}")
+
+            # Metadata line
+            metadata_line = self._format_note_metadata_line(note)
+            if metadata_line:
+                parts.append(f"*{metadata_line}*")
+
+            # Content preview
+            if note.guid in notes_with_content:
+                _, content = notes_with_content[note.guid]
+                preview = self._create_content_preview(content)
+                if preview:
+                    parts.append("")
+                    parts.append(preview)
+                    parts.append("")
+            else:
+                parts.append("")
+                parts.append("> *Content could not be retrieved*")
+                parts.append("")
+
+        # Add tip for full content viewing
+        parts.append("\\n" + "─" * 80)
+        parts.append("\\n💡 **Tip**: To view full content of a note, search again and select just one note number.")
+
+        return "\\n".join(parts)
+
     def print_markdown(self, text: str) -> None:
         """Print text as markdown."""
         try:

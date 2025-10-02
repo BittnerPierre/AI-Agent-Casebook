@@ -189,40 +189,11 @@ class ChatbotCLI:
             # Display search results table (this stays visible)
             self.formatter.display_search_results_table(search_result)
 
-            # Ask if user wants detailed content
-            get_content = False
-            try:
-                if search_result.total_notes <= 5:
-                    response = Prompt.ask(
-                        "\\n[yellow]Get detailed content for these notes?[/yellow]",
-                        choices=["yes", "no", "y", "n"],
-                        default="yes",
-                        console=self.console
-                    )
-                    get_content = response.lower() in ("yes", "y")
-                else:
-                    response = Prompt.ask(
-                        f"\\n[yellow]Found {search_result.total_notes} notes. Get content for how many?[/yellow]",
-                        default="5",
-                        console=self.console
-                    )
-                    try:
-                        limit = int(response)
-                        if limit > 0:
-                            search_result.notes = search_result.notes[:limit]
-                            get_content = True
-                        else:
-                            get_content = False
-                    except ValueError:
-                        get_content = False
-            except Exception as e:
-                # If prompt fails, default to False
-                print(f"Input error: {e}")
-                get_content = False
+            # Smart note selection
+            selected_notes, display_mode = await self._get_note_selection(search_result)
 
-            # Get detailed content if requested
-            if get_content:
-                note_count = len(search_result.notes)
+            if selected_notes:
+                note_count = len(selected_notes)
 
                 # Use progress context for content retrieval
                 progress = self.formatter.progress
@@ -230,22 +201,28 @@ class ChatbotCLI:
                     with progress:
                         progress.start_task("content", f"Retrieving content for {note_count} notes...")
 
-                        note_guids = [note.guid for note in search_result.notes]
+                        note_guids = [note.guid for note in selected_notes]
                         notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
 
                         progress.complete_task("content", f"Retrieved content for {len(notes_with_content)} notes")
                 else:
                     # Fallback without progress
                     self.formatter.display_info("Retrieving note contents...")
-                    note_guids = [note.guid for note in search_result.notes]
+                    note_guids = [note.guid for note in selected_notes]
                     notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
 
-                # Format and display results
-                response = self.formatter.format_search_results(search_result, notes_with_content)
+                # Display results based on mode
+                if display_mode == "full":
+                    # Single note - full content
+                    response = self.formatter.format_single_note_full(selected_notes[0], notes_with_content)
+                else:
+                    # Multiple notes - summaries with separators
+                    response = self.formatter.format_multiple_notes_summary(selected_notes, notes_with_content)
+
                 self.formatter.print_markdown(response)
 
-                # Create summary
-                summary_text = self._create_query_summary(query, search_result, notes_with_content)
+                # Create summary for session
+                summary_text = self._create_query_summary(query, search_result, notes_with_content, selected_notes)
                 self.session.add_assistant_message(summary_text)
             else:
                 # Just show search results
@@ -264,6 +241,7 @@ class ChatbotCLI:
         query: str,
         search_result,
         notes_with_content: dict[str, Any],
+        selected_notes: list | None = None,
     ) -> str:
         """Create a summary of the query results."""
         summary_parts = [
@@ -272,8 +250,11 @@ class ChatbotCLI:
             f"Retrieved content for {len(notes_with_content)} notes",
         ]
 
-        # Add note titles
-        if notes_with_content:
+        # Add note titles from selected notes or content
+        if selected_notes:
+            titles = [note.title for note in selected_notes]
+            summary_parts.append(f"Selected: {', '.join(titles)}")
+        elif notes_with_content:
             titles = [metadata.title for metadata, _ in notes_with_content.values()]
             summary_parts.append(f"Notes: {', '.join(titles)}")
 
@@ -340,6 +321,72 @@ Just type your question naturally:
             timestamp = message.get("timestamp", "Unknown time")
             self.console.print(f"\\n{i}. [{role}] ({timestamp})")
             self.console.print(f"   {message['content']}")
+
+    async def _get_note_selection(self, search_result):
+        """Get user's note selection with smart parsing."""
+        try:
+            max_notes = len(search_result.notes)
+            self.console.print(f"\\n[dim]Examples: '1' (full note 1), '1,3' (summary of notes 1&3), '1-3' (summary notes 1 to 3)[/dim]")
+
+            response = Prompt.ask(
+                f"\\n[yellow]Which notes to display (1-{max_notes})?[/yellow]",
+                default="1" if max_notes == 1 else "1,2",
+                console=self.console
+            )
+
+            # Parse selection
+            selected_indices = self._parse_selection(response, max_notes)
+            if not selected_indices:
+                return [], "none"
+
+            # Determine display mode
+            if len(selected_indices) == 1:
+                display_mode = "full"
+            else:
+                display_mode = "summary"
+
+            # Get selected notes
+            selected_notes = [search_result.notes[i-1] for i in selected_indices]
+            return selected_notes, display_mode
+
+        except Exception as e:
+            self.formatter.display_info(f"Selection error: {e}. Showing first note.")
+            return [search_result.notes[0]] if search_result.notes else [], "full"
+
+    def _parse_selection(self, selection: str, max_notes: int) -> list[int]:
+        """Parse user selection like '1', '1,3', '1-3' into list of indices."""
+        try:
+            indices = []
+            selection = selection.strip()
+
+            # Handle comma-separated: "1,3,5"
+            if ',' in selection:
+                parts = selection.split(',')
+                for part in parts:
+                    part = part.strip()
+                    if '-' in part:
+                        # Handle ranges within comma list: "1,3-5,7"
+                        start, end = map(int, part.split('-'))
+                        indices.extend(range(start, min(end + 1, max_notes + 1)))
+                    else:
+                        num = int(part)
+                        if 1 <= num <= max_notes:
+                            indices.append(num)
+            # Handle range: "1-3"
+            elif '-' in selection:
+                start, end = map(int, selection.split('-'))
+                indices = list(range(start, min(end + 1, max_notes + 1)))
+            # Handle single number: "1"
+            else:
+                num = int(selection)
+                if 1 <= num <= max_notes:
+                    indices = [num]
+
+            # Remove duplicates and sort
+            return sorted(list(set(indices)))
+
+        except (ValueError, IndexError):
+            return []
 
     async def cleanup(self) -> None:
         """Cleanup resources."""
