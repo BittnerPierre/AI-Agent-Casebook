@@ -203,18 +203,39 @@ class EvernoteHandler:
                 return None
 
             # Extract content from response
-            content = ""
+            raw_content = ""
             if response.content and len(response.content) > 0:
-                content = response.content[0].text
+                raw_content = response.content[0].text
 
-            if isinstance(content, str):
-                return content
+            # Handle JSON response from MCP server
+            if isinstance(raw_content, str):
+                try:
+                    import json
+                    # Try to parse as JSON first
+                    data = json.loads(raw_content)
+                    if isinstance(data, dict):
+                        # Look for actual content in various possible fields
+                        content = (
+                            data.get("content") or
+                            data.get("text") or
+                            data.get("body") or
+                            data.get("data", {}).get("content") if isinstance(data.get("data"), dict) else None
+                        )
+                        if content and isinstance(content, str):
+                            return content
+                        # If no content field found, it might be metadata only
+                        if "status" in data and "timestamp" in data:
+                            return "Note content could not be retrieved - may be a web capture or protected content."
+                    return raw_content
+                except (json.JSONDecodeError, TypeError):
+                    # If it's not JSON, treat as plain text
+                    return raw_content
 
-            # If it's structured data, try to extract content
-            if isinstance(content, dict):
-                return content.get("content", str(content))
+            # Handle other data types
+            if isinstance(raw_content, dict):
+                return raw_content.get("content", "No content available")
 
-            return str(content)
+            return str(raw_content) if raw_content else "No content available"
 
         except Exception as e:
             raise Exception(f"Failed to get note content for {note_guid}: {e}")
@@ -339,8 +360,13 @@ class EvernoteHandler:
                 elif isinstance(note_data["tags"], str):
                     tags = [note_data["tags"]]
 
-            # Extract notebook
-            notebook_name = note_data.get("notebookName") or note_data.get("notebook")
+            # Extract notebook name - only use if actually provided
+            notebook_name = (
+                note_data.get("notebookName") or
+                note_data.get("notebook") or
+                note_data.get("notebook_name")
+            )
+
 
             # Extract content length
             content_length = note_data.get("contentLength")
@@ -362,3 +388,4 @@ class EvernoteHandler:
 
         except Exception:
             return None
+

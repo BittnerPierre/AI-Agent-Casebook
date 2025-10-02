@@ -338,6 +338,16 @@ class ResponseFormatter:
         if not content:
             return ""
 
+        # Truncate very long content first to avoid processing massive texts
+        max_display_length = 5000  # ~1000-1500 words
+        if len(content) > max_display_length:
+            content = content[:max_display_length].rstrip()
+            # Try to end at a sentence boundary
+            last_period = content.rfind('. ')
+            if last_period > max_display_length * 0.8:
+                content = content[:last_period + 1]
+            content += "\n\n[Content truncated - note is longer than display limit]"
+
         # Remove HTML tags if present
         content = re.sub(r'<[^>]+>', '', content)
 
@@ -347,8 +357,13 @@ class ResponseFormatter:
         content = content.replace('&gt;', '>')
         content = content.replace('&amp;', '&')
 
-        # Normalize whitespace
-        content = re.sub(r'\\s+', ' ', content)
+        # Clean up JSON-like content that might have leaked through
+        if content.startswith('{"') and '"status"' in content and '"timestamp"' in content:
+            return "Note content appears to be metadata only - may be a web capture or protected content."
+
+        # Normalize whitespace but preserve line breaks
+        content = re.sub(r'[ \t]+', ' ', content)  # Multiple spaces/tabs to single space
+        content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)  # Multiple newlines to double newline
         content = content.strip()
 
         return content
