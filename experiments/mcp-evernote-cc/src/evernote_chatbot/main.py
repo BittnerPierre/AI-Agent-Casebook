@@ -3,7 +3,7 @@
 import asyncio
 import sys
 
-from .cli import ChatbotCLI
+from .interactive_cli import ChatbotCLI
 from .config import ChatbotConfig
 
 

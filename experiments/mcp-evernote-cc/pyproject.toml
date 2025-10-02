@@ -12,7 +12,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.scripts]
 evernote-chat = "src.evernote_chatbot.main:main"
-evernote-search = "src.evernote_chatbot.simple_cli:main"
+evernote-search = "src.evernote_chatbot.search_cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"

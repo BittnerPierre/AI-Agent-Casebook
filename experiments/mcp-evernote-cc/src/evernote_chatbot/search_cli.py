@@ -5,7 +5,7 @@ import sys
 
 from .config import ChatbotConfig
 from .evernote_handler import EvernoteHandler
-from .proper_mcp_client import ProperMCPClient
+from .mcp_client import ProperMCPClient
 
 
 async def search_evernote(query: str, get_content: bool = False, limit: int = 10) -> None:

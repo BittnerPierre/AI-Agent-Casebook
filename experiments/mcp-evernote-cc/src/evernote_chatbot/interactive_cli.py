@@ -11,7 +11,7 @@ from rich.prompt import Prompt
 from .config import ChatbotConfig
 from .evernote_handler import EvernoteHandler
 from .formatter import ResponseFormatter
-from .proper_mcp_client import ProperMCPClient as MCPClient
+from .mcp_client import ProperMCPClient as MCPClient
 from .session import ChatSession
 
 app = typer.Typer(
