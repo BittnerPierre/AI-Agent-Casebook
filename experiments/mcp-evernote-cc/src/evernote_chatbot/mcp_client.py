@@ -35,13 +35,13 @@ class ProperMCPClient:
         if self._initialized:
             return
 
-        # Create server parameters
+        # Create server parameters with stderr suppressed
         server_params = StdioServerParameters(
             command="docker",
             args=[
                 "exec", "-i", "--tty=false",
                 self.container_name,
-                "node", "mcp-server.js"
+                "sh", "-c", "node mcp-server.js 2>/dev/null"
             ]
         )
 
