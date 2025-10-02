@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -34,8 +35,13 @@ class ChatbotCLI:
 
     async def initialize(self) -> bool:
         """Initialize MCP client and Evernote handler."""
+        # Setup progress tracking with log file
+        log_file = Path.home() / ".evernote_chatbot" / "debug.log"
+        progress = self.formatter.init_progress_tracker(log_file)
+
         try:
-            self.formatter.display_info("Connecting to Evernote MCP server...")
+            progress.start()
+            progress.start_task("connect", "Connecting to Evernote MCP server...")
 
             # Initialize MCP client
             self.mcp_client = MCPClient(
@@ -45,6 +51,7 @@ class ChatbotCLI:
 
             # Initialize connection
             await self.mcp_client.initialize()
+            progress.update_task("connect", "Verifying MCP server capabilities...")
 
             # List available tools
             tools_list = await self.mcp_client.list_tools()
@@ -55,9 +62,10 @@ class ChatbotCLI:
             missing_tools = required_tools - set(available_tool_names)
 
             if missing_tools:
-                self.formatter.display_warning(
-                    f"Missing required tools: {', '.join(missing_tools)}"
-                )
+                progress.fail_task("connect", f"Missing required tools: {', '.join(missing_tools)}")
+                return False
+
+            progress.update_task("connect", "Initializing Evernote handler...")
 
             # Initialize Evernote handler
             self.evernote_handler = EvernoteHandler(
@@ -74,11 +82,11 @@ class ChatbotCLI:
                 history_file=self.config.history_file,
             )
 
-            self.formatter.display_success("Connected to Evernote MCP server!")
+            progress.complete_task("connect", "Connected to Evernote MCP server!")
             return True
 
         except Exception as e:
-            self.formatter.display_error(e, "initialization")
+            progress.fail_task("connect", f"Connection failed: {str(e)}")
             return False
 
     async def run_interactive(self) -> None:
@@ -150,19 +158,20 @@ class ChatbotCLI:
             return
 
         try:
-            # Show processing indicator
-            self.formatter.display_info(f"Searching for: {query}")
+            # Start progress tracking for search
+            self.formatter.start_progress_task("search", f"Searching for: {query}")
 
             # Search for notes
             search_result = await self.evernote_handler.search_notes(query)
+            self.formatter.complete_progress_task("search", f"Found {search_result.total_notes} notes")
 
             if search_result.total_notes == 0:
                 response = self.formatter.format_search_results(search_result)
-                self.formatter.print_markdown(response)
+                self.formatter.show_final_results(response)
                 self.session.add_assistant_message(f"No notes found for query: {query}")
                 return
 
-            # Display search results table
+            # Display search results table (this stays visible)
             self.formatter.display_search_results_table(search_result)
 
             # Ask if user wants detailed content
@@ -198,14 +207,17 @@ class ChatbotCLI:
 
             # Get detailed content if requested
             if get_content:
-                self.formatter.display_info("Retrieving note contents...")
+                note_count = len(search_result.notes)
+                self.formatter.start_progress_task("content", f"Retrieving content for {note_count} notes...")
 
                 note_guids = [note.guid for note in search_result.notes]
                 notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids)
 
+                self.formatter.complete_progress_task("content", f"Retrieved content for {len(notes_with_content)} notes")
+
                 # Format and display results
                 response = self.formatter.format_search_results(search_result, notes_with_content)
-                self.formatter.print_markdown(response)
+                self.formatter.show_final_results(response)
 
                 # Create summary
                 summary_text = self._create_query_summary(query, search_result, notes_with_content)
@@ -213,7 +225,7 @@ class ChatbotCLI:
             else:
                 # Just show search results
                 response = self.formatter.format_search_results(search_result)
-                self.formatter.print_markdown(response)
+                self.formatter.show_final_results(response)
                 self.session.add_assistant_message(f"Found {search_result.total_notes} notes for: {query}")
 
         except Exception as e:

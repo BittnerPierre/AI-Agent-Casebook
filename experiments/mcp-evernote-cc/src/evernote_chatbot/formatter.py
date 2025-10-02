@@ -1,6 +1,7 @@
 """Response formatting for Evernote chatbot with rich console output."""
 
 import re
+from pathlib import Path
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -8,6 +9,7 @@ from rich.table import Table
 
 from .config import ChatbotConfig
 from .evernote_handler import NoteMetadata, SearchResult
+from .progress import ProgressTracker
 
 
 class ResponseFormatter:
@@ -16,6 +18,13 @@ class ResponseFormatter:
     def __init__(self, config: ChatbotConfig, console: Console | None = None):
         self.config = config
         self.console = console or Console()
+        self.progress: ProgressTracker | None = None
+
+    def init_progress_tracker(self, log_file: Path | None = None) -> ProgressTracker:
+        """Initialize and return progress tracker."""
+        if not self.progress:
+            self.progress = ProgressTracker(self.console, log_file)
+        return self.progress
 
     def format_search_results(
         self,
@@ -189,6 +198,41 @@ class ResponseFormatter:
     def display_warning(self, message: str) -> None:
         """Display a warning message."""
         self.console.print(f"[yellow]⚠ {message}[/yellow]")
+
+    # Progress-aware methods
+    def start_progress_task(self, task_id: str, message: str, hide_when_done: bool = True) -> None:
+        """Start a progress task with spinner."""
+        if self.progress:
+            self.progress.start_task(task_id, message, hide_when_done)
+        else:
+            # Fallback to simple display
+            self.display_info(message)
+
+    def update_progress_task(self, task_id: str, message: str) -> None:
+        """Update progress task message."""
+        if self.progress:
+            self.progress.update_task(task_id, message)
+
+    def complete_progress_task(self, task_id: str, final_message: str | None = None) -> None:
+        """Complete progress task."""
+        if self.progress:
+            self.progress.complete_task(task_id, final_message)
+
+    def fail_progress_task(self, task_id: str, error_message: str) -> None:
+        """Mark progress task as failed."""
+        if self.progress:
+            self.progress.fail_task(task_id, error_message)
+        else:
+            # Fallback to error display
+            self.display_error(Exception(error_message))
+
+    def show_final_results(self, content) -> None:
+        """Show final results and clear progress indicators."""
+        if self.progress:
+            self.progress.show_final_result(content)
+        else:
+            # Fallback to console print
+            self.console.print(content)
 
     def _format_no_results(self, query: str) -> str:
         """Format message when no results are found."""
