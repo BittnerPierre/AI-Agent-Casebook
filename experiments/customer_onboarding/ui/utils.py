@@ -280,11 +280,15 @@ def get_conversation_history_for_agent(messages: List[Dict]) -> List[Dict]:
 
 async def generate_response_stream(agent: Agent, prompt: str) -> AsyncGenerator[Dict, None]:
     """Yields token deltas and agent handover updates."""
-    result = Runner.run_streamed(agent, input=prompt)
+    # TODO: Add MCP server support for streaming
+    # For now, run without MCP server
+    from my_agents import UserProfile
+
+    result = Runner.run_streamed(agent, input=prompt, context=UserProfile())
     current_agent = agent.name
 
     async for event in result.stream_events():
-        
+
         if event.type == "agent_updated_stream_event":
             new_agent = event.new_agent.name
             if new_agent != current_agent:
@@ -304,20 +308,25 @@ def process_handoffs(result) -> List[str]:
 
 async def get_agent_response(agent: Agent, prompt: str, stream: bool = False) -> Dict:
     """Unified function to get agent response with optional streaming."""
+    # Import here to avoid circular imports
+    from my_agents import UserProfile
+
     if stream:
         generator = generate_response_stream(agent, prompt)
         full_response = ""
         steps = []
-        
+
         async for chunk in generator:
             if "delta" in chunk:
                 full_response += chunk["delta"]
             elif "step" in chunk:
                 steps.append(chunk["step"])
-        
+
         return {"response": full_response, "steps": steps}
     else:
-        result = await Runner.run(agent, input=prompt)
+        # TODO: Add MCP server support
+        # For now, run without MCP server
+        result = await Runner.run(agent, input=prompt, context=UserProfile())
         steps = process_handoffs(result)
         return {"response": result.final_output, "steps": steps}
 

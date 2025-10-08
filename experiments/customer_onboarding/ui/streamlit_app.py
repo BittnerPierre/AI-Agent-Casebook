@@ -4,14 +4,16 @@ It handles the web interface, chat display, and agent responses.
 """
 import sys
 import os
-# Add root to path for Streamlit cloud deployment
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from pathlib import Path
 
+# Add parent directory to path for imports
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir))
 
 import streamlit as st
 
-from ..my_agents.agents import create_agent
-from .utils import (
+from my_agents import create_agent
+from ui.utils import (
     initialize_session_state,
     load_css,
     render_header,
@@ -43,9 +45,8 @@ def main() -> None:
     initialize_session_state()
     display_chat_history()
     
-    # Create the agent and manage chat with model passed as an argument
-    model = st.session_state.get("model")
-    agent = create_agent(model=model)
+    # Create the agent and manage chat
+    agent = create_agent()
     handle_chat_interaction(agent)
 
 

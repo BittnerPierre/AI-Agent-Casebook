@@ -1,5 +1,6 @@
 
 from math import e
+import asyncio
 
 from getpass import getpass
 from dotenv import load_dotenv, find_dotenv
@@ -348,6 +349,8 @@ def _create_agents_with_mcp(server) -> Agent[UserProfile]:
     )
 
     # Customer Onboarding Agent
+    mcp_servers = [server] if server is not None else []
+
     customer_onboarding_agent = Agent[UserProfile](
         name="Customer onboarding assistant",
         instructions=(
@@ -361,15 +364,55 @@ def _create_agents_with_mcp(server) -> Agent[UserProfile]:
         ),
         input_guardrails=[sensitive_data_guardrail],  # note this is a list of guardrails
         handoffs=[faq_agent, eligibility_agent, problem_solver_agent],
-        mcp_servers=[server],
+        mcp_servers=mcp_servers,
     )
     return customer_onboarding_agent
 
 def create_agent() -> Agent[UserProfile]:
-
-    # CODE HERE TO GET TOKEN AND CREATE MCP SERVER
-
+    """
+    Create the customer onboarding agent without MCP server.
+    The MCP server should be initialized when running the agent.
+    """
     return _create_agents_with_mcp(None)
+
+
+async def run_agent_with_mcp(agent: Agent[UserProfile], conversation: list[dict[str, str]], context: UserProfile = None):
+    """
+    Run the agent with HubSpot MCP server connection.
+
+    Args:
+        agent: The agent to run
+        conversation: The conversation history
+        context: Optional user profile context
+
+    Returns:
+        The agent run result
+    """
+    token = await oauth()
+
+    mcp_hubspot_server = MCPServerStreamableHttp(
+        name="Streamable HTTP Python Server",
+        params={
+            "url": "https://mcp.hubspot.com",
+            "headers": {"Authorization": f"Bearer {token["access_token"]}"},
+            "timeout": 10
+        },
+        cache_tools_list=True,
+        max_retry_attempts=3,
+    )
+
+    async with mcp_hubspot_server as server:
+        print("✅ Serveur MCP HubSpot connecté avec succès")
+
+        # Update agent's MCP servers
+        agent.mcp_servers = [server]
+
+        # Run the agent
+        if context is None:
+            context = UserProfile()
+
+        result = await Runner.run(agent, conversation, context=context)
+        return result
 
 ########################################################
 # Run Agents
