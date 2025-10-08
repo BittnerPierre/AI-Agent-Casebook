@@ -1,0 +1,134 @@
+{
+  "errors": [
+    {
+      "code": "CONN-EMAIL-001",
+      "category": "Connexion initiale",
+      "subcategory": "Erreurs d'identification",
+      "description": "L'utilisateur ne reçoit pas l'e-mail de vérification (email, web, mobile).",
+      "details": "L'utilisateur signale qu'après avoir saisi son adresse e-mail, il n'a pas reçu l'e-mail pour valider son compte.",
+      "diagnostic_questions": [
+        "Avez-vous vérifié vos dossiers de courriers indésirables ou spam ?",
+        "Pouvez-vous confirmer que l'adresse e-mail saisie est correcte ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de vérifier les dossiers de spam. Si l'e-mail n'est toujours pas reçu, proposez de renvoyer l'e-mail ou de vérifier l'adresse saisie pour des erreurs typographiques.",
+      "search_keys": ["email", "web", "mobile", "validation"]
+    },
+    {
+      "code": "CONN-SMS-002",
+      "category": "Connexion initiale",
+      "subcategory": "Erreurs d'identification",
+      "description": "Le code SMS d’authentification à deux facteurs ne fonctionne pas (mobile, SMS).",
+      "details": "Le code reçu est soit expiré, soit invalide lors de la saisie.",
+      "diagnostic_questions": [
+        "Le code SMS est-il expiré (plus de 5 minutes) ?",
+        "Avez-vous essayé de demander un nouveau code ?"
+      ],
+      "resolution": "Indiquez à l'utilisateur de demander un nouveau code et de s'assurer qu'il saisit le dernier reçu. Si le problème persiste, vérifiez la connectivité mobile et proposez un contact avec le support.",
+      "search_keys": ["mobile", "SMS", "authentification", "connexion"]
+    },
+    {
+      "code": "CONN-PASS-003",
+      "category": "Connexion initiale",
+      "subcategory": "Erreurs liées aux mots de passe",
+      "description": "Le mot de passe ne respecte pas les critères de sécurité (web, mobile, sécurité).",
+      "details": "L'utilisateur tente de définir un mot de passe, mais celui-ci est rejeté pour non-conformité (manque de caractères spéciaux, longueur insuffisante, etc.).",
+      "diagnostic_questions": [
+        "Le mot de passe contient-il au moins 8 caractères, un chiffre et un caractère spécial ?",
+        "L'utilisateur a-t-il reçu des indications sur les critères requis ?"
+      ],
+      "resolution": "Expliquez les critères de sécurité requis pour le mot de passe et proposez un exemple conforme.",
+      "search_keys": ["mot de passe", "sécurité", "connexion", "web", "mobile"]
+    },
+    {
+      "code": "CONN-PASS-004",
+      "category": "Connexion initiale",
+      "subcategory": "Erreurs liées aux mots de passe",
+      "description": "La fonctionnalité de réinitialisation du mot de passe ne fonctionne pas (email, web, mobile).",
+      "details": "L'utilisateur clique sur 'Mot de passe oublié' mais ne reçoit pas l'e-mail ou le lien ne fonctionne pas.",
+      "diagnostic_questions": [
+        "Avez-vous vérifié vos dossiers de spam ou indésirables pour l'e-mail de réinitialisation ?",
+        "L'e-mail de réinitialisation contient-il un lien expiré ?"
+      ],
+      "resolution": "Indiquez à l'utilisateur de vérifier les dossiers de spam et renvoyez un lien. Si le problème persiste, contactez le support technique.",
+      "search_keys": ["réinitialisation", "email", "mot de passe", "web", "mobile"]
+    },
+    {
+      "code": "APP-COMP-005",
+      "category": "Application mobile",
+      "subcategory": "Compatibilité et installation",
+      "description": "L'application n’est pas disponible sur l’App Store ou Google Play (mobile, application).",
+      "details": "L'utilisateur ne trouve pas l'application ou reçoit un message d'erreur indiquant qu’elle n’est pas compatible avec son appareil.",
+      "diagnostic_questions": [
+        "Votre appareil répond-il aux critères minimums de version iOS/Android ?",
+        "Avez-vous cherché l'application officielle avec le nom exact ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de mettre à jour son système d'exploitation ou de chercher l'application officielle via le lien fourni sur le site web.",
+      "search_keys": ["application", "compatibilité", "mobile", "App Store", "Google Play"]
+    },
+    {
+      "code": "APP-CRASH-006",
+      "category": "Application mobile",
+      "subcategory": "Compatibilité et installation",
+      "description": "L'application se ferme immédiatement après l’ouverture (mobile, crash, application).",
+      "details": "L’utilisateur rencontre des crashs répétés dès qu'il lance l'application.",
+      "diagnostic_questions": [
+        "L'application a-t-elle été mise à jour vers la dernière version ?",
+        "Avez-vous redémarré votre appareil ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de désinstaller et réinstaller l'application. Suggérez de vérifier les mises à jour système et applicatives.",
+      "search_keys": ["application", "crash", "mobile", "stabilité"]
+    },
+    {
+      "code": "APP-PERM-007",
+      "category": "Application mobile",
+      "subcategory": "Permissions et accès",
+      "description": "L'application demande des permissions inhabituelles (mobile, application, permissions).",
+      "details": "L’utilisateur est bloqué car il refuse d’autoriser l’accès à certaines permissions (par exemple : appareil photo ou géolocalisation).",
+      "diagnostic_questions": [
+        "Les permissions demandées sont-elles nécessaires pour les fonctionnalités de l'application ?",
+        "Avez-vous refusé une permission essentielle lors de l'installation ?"
+      ],
+      "resolution": "Expliquez pourquoi ces permissions sont nécessaires (par exemple : appareil photo pour scanner une pièce d'identité). Proposez d'ajuster les paramètres manuellement.",
+      "search_keys": ["permissions", "mobile", "application", "accès"]
+    },
+    {
+      "code": "FORM-VALID-008",
+      "category": "Formulaire de création de compte",
+      "subcategory": "Validation des données",
+      "description": "Le formulaire rejette un champ obligatoire (web, mobile, formulaire).",
+      "details": "L’utilisateur reçoit un message d’erreur indiquant que sa date de naissance ou son numéro de téléphone est invalide, bien qu’il soit correctement renseigné.",
+      "diagnostic_questions": [
+        "Le format des données saisies correspond-il aux exemples fournis ?",
+        "Avez-vous utilisé un numéro de téléphone valide avec l'indicatif international ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de vérifier le format et proposez un exemple valide. Si l'erreur persiste, vérifiez les limitations côté serveur.",
+      "search_keys": ["formulaire", "validation", "mobile", "web", "données"]
+    },
+    {
+      "code": "FORM-UPLOAD-009",
+      "category": "Formulaire de création de compte",
+      "subcategory": "Validation des données",
+      "description": "Le téléchargement des pièces justificatives échoue (web, mobile, fichier).",
+      "details": "Les fichiers envoyés (pièce d’identité, justificatif de domicile) ne sont pas acceptés ou le bouton de téléchargement ne répond pas.",
+      "diagnostic_questions": [
+        "Le fichier respecte-t-il les formats acceptés (PDF, JPG, PNG) ?",
+        "La taille du fichier est-elle inférieure à la limite indiquée (par exemple 5 Mo) ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de réduire la taille du fichier ou de convertir le fichier dans un format accepté. Si le problème persiste, utilisez un autre navigateur ou appareil.",
+      "search_keys": ["téléchargement", "formulaire", "pièce justificative", "fichier", "mobile", "web"]
+    },
+    {
+      "code": "FORM-SYS-010",
+      "category": "Formulaire de création de compte",
+      "subcategory": "Problèmes techniques généraux",
+      "description": "Le formulaire affiche une erreur générique après validation (web, mobile, système).",
+      "details": "Une erreur '502 Bad Gateway' ou 'Erreur système, veuillez réessayer plus tard' s’affiche après l’envoi des informations.",
+      "diagnostic_questions": [
+        "Avez-vous essayé de soumettre à nouveau après quelques minutes ?",
+        "Utilisez-vous un navigateur ou une connexion internet stable ?"
+      ],
+      "resolution": "Demandez à l'utilisateur de réessayer après quelques minutes. Si le problème persiste, signalez l'erreur au support technique pour une analyse approfondie.",
+      "search_keys": ["formulaire", "système", "erreur", "mobile", "web"]
+    }
+  ]
+}
