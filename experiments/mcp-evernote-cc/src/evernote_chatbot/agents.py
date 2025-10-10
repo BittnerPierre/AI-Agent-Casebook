@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import shutil
 from typing import Any
 
 from dotenv import load_dotenv, find_dotenv
@@ -10,7 +11,8 @@ from openai.types.responses import (
     ResponseFunctionCallArgumentsDeltaEvent,
     ResponseTextDeltaEvent,
 )
-from agents import Agent, Runner, function_tool, RunContextWrapper
+from agents import Agent, Runner
+from agents.mcp import MCPServerStdio
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.console import Console, Group
@@ -59,74 +61,89 @@ async def process_stream_events(response):
                 print(f"> Tool Output: {output}")
 
 
-def _create_evernote_agent_with_mcp(mcp_client) -> Agent:
+def _create_evernote_mcp_server(container_name: str) -> MCPServerStdio:
     """
-    Create the Evernote agent with MCP client wrapper.
+    Create the Evernote MCP server connection.
 
     Args:
-        mcp_client: ProperMCPClient instance (already initialized)
+        container_name: Docker container name for the Evernote MCP server
 
     Returns:
-        Agent configured for Evernote operations
+        MCPServerStdio instance configured for Evernote operations
     """
-    # Create custom tools that wrap the MCP client methods
-    @function_tool
-    async def evernote_search(query: str) -> str:
-        """
-        Search Evernote notes using natural language queries.
+    # Find docker command - try multiple locations
+    docker_cmd = shutil.which("docker")
+    if not docker_cmd:
+        # Try common Docker locations on macOS
+        possible_paths = [
+            "/Applications/Docker.app/Contents/Resources/bin/docker",
+            "/usr/local/bin/docker",
+            "/opt/homebrew/bin/docker",
+        ]
+        for path in possible_paths:
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                docker_cmd = path
+                break
 
-        Args:
-            query: Natural language search query
+    if not docker_cmd:
+        raise Exception(
+            "Docker command not found. Please ensure Docker Desktop is installed."
+        )
 
-        Returns:
-            JSON string with search results including note titles, GUIDs, and metadata
-        """
-        import json
-        result = await mcp_client.create_search(query)
-        return json.dumps(result.content[0].text if result.content else str(result))
+    # Create MCP server using docker exec to connect to running container
+    evernote_mcp_server = MCPServerStdio(
+        name="EVERNOTE_MCP_SERVER",
+        params={
+            "command": docker_cmd,
+            "args": [
+                "exec", "-i", "--tty=false",
+                container_name,
+                "sh", "-c", "node mcp-server.js 2>/dev/null"
+            ],
+        },
+        cache_tools_list=True,
+    )
 
-    @function_tool
-    async def get_note_content(note_guid: str, format: str = "text") -> str:
-        """
-        Retrieve the full content of a specific Evernote note.
+    return evernote_mcp_server
 
-        Args:
-            note_guid: The unique identifier (GUID) of the note
-            format: Content format - "text" or "html" (default: "text")
 
-        Returns:
-            The note content as text or HTML
-        """
-        import json
-        prefer_html = (format.lower() == "html")
-        result = await mcp_client.get_note_content(note_guid, prefer_html=prefer_html)
-        return json.dumps(result.content[0].text if result.content else str(result))
+def _create_evernote_agent_with_mcp(mcp_server: MCPServerStdio) -> Agent:
+    """
+    Create the Evernote agent with MCP server.
 
+    Args:
+        mcp_server: MCPServerStdio instance for Evernote
+
+    Returns:
+        Agent configured with MCP server
+    """
+    # Create agent with MCP server
     evernote_agent = Agent(
         name="Evernote Search Agent",
         instructions="""
         You are an AI assistant that helps users search and retrieve information from their Evernote notes.
 
-        # Available Tools
-        You have access to the following Evernote tools:
-        - **evernote_search(query)**: Search notes using natural language queries. Returns search results with note titles, GUIDs, dates, and tags.
-        - **get_note_content(note_guid, format)**: Retrieve full note content by GUID. Format can be "text" or "html".
+        # Available MCP Tools
+        You have access to Evernote MCP tools that allow you to:
+        - Search for notes using natural language queries
+        - Retrieve full note content by GUID
+        - Get note metadata
 
         # Behavior Guidelines
         1. **Understand user intent**: Parse natural language queries to create effective Evernote searches.
-        2. **Use appropriate tools**: Start with evernote_search for new queries, then use get_note_content if users want to see full content.
+        2. **Use appropriate tools**: Start with search for new queries, then retrieve content if users want full details.
         3. **Format results clearly**: Present note titles, creation dates, update dates, and tags in a readable format.
         4. **Handle content intelligently**: When users ask for content, retrieve it and summarize if needed.
         5. **Be conversational**: Respond naturally and ask clarifying questions if the query is ambiguous.
 
         # Example Interactions
         User: "Find my notes about machine learning"
-        → Use evernote_search with query: "machine learning"
+        → Use createSearch tool with query: "machine learning"
         → Present results with titles and dates
 
         User: "Show me the content of the note about transformers"
-        → Use evernote_search to find the note
-        → Use get_note_content with the note GUID to retrieve full content
+        → Use createSearch to find the note
+        → Use getNoteContent with the note GUID to retrieve full content
         → Present or summarize the content
 
         # Constraints
@@ -137,22 +154,22 @@ def _create_evernote_agent_with_mcp(mcp_client) -> Agent:
         # Tone
         Be helpful, concise, and professional. Avoid unnecessary technical details unless asked.
         """,
-        tools=[evernote_search, get_note_content],
+        mcp_servers=[mcp_server],
     )
 
     return evernote_agent
 
 
 async def run_evernote_agent(
-    mcp_client,
+    mcp_server: MCPServerStdio,
     conversation: list[dict[str, str]],
     stream: bool = True
 ) -> Any:
     """
-    Run the Evernote agent with an existing MCP client.
+    Run the Evernote agent with MCP server.
 
     Args:
-        mcp_client: ProperMCPClient instance (already initialized)
+        mcp_server: MCPServerStdio instance for Evernote
         conversation: List of conversation messages [{"role": "user", "content": "..."}]
         stream: Whether to stream the response (default: True)
 
@@ -163,8 +180,8 @@ async def run_evernote_agent(
         Exception: If agent execution fails
     """
     try:
-        # Create agent with MCP client
-        evernote_agent = _create_evernote_agent_with_mcp(mcp_client)
+        # Create agent with MCP server
+        evernote_agent = _create_evernote_agent_with_mcp(mcp_server)
 
         # Run agent with or without streaming
         if stream:
@@ -180,7 +197,7 @@ async def run_evernote_agent(
 
 
 async def run_evernote_agent_interactive(
-    mcp_client,
+    mcp_server: MCPServerStdio,
     user_input: str,
     conversation_history: list[dict[str, str]] | None = None
 ) -> tuple[str, list[dict[str, str]]]:
@@ -188,7 +205,7 @@ async def run_evernote_agent_interactive(
     Run the Evernote agent with a single user input and maintain conversation history.
 
     Args:
-        mcp_client: ProperMCPClient instance (already initialized)
+        mcp_server: MCPServerStdio instance for Evernote
         user_input: User's input message
         conversation_history: Previous conversation history (optional)
 
@@ -203,7 +220,7 @@ async def run_evernote_agent_interactive(
 
     # Run agent with streaming
     streamed_result = await run_evernote_agent(
-        mcp_client=mcp_client,
+        mcp_server=mcp_server,
         conversation=conversation_history,
         stream=True
     )

@@ -17,8 +17,7 @@ from rich.prompt import Prompt
 from .config import ChatbotConfig
 from .formatter import ResponseFormatter
 from .session import ChatSession
-from .agents import run_evernote_agent_interactive
-from .mcp_client import ProperMCPClient
+from .agents import run_evernote_agent_interactive, _create_evernote_mcp_server
 
 app = typer.Typer(
     name="evernote-chat",
@@ -35,18 +34,11 @@ class ChatbotCLI:
         self.console = Console()
         self.formatter = ResponseFormatter(config, self.console)
         self.session: ChatSession | None = None
-        self.mcp_client: ProperMCPClient | None = None
+        self.mcp_server = None
 
     async def initialize(self) -> bool:
-        """Initialize MCP client and session."""
+        """Initialize session."""
         try:
-            # Initialize MCP client
-            self.mcp_client = ProperMCPClient(
-                container_name=self.config.container_name,
-                timeout=self.config.mcp_timeout,
-            )
-            await self.mcp_client.initialize()
-
             # Initialize session
             self.session = ChatSession(
                 config=self.config,
@@ -54,7 +46,7 @@ class ChatbotCLI:
                 history_file=self.config.history_file,
             )
 
-            self.formatter.display_info("✅ Evernote Agent initialized with MCP connection")
+            self.formatter.display_info("✅ Evernote Agent initialized")
             return True
 
         except Exception as e:
@@ -63,64 +55,74 @@ class ChatbotCLI:
 
     async def run_interactive(self) -> None:
         """Run the interactive chat session."""
-        # Display welcome message
-        self._display_welcome()
+        # Create MCP server once for the entire session
+        mcp_server = _create_evernote_mcp_server(self.config.container_name)
 
-        while True:
-            try:
-                # Get user input
-                user_input = Prompt.ask(
-                    "\n[bold blue]You[/bold blue]",
-                    default="",
-                    console=self.console
-                ).strip()
+        # Use async context manager for MCP server lifecycle
+        async with mcp_server as server:
+            # Display welcome message
+            self._display_welcome()
 
-                if not user_input:
-                    continue
+            while True:
+                try:
+                    # Get user input
+                    user_input = Prompt.ask(
+                        "\n[bold blue]You[/bold blue]",
+                        default="",
+                        console=self.console
+                    ).strip()
 
-                # Handle special commands
-                if user_input.lower() in ("/quit", "/exit", "/q"):
+                    if not user_input:
+                        continue
+
+                    # Handle special commands
+                    if user_input.lower() in ("/quit", "/exit", "/q"):
+                        break
+                    elif user_input.lower() in ("/help", "/h"):
+                        self._display_help()
+                        continue
+                    elif user_input.lower() == "/config":
+                        self.formatter.display_config()
+                        continue
+                    elif user_input.lower() == "/history":
+                        self._display_history()
+                        continue
+                    elif user_input.lower() == "/clear":
+                        self.session.clear_history()
+                        self.formatter.display_info("Conversation history cleared.")
+                        continue
+
+                    # Process the query (agent will handle adding messages)
+                    await self._process_query(user_input, server)
+
+                except KeyboardInterrupt:
+                    self.formatter.display_info("\\nUse /quit to exit.")
+                except EOFError:
+                    # Handle EOF (Ctrl+D or stdin closed)
+                    self.formatter.display_info("\\nExiting...")
                     break
-                elif user_input.lower() in ("/help", "/h"):
-                    self._display_help()
-                    continue
-                elif user_input.lower() == "/config":
-                    self.formatter.display_config()
-                    continue
-                elif user_input.lower() == "/history":
-                    self._display_history()
-                    continue
-                elif user_input.lower() == "/clear":
-                    self.session.clear_history()
-                    self.formatter.display_info("Conversation history cleared.")
-                    continue
+                except Exception as e:
+                    self.formatter.display_error(e, "processing query")
 
-                # Process the query (agent will handle adding messages)
-                await self._process_query(user_input)
-
-            except KeyboardInterrupt:
-                self.formatter.display_info("\\nUse /quit to exit.")
-            except EOFError:
-                # Handle EOF (Ctrl+D or stdin closed)
-                self.formatter.display_info("\\nExiting...")
-                break
-            except Exception as e:
-                self.formatter.display_error(e, "processing query")
-
-        # Save session before exit
-        if self.session:
-            self.session.save_session_history()
-            self.formatter.display_info("Session saved. Goodbye!")
+            # Save session before exit
+            if self.session:
+                self.session.save_session_history()
+                self.formatter.display_info("Session saved. Goodbye!")
 
     async def run_single_query(self, query: str) -> None:
         """Run a single query and exit."""
-        try:
-            await self._process_query(query)
-        except Exception as e:
-            self.formatter.display_error(e, "query execution")
-            sys.exit(1)
+        # Create MCP server for single query
+        mcp_server = _create_evernote_mcp_server(self.config.container_name)
 
-    async def _process_query(self, query: str) -> None:
+        # Use async context manager for MCP server lifecycle
+        async with mcp_server as server:
+            try:
+                await self._process_query(query, server)
+            except Exception as e:
+                self.formatter.display_error(e, "query execution")
+                sys.exit(1)
+
+    async def _process_query(self, query: str, mcp_server) -> None:
         """Process a user query using the AI agent."""
         try:
             # Show thinking indicator
@@ -134,7 +136,7 @@ class ChatbotCLI:
 
             # Run the agent with streaming
             response_text, updated_history = await run_evernote_agent_interactive(
-                mcp_client=self.mcp_client,
+                mcp_server=mcp_server,
                 user_input=query,
                 conversation_history=conversation_history
             )
@@ -225,8 +227,8 @@ Just type your question naturally:
 
     async def cleanup(self) -> None:
         """Cleanup resources."""
-        if self.mcp_client:
-            await self.mcp_client.close()
+        # MCP server cleanup is handled automatically by Runner/Agents SDK
+        pass
 
 
 @app.command()
