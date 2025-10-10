@@ -2,8 +2,6 @@
 
 import asyncio
 import sys
-from pathlib import Path
-from typing import Any
 
 try:
     import readline
@@ -17,10 +15,10 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 from .config import ChatbotConfig
-from .evernote_handler import EvernoteHandler
 from .formatter import ResponseFormatter
-from .mcp_client import ProperMCPClient as MCPClient
 from .session import ChatSession
+from .agents import run_evernote_agent_interactive
+from .mcp_client import ProperMCPClient
 
 app = typer.Typer(
     name="evernote-chat",
@@ -37,69 +35,30 @@ class ChatbotCLI:
         self.console = Console()
         self.formatter = ResponseFormatter(config, self.console)
         self.session: ChatSession | None = None
-        self.mcp_client: MCPClient | None = None
-        self.evernote_handler: EvernoteHandler | None = None
+        self.mcp_client: ProperMCPClient | None = None
 
     async def initialize(self) -> bool:
-        """Initialize MCP client and Evernote handler."""
-        # Setup progress tracking with log file (but don't start it yet)
-        log_file = Path.home() / ".evernote_chatbot" / "debug.log"
-        progress = self.formatter.init_progress_tracker(log_file)
-
+        """Initialize MCP client and session."""
         try:
-            # Use progress only during initialization, then stop it
-            with progress:
-                progress.start_task("connect", "Connecting to Evernote MCP server...")
+            # Initialize MCP client
+            self.mcp_client = ProperMCPClient(
+                container_name=self.config.container_name,
+                timeout=self.config.mcp_timeout,
+            )
+            await self.mcp_client.initialize()
 
-                # Initialize MCP client
-                self.mcp_client = MCPClient(
-                    container_name=self.config.container_name,
-                    timeout=self.config.mcp_timeout,
-                )
+            # Initialize session
+            self.session = ChatSession(
+                config=self.config,
+                save_history=self.config.save_history,
+                history_file=self.config.history_file,
+            )
 
-                # Initialize connection
-                await self.mcp_client.initialize()
-                progress.update_task("connect", "Verifying MCP server capabilities...")
-
-                # List available tools
-                tools_list = await self.mcp_client.list_tools()
-                available_tool_names = [tool.name for tool in tools_list]
-
-                # Check for required tools
-                required_tools = {"createSearch", "getSearch", "getNote", "getNoteContent"}
-                missing_tools = required_tools - set(available_tool_names)
-
-                if missing_tools:
-                    progress.fail_task("connect", f"Missing required tools: {', '.join(missing_tools)}")
-                    return False
-
-                progress.update_task("connect", "Initializing Evernote handler...")
-
-                # Initialize Evernote handler
-                self.evernote_handler = EvernoteHandler(
-                    mcp_client=self.mcp_client,
-                    max_notes_per_query=self.config.max_notes_per_query,
-                    allowed_notebooks=self.config.allowed_notebooks,
-                    prefer_html=self.config.prefer_html,
-                )
-
-                # Initialize session
-                self.session = ChatSession(
-                    config=self.config,
-                    save_history=self.config.save_history,
-                    history_file=self.config.history_file,
-                )
-
-                progress.complete_task("connect", "Connected to Evernote MCP server!")
-
-            # Progress tracker stops here - terminal is free for interactive prompts
+            self.formatter.display_info("✅ Evernote Agent initialized with MCP connection")
             return True
 
         except Exception as e:
-            if progress:
-                progress.fail_task("connect", f"Connection failed: {str(e)}")
-            else:
-                self.formatter.display_error(e, "initialization")
+            self.formatter.display_error(e, "initialization")
             return False
 
     async def run_interactive(self) -> None:
@@ -136,10 +95,7 @@ class ChatbotCLI:
                     self.formatter.display_info("Conversation history cleared.")
                     continue
 
-                # Add to session history
-                self.session.add_user_message(user_input)
-
-                # Process the query
+                # Process the query (agent will handle adding messages)
                 await self._process_query(user_input)
 
             except KeyboardInterrupt:
@@ -165,111 +121,45 @@ class ChatbotCLI:
             sys.exit(1)
 
     async def _process_query(self, query: str) -> None:
-        """Process a user query and display results."""
-        if not self.evernote_handler:
-            self.formatter.display_error("Evernote handler not initialized")
-            return
-
+        """Process a user query using the AI agent."""
         try:
-            # Create a new progress context for this query
-            progress = self.formatter.progress
-            if progress:
-                with progress:
-                    progress.start_task("search", f"Searching for: {query}")
+            # Show thinking indicator
+            self.console.print("\n[bold cyan]🤖 Agent:[/bold cyan]", end=" ")
 
-                    # Search for notes
-                    search_result = await self.evernote_handler.search_notes(query)
-                    progress.complete_task("search", f"Found {search_result.total_notes} notes")
+            # Get conversation history in the format expected by the agent
+            conversation_history = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in self.session.messages
+            ]
 
-                    # Progress stops here, results display normally
-            else:
-                # Fallback if no progress system
-                self.formatter.display_info(f"Searching for: {query}")
-                search_result = await self.evernote_handler.search_notes(query)
+            # Run the agent with streaming
+            response_text, updated_history = await run_evernote_agent_interactive(
+                mcp_client=self.mcp_client,
+                user_input=query,
+                conversation_history=conversation_history
+            )
 
-            if search_result.total_notes == 0:
-                response = self.formatter.format_search_results(search_result)
-                self.formatter.print_markdown(response)
-                self.session.add_assistant_message(f"No notes found for query: {query}")
-                return
+            # Sync session with updated history from agent
+            # The agent added user and assistant messages, we need to add them to session properly
+            from datetime import datetime
 
-            # Display search results table (this stays visible)
-            self.formatter.display_search_results_table(search_result)
+            # Find new messages (those not in session yet)
+            num_existing = len(self.session.messages)
+            new_messages = updated_history[num_existing:]
 
-            # Smart note selection
-            selected_notes, display_mode = await self._get_note_selection(search_result)
-
-            if selected_notes:
-                note_count = len(selected_notes)
-
-                # Use progress context for content retrieval
-                progress = self.formatter.progress
-                if progress:
-                    with progress:
-                        progress.start_task("content", f"Retrieving content for {note_count} notes...")
-
-                        note_guids = [note.guid for note in selected_notes]
-                        # Create metadata dict to avoid re-fetching
-                        existing_metadata = {note.guid: note for note in selected_notes}
-                        notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids, existing_metadata)
-
-                        progress.complete_task("content", f"Retrieved content for {len(notes_with_content)} notes")
-                else:
-                    # Fallback without progress
-                    self.formatter.display_info("Retrieving note contents...")
-                    note_guids = [note.guid for note in selected_notes]
-                    # Create metadata dict to avoid re-fetching
-                    existing_metadata = {note.guid: note for note in selected_notes}
-                    notes_with_content = await self.evernote_handler.get_notes_with_content(note_guids, existing_metadata)
-
-                # Display results based on mode
-                if display_mode == "full":
-                    # Single note - full content
-                    response = self.formatter.format_single_note_full(selected_notes[0], notes_with_content)
-                else:
-                    # Multiple notes - summaries with separators
-                    response = self.formatter.format_multiple_notes_summary(selected_notes, notes_with_content)
-
-                self.formatter.print_markdown(response)
-
-                # Create summary for session
-                summary_text = self._create_query_summary(query, search_result, notes_with_content, selected_notes)
-                self.session.add_assistant_message(summary_text)
-            else:
-                # Just show search results
-                response = self.formatter.format_search_results(search_result)
-                self.formatter.print_markdown(response)
-                self.session.add_assistant_message(f"Found {search_result.total_notes} notes for: {query}")
+            # Add new messages to session with proper timestamps
+            for msg in new_messages:
+                if msg["role"] == "user":
+                    self.session.add_user_message(msg["content"])
+                elif msg["role"] == "assistant":
+                    self.session.add_assistant_message(msg["content"])
 
         except Exception as e:
             import traceback
-            print("DEBUG: Full error traceback:")
+            print("\nDEBUG: Full error traceback:")
             traceback.print_exc()
-            self.formatter.display_error(e, "query processing")
+            self.formatter.display_error(e, "agent query processing")
 
-    def _create_query_summary(
-        self,
-        query: str,
-        search_result,
-        notes_with_content: dict[str, Any],
-        selected_notes: list | None = None,
-    ) -> str:
-        """Create a summary of the query results."""
-        summary_parts = [
-            f"Query: {query}",
-            f"Found {search_result.total_notes} notes",
-            f"Retrieved content for {len(notes_with_content)} notes",
-        ]
-
-        # Add note titles from selected notes or content
-        if selected_notes:
-            titles = [note.title for note in selected_notes]
-            summary_parts.append(f"Selected: {', '.join(titles)}")
-        elif notes_with_content:
-            titles = [metadata.title for metadata, _ in notes_with_content.values()]
-            summary_parts.append(f"Notes: {', '.join(titles)}")
-
-        return " | ".join(summary_parts)
 
     def _display_welcome(self) -> None:
         """Display welcome message."""
@@ -332,72 +222,6 @@ Just type your question naturally:
             timestamp = message.get("timestamp", "Unknown time")
             self.console.print(f"\\n{i}. [{role}] ({timestamp})")
             self.console.print(f"   {message['content']}")
-
-    async def _get_note_selection(self, search_result):
-        """Get user's note selection with smart parsing."""
-        try:
-            max_notes = len(search_result.notes)
-            self.console.print(f"\\n[dim]Examples: '1' (full note 1), '1,3' (summary of notes 1&3), '1-3' (summary notes 1 to 3)[/dim]")
-
-            response = Prompt.ask(
-                f"\\n[yellow]Which notes to display (1-{max_notes})?[/yellow]",
-                default="1" if max_notes == 1 else "1,2",
-                console=self.console
-            )
-
-            # Parse selection
-            selected_indices = self._parse_selection(response, max_notes)
-            if not selected_indices:
-                return [], "none"
-
-            # Determine display mode
-            if len(selected_indices) == 1:
-                display_mode = "full"
-            else:
-                display_mode = "summary"
-
-            # Get selected notes
-            selected_notes = [search_result.notes[i-1] for i in selected_indices]
-            return selected_notes, display_mode
-
-        except Exception as e:
-            self.formatter.display_info(f"Selection error: {e}. Showing first note.")
-            return [search_result.notes[0]] if search_result.notes else [], "full"
-
-    def _parse_selection(self, selection: str, max_notes: int) -> list[int]:
-        """Parse user selection like '1', '1,3', '1-3' into list of indices."""
-        try:
-            indices = []
-            selection = selection.strip()
-
-            # Handle comma-separated: "1,3,5"
-            if ',' in selection:
-                parts = selection.split(',')
-                for part in parts:
-                    part = part.strip()
-                    if '-' in part:
-                        # Handle ranges within comma list: "1,3-5,7"
-                        start, end = map(int, part.split('-'))
-                        indices.extend(range(start, min(end + 1, max_notes + 1)))
-                    else:
-                        num = int(part)
-                        if 1 <= num <= max_notes:
-                            indices.append(num)
-            # Handle range: "1-3"
-            elif '-' in selection:
-                start, end = map(int, selection.split('-'))
-                indices = list(range(start, min(end + 1, max_notes + 1)))
-            # Handle single number: "1"
-            else:
-                num = int(selection)
-                if 1 <= num <= max_notes:
-                    indices = [num]
-
-            # Remove duplicates and sort
-            return sorted(list(set(indices)))
-
-        except (ValueError, IndexError):
-            return []
 
     async def cleanup(self) -> None:
         """Cleanup resources."""

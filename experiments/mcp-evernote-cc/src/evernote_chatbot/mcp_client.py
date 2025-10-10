@@ -35,9 +35,32 @@ class ProperMCPClient:
         if self._initialized:
             return
 
+        # Find docker command - try multiple locations
+        import shutil
+        import os
+
+        docker_cmd = shutil.which("docker")
+        if not docker_cmd:
+            # Try common Docker locations on macOS
+            possible_paths = [
+                "/Applications/Docker.app/Contents/Resources/bin/docker",
+                "/usr/local/bin/docker",
+                "/opt/homebrew/bin/docker",
+            ]
+            for path in possible_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    docker_cmd = path
+                    break
+
+        if not docker_cmd:
+            raise Exception(
+                "Docker command not found. Please ensure Docker Desktop is installed. "
+                "Tried: which docker, /Applications/Docker.app/Contents/Resources/bin/docker"
+            )
+
         # Create server parameters with stderr suppressed
         server_params = StdioServerParameters(
-            command="docker",
+            command=docker_cmd,
             args=[
                 "exec", "-i", "--tty=false",
                 self.container_name,

@@ -108,13 +108,16 @@ class ChatSession:
         if not self.save_history or not self.history_file:
             return False
 
+        if not self.messages:
+            return False
+
         try:
             # Prepare data to save
             session_data = {
                 "session_start": self.session_start.isoformat(),
                 "session_end": datetime.now().isoformat(),
                 "config": {
-                    "mcp_url": self.config.mcp_url,
+                    "container_name": self.config.container_name,
                     "max_notes_per_query": self.config.max_notes_per_query,
                     "allowed_notebooks": list(self.config.allowed_notebooks),
                     "prefer_html": self.config.prefer_html,

@@ -1,56 +1,55 @@
-# Evernote MCP Chatbot Architecture
+# Evernote AI Agent Chatbot Architecture
 
-> **Note**: This documentation reflects the cleaned-up codebase with dead code removed. Only `proper_mcp_client.py` is used - previous iterations (`mcp_client.py`, `mcp_stdio_client.py`) were debugging artifacts and have been removed.
+> **Note**: This architecture uses OpenAI Agents SDK for intelligent query processing. The agent interprets natural language and autonomously selects MCP tools to accomplish user requests.
 
 ## System Architecture Overview
 
 ```mermaid
 graph TB
     %% User Interface Layer
-    User[👤 User] --> CLI{CLI Interface}
-    CLI --> InteractiveCLI[🔄 Interactive CLI<br/>evernote-chat]
-    CLI --> SimpleCLI[⚡ Simple CLI<br/>evernote-search]
+    User[👤 User] --> CLI[🔄 Interactive CLI<br/>evernote-chat]
 
     %% Application Layer
-    InteractiveCLI --> ChatbotCLI[ChatbotCLI]
-    SimpleCLI --> SearchFunction[search_evernote()]
-
+    CLI --> ChatbotCLI[ChatbotCLI]
     ChatbotCLI --> Session[ChatSession]
     ChatbotCLI --> Formatter[ResponseFormatter]
-    ChatbotCLI --> Handler[EvernoteHandler]
-    SearchFunction --> Handler
 
-    %% Business Logic Layer
-    Handler --> MCPClient[ProperMCPClient]
-    Session --> Config[ChatbotConfig]
-    Formatter --> Config
+    %% AI Agent Layer
+    ChatbotCLI --> AgentModule[🤖 Agents Module]
+    AgentModule --> EvernoteAgent[Evernote AI Agent<br/>OpenAI Agents SDK]
+    AgentModule --> Runner[Agent Runner<br/>Streaming Support]
 
-    %% MCP Transport Layer
-    MCPClient --> MCPLib[📚 MCP Library<br/>mcp.client.stdio]
-    MCPLib --> DockerExec[🐳 Docker Exec Transport]
+    %% MCP Integration Layer
+    EvernoteAgent --> MCPServer[MCPServerStdio<br/>Agents SDK MCP]
+    MCPServer --> DockerExec[🐳 Docker Exec Transport]
 
     %% External Systems
     DockerExec --> Container[🐳 evernote-mcp-server<br/>Docker Container]
     Container --> EvernoteAPI[🗒️ Evernote Thrift API<br/>www.evernote.com]
 
-    %% Data Storage
+    %% AI Services
+    EvernoteAgent --> OpenAI[🧠 OpenAI API<br/>GPT-4]
+
+    %% Data Storage & Config
     Session --> HistoryFile[(📁 History File<br/>~/.evernote_chatbot_history.json)]
-    Config --> EnvVars[(🌍 Environment Variables)]
+    Session --> Config[ChatbotConfig]
+    Formatter --> Config
+    Config --> EnvVars[(🌍 Environment Variables<br/>OPENAI_API_KEY)]
 
     %% Styling
     classDef userLayer fill:#e1f5fe
     classDef appLayer fill:#f3e5f5
-    classDef businessLayer fill:#e8f5e8
-    classDef transportLayer fill:#fff3e0
+    classDef agentLayer fill:#fff9c4
+    classDef mcpLayer fill:#e8f5e8
     classDef externalLayer fill:#fce4ec
     classDef dataLayer fill:#f1f8e9
 
-    class User,CLI,InteractiveCLI,SimpleCLI userLayer
-    class ChatbotCLI,SearchFunction,Session,Formatter appLayer
-    class Handler,MCPClient,Config businessLayer
-    class MCPLib,DockerExec transportLayer
-    class Container,EvernoteAPI externalLayer
-    class HistoryFile,EnvVars dataLayer
+    class User,CLI userLayer
+    class ChatbotCLI,Session,Formatter appLayer
+    class AgentModule,EvernoteAgent,Runner agentLayer
+    class MCPServer,DockerExec mcpLayer
+    class Container,EvernoteAPI,OpenAI externalLayer
+    class HistoryFile,Config,EnvVars dataLayer
 ```
 
 ## Component Interaction Flow
@@ -58,54 +57,68 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant C as ChatbotCLI
+    participant CLI as ChatbotCLI
     participant S as ChatSession
-    participant H as EvernoteHandler
-    participant M as ProperMCPClient
+    participant A as AI Agent Module
+    participant Agent as Evernote Agent
+    participant MCP as MCP Server (Stdio)
     participant D as Docker Container
     participant E as Evernote API
+    participant O as OpenAI API
 
-    U->>C: Start interactive session
-    C->>S: Initialize session & load history
-    C->>M: Initialize MCP client
-    M->>D: Connect via docker exec
-    D-->>M: Connection established
+    U->>CLI: Start interactive session
+    CLI->>S: Initialize session & load history
 
     loop Chat Session
-        U->>C: Enter search query
-        C->>S: Add user message to history
-        C->>H: Search notes with query
-        H->>M: Call createSearch tool
-        M->>D: Send MCP request
-        D->>E: Query Evernote API
-        E-->>D: Return search results
-        D-->>M: Return MCP response
-        M-->>H: Parse response data
-        H-->>C: Return SearchResult
-        C->>U: Display formatted results
+        U->>CLI: Enter natural language query
+        CLI->>S: Add user message to history
 
-        opt User wants content
-            U->>C: Request note content
-            C->>H: Get notes with content
-            H->>M: Call getNoteContent (parallel)
-            M->>D: Multiple MCP requests
-            D->>E: Fetch note contents
-            E-->>D: Return note contents
-            D-->>M: Return content responses
-            M-->>H: Parse content data
-            H-->>C: Return notes with content
-            C->>U: Display full content
+        CLI->>A: Call run_evernote_agent_interactive()
+        A->>MCP: Initialize MCP connection (context manager)
+        MCP->>D: Connect via docker exec
+        D-->>MCP: Connection established
+
+        A->>Agent: Create Evernote Agent with MCP tools
+        A->>O: Stream agent response
+
+        loop Agent Reasoning
+            O->>Agent: Process query & plan actions
+            Agent->>O: Analyze user intent
+            O->>Agent: Select appropriate MCP tool
+
+            alt Search Query
+                Agent->>MCP: Call createSearch tool
+                MCP->>D: Send MCP request
+                D->>E: Query Evernote API
+                E-->>D: Return search results
+                D-->>MCP: Return MCP response
+                MCP-->>Agent: Return tool result
+            else Get Note Content
+                Agent->>MCP: Call getNoteContent tool
+                MCP->>D: Send MCP request
+                D->>E: Fetch note content
+                E-->>D: Return content
+                D-->>MCP: Return MCP response
+                MCP-->>Agent: Return tool result
+            end
+
+            Agent->>O: Process tool results
+            O->>Agent: Generate natural language response
         end
 
-        C->>S: Add assistant response to history
+        Agent-->>CLI: Stream response tokens
+        CLI->>U: Display streamed response
+
+        CLI->>S: Update conversation history
         S->>S: Auto-save session if enabled
+
+        A->>MCP: Close MCP connection
+        MCP->>D: Close docker exec
     end
 
-    U->>C: /quit command
-    C->>S: Save final session
+    U->>CLI: /quit command
+    CLI->>S: Save final session
     S->>S: Persist to history file
-    C->>M: Cleanup MCP connection
-    M->>D: Close docker exec
 ```
 
 ## Data Flow Architecture
@@ -162,20 +175,19 @@ flowchart LR
 ```mermaid
 graph LR
     %% Core Modules
-    Main[main.py] --> CLI[cli.py]
-    Main --> SimpleCLI[simple_cli.py]
+    Main[main.py] --> InteractiveCLI[interactive_cli.py]
 
     %% CLI Dependencies
-    CLI --> Session[session.py]
-    CLI --> Formatter[formatter.py]
-    CLI --> Handler[evernote_handler.py]
-    CLI --> Config[config.py]
+    InteractiveCLI --> Session[session.py]
+    InteractiveCLI --> Formatter[formatter.py]
+    InteractiveCLI --> AgentsModule[agents.py<br/>🤖 AI Agent]
+    InteractiveCLI --> Config[config.py]
 
-    SimpleCLI --> Handler
-    SimpleCLI --> Config
-
-    %% Handler Dependencies
-    Handler --> MCPClient[proper_mcp_client.py<br/>⚠️ Only MCP Client]
+    %% Agents Module Dependencies
+    AgentsModule --> AgentsSDK[agents 📚<br/>OpenAI Agents SDK]
+    AgentsModule --> OpenAI[openai 📚]
+    AgentsModule --> MCPIntegration[agents.mcp 📚<br/>MCPServerStdio]
+    AgentsModule --> Config
 
     %% Session Dependencies
     Session --> Config
@@ -184,23 +196,25 @@ graph LR
     Formatter --> Config
 
     %% External Libraries
-    CLI --> Typer[typer 📚]
-    CLI --> Rich[rich 📚]
-    Handler --> Pydantic[pydantic 📚]
-    Handler --> AsyncIO[asyncio 📚]
-    MCPClient --> MCPLibrary[mcp 📚]
+    InteractiveCLI --> Typer[typer 📚]
+    InteractiveCLI --> Rich[rich 📚]
+    AgentsModule --> Pydantic[pydantic 📚]
+    AgentsModule --> AsyncIO[asyncio 📚]
+    AgentsModule --> DotEnv[python-dotenv 📚]
     Config --> OS[os/pathlib 📚]
 
     %% Styling
     classDef coreModule fill:#bbdefb
+    classDef agentModule fill:#fff9c4
     classDef businessModule fill:#c8e6c9
     classDef utilityModule fill:#ffe0b2
     classDef externalLib fill:#f8bbd9
 
-    class Main,CLI,SimpleCLI coreModule
-    class Handler,Session,Formatter,MCPClient businessModule
+    class Main,InteractiveCLI coreModule
+    class AgentsModule agentModule
+    class Session,Formatter businessModule
     class Config utilityModule
-    class Typer,Rich,Pydantic,AsyncIO,MCPLibrary,OS externalLib
+    class Typer,Rich,Pydantic,AsyncIO,AgentsSDK,OpenAI,MCPIntegration,DotEnv,OS externalLib
 ```
 
 ## Error Handling Architecture
@@ -296,3 +310,78 @@ graph TB
     class MCPConfig,UIConfig,SessionConfig,SearchConfig category
     class MCPUrl,MCPHeaders,MCPTimeout,ContainerName,PreferHTML,MaxDisplay,SaveHistory,HistoryFile,AllowedNotebooks,MaxNotes setting
 ```
+## AI Agent Extensibility
+
+The architecture is designed to support multiple specialized agents working together:
+
+### Current Agent: Evernote Search Agent
+- **Role**: Query and retrieve Evernote notes using MCP tools
+- **Capabilities**: Natural language search, note content retrieval, metadata extraction
+- **Tools**: createSearch, getSearch, getNote, getNoteContent
+
+### Future Agent Extensions
+
+#### 1. Summarization Agent
+```python
+summarization_agent = Agent(
+    name="Note Summarization Agent",
+    instructions="Summarize Evernote notes concisely...",
+    tools=[custom_summarization_tool]
+)
+```
+
+#### 2. Analysis Agent
+```python
+analysis_agent = Agent(
+    name="Content Analysis Agent",
+    instructions="Analyze note content for insights, trends, and patterns...",
+    tools=[analysis_tool, trend_detection_tool]
+)
+```
+
+#### 3. Organization Agent
+```python
+organization_agent = Agent(
+    name="Note Organization Agent",
+    instructions="Suggest tags, categories, and reorganization strategies...",
+    tools=[tag_suggestion_tool, categorization_tool]
+)
+```
+
+### Multi-Agent Coordination
+
+Agents can be coordinated using:
+- **Sequential**: One agent passes results to another
+- **Parallel**: Multiple agents work on different aspects simultaneously  
+- **Hierarchical**: A coordinator agent delegates to specialized agents
+
+Example coordination:
+```python
+coordinator_agent = Agent(
+    name="Evernote Assistant Coordinator",
+    instructions="Coordinate between search, summarization, and analysis agents...",
+    tools=[
+        search_agent.as_tool(),
+        summarization_agent.as_tool(),
+        analysis_agent.as_tool()
+    ]
+)
+```
+
+## Key Design Principles
+
+1. **Separation of Concerns**: CLI, Agent Logic, and MCP Communication are independent
+2. **Extensibility**: Easy to add new agents without modifying core infrastructure
+3. **Streaming First**: Real-time response streaming for better UX
+4. **Context Management**: Automatic MCP connection lifecycle management
+5. **Conversation Memory**: Session persistence for contextual follow-ups
+6. **Error Resilience**: Graceful degradation and clear error messages
+
+## Technology Stack
+
+- **AI Framework**: OpenAI Agents SDK (0.2.9+)
+- **LLM**: OpenAI GPT-4
+- **MCP Protocol**: Model Context Protocol for tool integration
+- **CLI Framework**: Typer + Rich for beautiful terminal UI
+- **Async Runtime**: asyncio for concurrent operations
+- **Configuration**: python-dotenv for environment management
