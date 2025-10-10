@@ -2,7 +2,7 @@
 name = "AI-Agent-Casebook"
 version = "0.1.0"
 description = "Project to showcase agentic paradigm on several use case."
-requires-python = ">=3.12,<=3.13"
+requires-python = ">=3.12,<3.13"
 authors = [
     {name = "Pierre Bittner", email = "pierre@bittner.fr"}
 ]
@@ -31,9 +31,9 @@ dependencies = [
     "langchain-anthropic>=0.3.9",
     "langgraph-prebuilt>=0.1.2",
     "openai-agents>=0.0.14",
-    "litellm>=1.67.2",
+    "litellm=^1.67.1",
     "mcp>=1.7.1",
-    "langchain_openai>=0.3.33"
+    "langchain_openai>=0.3.33",
 ]
 
 [tool.poetry]
@@ -49,7 +49,7 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.12,<=3.13"
+python = ">=3.12,<3.13"
 langchain = ">=0.3.14"
 langgraph = ">=0.3.6"
 openai = "^1.59.7"
@@ -72,7 +72,7 @@ protobuf = ">=4.21.12, <5.0.0"
 langchain-anthropic = ">=0.3.9"
 langgraph-prebuilt = ">=0.1.2"
 openai-agents = {extras = ["litellm"], version = "^0.2.9"}
-litellm = ">=1.67.2"
+litellm = "^1.67.1"
 mcp = {extras = ["cli"], version = "^1.7.1"}
 langgraph-cli = {extras = ["inmem"], version = "^0.2.10"}
 ipykernel = ">=6.29.5"
@@ -80,6 +80,9 @@ dotenv = ">=0.9.9"
 langgraph-api = "^0.2.137"
 langchain-voyageai = "^0.1.7"
 langchain-tavily = "^0.2.11"
+requests-oauthlib = "^2.0.0"
+streamlit = "^1.50.0"
+openevals = "^0.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

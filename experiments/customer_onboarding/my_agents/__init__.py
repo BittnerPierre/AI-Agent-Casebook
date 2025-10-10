@@ -1,3 +1,13 @@
-from .agents import run_onboarding_agent, create_agent, run_agent_with_mcp, UserProfile
+from .agents import (
+    run_onboarding_agent, 
+    run_onboarding_agent_with_mcp, 
+    run_onboarding_agent_streamed)
 
-__all__ = ["run_onboarding_agent", "create_agent", "run_agent_with_mcp", "UserProfile"]
+from .oauth import oauth
+
+__all__ = [
+    "run_onboarding_agent",
+    "run_onboarding_agent_streamed"
+    "run_onboarding_agent_with_mcp", 
+    "oauth"
+]

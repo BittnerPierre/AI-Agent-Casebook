@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 
+from openai.types.responses import ResponseTextDeltaEvent
 from rich.console import Console
 
 from agents import Runner, custom_span, gen_trace_id, trace
@@ -192,7 +194,9 @@ class DeepResearchManager:
 
         last_update = time.time()
         next_message = 0
+
         async for _ in result.stream_events():
+
             if time.time() - last_update > 5 and next_message < len(update_messages):
                 self.printer.update_item("writing", update_messages[next_message])
                 next_message += 1

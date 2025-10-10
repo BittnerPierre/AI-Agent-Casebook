@@ -1,120 +1,286 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import asyncio
+import json
 import os
+import time
 import threading
 import webbrowser
+from datetime import datetime, timedelta
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from pathlib import Path
+from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
+
+import requests
 from dotenv import find_dotenv, load_dotenv
 from requests_oauthlib import OAuth2Session
-import json
 
 _ = load_dotenv(find_dotenv())
 
-# -- oauth_local_flow.py --
+# Configuration OAuth HubSpot
 CLIENT_ID = os.environ.get("HUBSPOT_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("HUBSPOT_SECRET_KEY")
-
-AUTHORIZATION_BASE_URL = "https://mcp.hubspot.com/oauth/authorize/user"
+AUTHORIZATION_BASE_URL = "https://app.hubspot.com/oauth/authorize"
 TOKEN_URL = "https://api.hubapi.com/oauth/v1/token"
-SCOPE = []
+SCOPE = ["crm.objects.contacts.read", "crm.objects.companies.read", "crm.objects.deals.read", "oauth"]
 REDIRECT_URI = "http://localhost:3000/oauth-callback"
-# -------------
 
+# Fichier de stockage du token (non-commitable)
+TOKEN_FILE = Path(".hubspot_token.json")
 
-#####
-# access token
-#####
+html_response = """
+<html>
+<head><title>Authentification HubSpot</title></head>
+<body>
+    <h1>Authentification réussie</h1>
+    <p>Vous pouvez fermer cette fenêtre.</p>
+    <script>
+        // Optionnel : fermer automatiquement après 3 secondes
+        setTimeout(() => window.close(), 3000);
+    </script>
+</body>
+</html>
+"""
 
-json_str_prd = """{
-    'token_type': 'bearer',
-    'refresh_token': 'eu1-6f86-4bdc-4ba9-8306-44633d553fd3',
-    'access_token': 'CLT1gPmbMxIVQlNQMl8kQEwrAggACAkWPQEkSEcZGMmCqEUg8fTBDijhx4oKMhQof3h-XtnlA6Zq3dm5C0LXtVzpFzosQlNQMl8kQEwrAh8ACBkGcX49AQMBJgMBKQJadQEB6wFVBwkQHBcfHAIUHBhCFBckU0rdZdo92nTB8ZUcyNfmZR1_SgNldTFSAFoAYAFomaPRIXABeAA',
-    'hub_id': 145359177,
-    'scopes': ['crm.objects.deals.read', 'crm.objects.line_items.read', 'scope_mappings.container', 'crm.objects.companies.read', 'crm.objects.orders.read', 'oauth', 'crm.objects.products.read', 'crm.objects.contacts.read'],
-    'user_id': 70537625,
-    'expires_in': 1800,
-    'expires_at': 1759848184
-}"""
-json_str_none = None
-json_str_test = """{'token_type': 'bearer', 'refresh_token': 'eu1-b7b0-b09e-46a0-8238-0d66c17b8cbc', 'access_token': 'CI7-mKGcMxIVQlNQMl8kQEwrAggACAkWPQEkSEcZGJXEjEYgkte_Dijhx4oKMhSZmJvJDBUD4-zoGvr1SpNMLxe-WTpWQlNQMl8kQEwrAyUAABkfkAGOAssCzALPAtAC9gL5AvoCowOlA_8D9AT1BPYE4QbiBrcHvgfDB8cH1wfzB_8HigipCMUIxwjbCOQI5wj3CI8Jngn2kQVCFD6NO2nfhVmoJxcyqgGDUgk-RSDkSgNldTFSAFoAYAFomaPRIXABeAA', 'hub_id': 147005973, 'scopes': ['crm.objects.deals.read', 'crm.objects.line_items.read', 'scope_mappings.container', 'crm.objects.companies.read', 'crm.objects.orders.read', 'oauth', 'crm.objects.products.read', 'crm.objects.contacts.read'], 'user_id': 70537625, 'expires_in': 1800, 'expires_at': 1759932465}"""
-
-json_str = json_str_test
-# Correction des quotes simples en doubles quotes pour un JSON valide
-
-if json_str is not None:
-    json_str_corrected = json_str.replace("'", '"')
-    # Conversion en dictionnaire Python
-    _token = json.loads(json_str_corrected)  # pyright: ignore[reportUndefinedVariable]
-else:   
-    _token = None
-
-
-
-# objet pour récupérer le code entre threads
-auth_code = {"code": None}
-
-event = threading.Event()
-
-class Handler(BaseHTTPRequestHandler):
+class OAuthHandler(BaseHTTPRequestHandler):
+    """Handler HTTP pour le callback OAuth."""
+    
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/oauth-callback":
             qs = parse_qs(parsed.query)
             code = qs.get("code")
             if code:
-                auth_code["code"] = code[0]
-                # envoyer une page simple à l'utilisateur
+                # Stocker le code dans l'instance du serveur
+                self.server.auth_code = code[0]
+                # Réponse à l'utilisateur
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(b"<h1>Authentification reussie. Vous pouvez fermer cette fenetre.</h1>")
-                # signaler au thread principal
-                event.set()
+                self.wfile.write(html_response.encode('utf-8'))
+                # Signaler que le code est reçu
+                self.server.auth_event.set()
                 return
-        # default 404
+        
+        # 404 pour les autres chemins
         self.send_response(404)
         self.end_headers()
 
-def run_local_server():
-    server = HTTPServer(("localhost", 3000), Handler)
-    # serveur bloquant dans un thread
-    server.serve_forever()
+    def log_message(self, format, *args):
+        # Supprimer les logs HTTP pour plus de propreté
+        pass
 
 
-async def oauth():
-
-    if _token is None:
+class OAuthManager:
+    """Gestionnaire OAuth thread-safe avec persistance et refresh automatique."""
     
-        # démarrer serveur local
-        t = threading.Thread(target=run_local_server, daemon=True)
-        t.start()
+    def __init__(self):
+        self._token: Optional[Dict[str, Any]] = None
+        self._lock = asyncio.Lock()
+        self._server: Optional[HTTPServer] = None
+        self._server_thread: Optional[threading.Thread] = None
+        
+    async def get_token(self) -> Dict[str, Any]:
+        """
+        Obtient un token OAuth valide.
+        Charge depuis le fichier, refresh si nécessaire, ou crée un nouveau token.
+        """
+        async with self._lock:
+            # 1. Essayer de charger depuis le fichier
+            if self._token is None:
+                self._token = self._load_token_from_file()
+            
+            # 2. Vérifier si le token est valide
+            if self._token and self._is_token_valid(self._token):
+                # print("✅ Token valide trouvé")
+                return self._token
+            
+            # 3. Essayer de refresh le token
+            if self._token and self._token.get("refresh_token"):
+                print("🔄 Tentative de refresh du token...")
+                try:
+                    self._token = await self._refresh_token(self._token["refresh_token"])
+                    self._save_token_to_file(self._token)
+                    print("✅ Token refreshé avec succès")
+                    return self._token
+                except Exception as e:
+                    print(f"❌ Échec du refresh: {e}")
+            
+            # 4. Créer un nouveau token via OAuth flow
+            print("🔐 Création d'un nouveau token OAuth...")
+            self._token = await self._do_oauth_flow()
+            self._save_token_to_file(self._token)
+            print("✅ Nouveau token créé et sauvegardé")
+            return self._token
+    
+    def _load_token_from_file(self) -> Optional[Dict[str, Any]]:
+        """Charge le token depuis le fichier local."""
+        try:
+            if TOKEN_FILE.exists():
+                with open(TOKEN_FILE, 'r') as f:
+                    token = json.load(f)
+                print(f"📁 Token chargé depuis {TOKEN_FILE}")
+                return token
+        except Exception as e:
+            print(f"⚠️ Erreur lors du chargement du token: {e}")
+        return None
+    
+    def _save_token_to_file(self, token: Dict[str, Any]) -> None:
+        """Sauvegarde le token dans le fichier local."""
+        try:
+            with open(TOKEN_FILE, 'w') as f:
+                json.dump(token, f, indent=2)
+            print(f"💾 Token sauvegardé dans {TOKEN_FILE}")
+        except Exception as e:
+            print(f"⚠️ Erreur lors de la sauvegarde: {e}")
+    
+    def _is_token_valid(self, token: Dict[str, Any]) -> bool:
+        """Vérifie si le token est encore valide (avec marge de 5 minutes)."""
+        if not token.get("access_token"):
+            return False
+        
+        expires_at = token.get("expires_at")
+        if not expires_at:
+            return False
+        
+        # Marge de sécurité de 5 minutes
+        margin = 5 * 60
+        return time.time() < (expires_at - margin)
+    
+    async def _refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Refresh le token en utilisant le refresh_token."""
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET
+        }
+        
+        response = requests.post(TOKEN_URL, data=data)
+        response.raise_for_status()
+        
+        token_data = response.json()
+        
+        # Ajouter l'expiration calculée
+        if 'expires_in' in token_data:
+            token_data['expires_at'] = time.time() + token_data['expires_in']
+        
+        return token_data
+    
+    async def _do_oauth_flow(self) -> Dict[str, Any]:
+        """Effectue le flow OAuth complet."""
+        # Démarrer le serveur local
+        await self._start_local_server()
+        
+        try:
+            # Créer la session OAuth
+            oauth_session = OAuth2Session(
+                client_id=CLIENT_ID,
+                redirect_uri=REDIRECT_URI,
+                scope=SCOPE
+            )
+            
+            # Obtenir l'URL d'autorisation
+            authorization_url, state = oauth_session.authorization_url(AUTHORIZATION_BASE_URL)
+            
+            print("🌐 Ouverture du navigateur pour l'authentification...")
+            webbrowser.open(authorization_url)
+            
+            # Attendre le callback (timeout de 5 minutes)
+            print("⏳ En attente du code d'autorisation...")
+            if not self._server.auth_event.wait(timeout=300):
+                raise TimeoutError("Timeout lors de l'attente du code d'autorisation")
+            
+            if not hasattr(self._server, 'auth_code'):
+                raise ValueError("Aucun code d'autorisation reçu")
+            
+            code = self._server.auth_code
+            print(f"✅ Code d'autorisation reçu: {code[:10]}...")
+            
+            # Échanger le code contre un token
+            token = oauth_session.fetch_token(
+                TOKEN_URL,
+                code=code,
+                client_secret=CLIENT_SECRET,
+                include_client_id=True
+            )
+            
+            # Ajouter l'expiration calculée
+            if 'expires_in' in token:
+                token['expires_at'] = time.time() + token['expires_in']
+            
+            return token
+            
+        finally:
+            await self._stop_local_server()
+    
+    async def _start_local_server(self) -> None:
+        """Démarre le serveur local pour le callback OAuth."""
+        if self._server is not None:
+            return  # Serveur déjà démarré
+        
+        # Essayer plusieurs ports si 3000 est occupé
+        for port in range(3000, 3010):
+            try:
+                self._server = HTTPServer(("localhost", port), OAuthHandler)
+                self._server.auth_code = None
+                self._server.auth_event = threading.Event()
+                
+                # Mettre à jour l'URI de redirection si le port change
+                if port != 3000:
+                    global REDIRECT_URI
+                    REDIRECT_URI = f"http://localhost:{port}/oauth-callback"
+                
+                # Démarrer le serveur dans un thread
+                self._server_thread = threading.Thread(
+                    target=self._server.serve_forever,
+                    daemon=True
+                )
+                self._server_thread.start()
+                
+                print(f"🚀 Serveur OAuth démarré sur le port {port}")
+                return
+                
+            except OSError as e:
+                if e.errno == 48:  # Address already in use
+                    print(f"⚠️ Port {port} occupé, essai du port suivant...")
+                    continue
+                else:
+                    raise
+        
+        raise RuntimeError("Impossible de démarrer le serveur OAuth (tous les ports occupés)")
+    
+    async def _stop_local_server(self) -> None:
+        """Arrête le serveur local."""
+        if self._server:
+            self._server.shutdown()
+            self._server.server_close()
+            self._server = None
+        
+        if self._server_thread:
+            self._server_thread.join(timeout=1)
+            self._server_thread = None
+        
+        print("🛑 Serveur OAuth arrêté")
+    
+    def invalidate_token(self) -> None:
+        """Force la création d'un nouveau token au prochain appel."""
+        self._token = None
+        if TOKEN_FILE.exists():
+            TOKEN_FILE.unlink()
+            print("🗑️ Token invalidé et fichier supprimé")
 
-        # créer la session OAuth
-        oauth = OAuth2Session(client_id=CLIENT_ID, redirect_uri=REDIRECT_URI, scope=SCOPE)
 
-        # obtenir l'URL d'autorisation et ouvrir dans le navigateur
-        authorization_url, state = oauth.authorization_url(AUTHORIZATION_BASE_URL)
-        print("Ouverture du navigateur pour l'authentification...")
-        webbrowser.open(authorization_url)
+# Instance globale (singleton)
+oauth_manager = OAuthManager()
 
-        # attendre que le handler mette le code
-        print("En attente du code d'autorisation (callback)...")
-        event.wait(timeout=300)  # timeout facultatif
 
-        if not auth_code["code"]:
-            print("Aucun code reçu (timeout?).")
-            return
+# Interface publique (compatible avec l'ancien code)
+async def oauth() -> Dict[str, Any]:
+    """Interface publique pour obtenir un token OAuth."""
+    return await oauth_manager.get_token()
 
-        code = auth_code["code"]
-        # échanger le code contre un token
-        token = oauth.fetch_token(TOKEN_URL,
-                                include_client_id=True,
-                                client_secret=CLIENT_SECRET,
-                                code=code)
-        print("Token récupéré :")
-        print(token)
-    else:
-        print("Token déjà récupéré :")
-        token = _token
-        print(token)
 
-    return token
+# Fonction utilitaire pour invalider le token
+def invalidate_oauth_token() -> None:
+    """Invalide le token actuel et force une nouvelle authentification."""
+    oauth_manager.invalidate_token()
