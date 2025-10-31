@@ -188,3 +188,14 @@ tutorials/Untitled.ipynb
 /experiments/agentic-research/evaluations/output_report_dir
 /experiments/agentic-research/evaluations/temp_search_dir
 /experiments/agentic-research/output
+
+/experiments/customer_onboarding/.hubspot_token.json
+conversations/conversation_20251010_094455.json
+conversations/conversation_20251010_100444.json
+conversations/conversation_20251010_103403.json
+conversations/conversation_20251010_103533.json
+conversations/conversation_20251010_104402.json
+conversations/conversation_20251010_114412.json
+.hubspot_token.json
+.streamlit/config.toml
+.streamlit/secrets.toml

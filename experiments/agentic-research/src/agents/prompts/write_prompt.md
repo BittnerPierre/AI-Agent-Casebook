@@ -54,10 +54,6 @@ Think before you write the report in <thinking> tags.
 - Produce section by section, fully expanding each point using all Raw Notes.
 - Once you finish writing all report sections (## Report), insert the marker ## FINAL STEP.
 
-### **Step 4: Save Report**
-
-- When done writing report, save it.
-
 ## NAMING RULES
 
 Use research topic to name the report:

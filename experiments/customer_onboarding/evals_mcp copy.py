@@ -1,0 +1,67 @@
+import asyncio
+from typing import List
+from agents import gen_trace_id, trace, SQLiteSession
+from langchain_core.messages import BaseMessage
+from openevals.simulators import create_llm_simulated_user, run_multiturn_simulation
+from openevals.types import ChatCompletionMessage
+from openevals import create_llm_as_judge
+from langchain_community.adapters.openai import convert_message_to_dict
+from my_agents.agents import run_onboarding_agent_with_mcp
+from agents import OpenAIConversationsSession
+from evals_utils import format_evaluation_report
+
+# Create a session instance with a session ID
+session = OpenAIConversationsSession()
+
+def my_app(inputs: ChatCompletionMessage, *, thread_id: str, **kwargs):
+    # When using session memory, provide only a string input to append to the conversation
+    user_input = inputs['content']
+    print(f"➡️ {user_input}")
+    result = asyncio.run(run_onboarding_agent_with_mcp(user_input, session))
+    output = result.final_output
+    print(f"⬅️ {output}")
+    return {"role": "assistant", "content": output, "id": result.last_response_id}
+
+user = create_llm_simulated_user(
+    system="""You are a user who wants to open a new account via the mobile application. 
+        You are using an ai chatbot inside the application to help you finalize your onboarding process.
+        [...]
+        You terminate the conversation quickly, you don't insist and avoid chitchat: no thank you, no goodbye, no nothing.
+        You don't ask additional questions.
+        """,
+    model="openai:gpt-4.1-mini",
+    fixed_responses=[
+        {"role": "user", "content": ("Bonjour, je n'arrive pas à finaliser mon inscription. Pouvez-vous m'aider ?")},
+    ],
+)
+
+satifsaction_evaluator = create_llm_as_judge(
+    model="openai:gpt-4o-mini",
+    prompt="Based on the below conversation, has the user's get an answer to his question?\n{outputs}",
+    feedback_key="satisfaction",
+)
+
+trajectory_evaluator = create_llm_as_judge(
+    model="openai:gpt-4o-mini",
+    prompt="Based on the conversation, does the user give its personal informations (age, nationality, bank, city, country) to the bot? "
+    "Tax residence, bank account location and bank account ownership are not known by the agent or the CRM so it is legit to ask those questions.\n{outputs}",
+    feedback_key="no_profile_informatio_given",
+)
+
+trace_id = gen_trace_id()
+with trace("Customer Onboarding", trace_id=trace_id):
+    print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}\n")
+
+    # Run the simulation directly with the customized user function
+    simulator_result = run_multiturn_simulation(
+        app=my_app,
+        user=user,
+        trajectory_evaluators=[satifsaction_evaluator, trajectory_evaluator],
+        max_turns=7,
+    )
+
+
+
+
+# Utilisez cette fonction à la place du print simple
+success = format_evaluation_report(simulator_result)

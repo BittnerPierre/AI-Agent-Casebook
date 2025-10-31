@@ -1,0 +1,146 @@
+{
+  "0": {
+    "url": "https://www.onlinebank.com/help/account/opening/question/why-was-my-account-opening-request-rejected",
+    "cat": "account",
+    "sub_cat": "opening",
+    "subsub_cat": "question",
+    "question": "Why was my account opening request rejected?",
+    "answer": "Your account opening request may have been rejected due to incomplete documentation or eligibility criteria not being met. Contact our support team for more details."
+  },
+  "1": {
+    "url": "https://www.onlinebank.com/help/card/blocked/question/what-should-i-do-if-my-card-is-blocked-at-an-atm",
+    "cat": "card",
+    "sub_cat": "blocked",
+    "subsub_cat": "question",
+    "question": "What should I do if my card is blocked at an ATM?",
+    "answer": "If your card is blocked at an ATM, immediately report it using our mobile app under 'Card Services' > 'Block Card' and request a replacement."
+  },
+  "2": {
+    "url": "https://www.onlinebank.com/help/general/complaints/question/what-is-a-complaint",
+    "cat": "general",
+    "sub_cat": "complaints",
+    "subsub_cat": "question",
+    "question": "What is considered a complaint?",
+    "answer": "A complaint is an issue or dissatisfaction that cannot be resolved by the initial customer support interaction. Our dedicated complaints team can assist further."
+  },
+  "3": {
+    "url": "https://www.onlinebank.com/help/card/info/question/what-is-the-difference-between-a-credit-and-a-debit-card",
+    "cat": "card",
+    "sub_cat": "info",
+    "subsub_cat": "question",
+    "question": "What is the difference between a credit and a debit card?",
+    "answer": "A debit card deducts money directly from your account upon transaction, while a credit card allows delayed payments within a credit limit."
+  },
+  "4": {
+    "url": "https://www.onlinebank.com/help/cash/withdrawal/question/can-i-order-cash-or-foreign-currency",
+    "cat": "cash",
+    "sub_cat": "withdrawal",
+    "subsub_cat": "question",
+    "question": "Can I order cash or foreign currency?",
+    "answer": "We do not offer cash or currency delivery. You can withdraw from ATMs or use your card for global transactions."
+  },
+  "5": {
+    "url": "https://www.onlinebank.com/help/taxes/forms/question/what-does-line-2tr-mean-on-my-tax-form",
+    "cat": "taxes",
+    "sub_cat": "forms",
+    "subsub_cat": "question",
+    "question": "What does line 2TR mean on my tax form?",
+    "answer": "Line 2TR includes taxable income from interest, deposits, and certain accounts. Please consult your tax advisor for specifics."
+  },
+  "6": {
+    "url": "https://www.onlinebank.com/help/account/closing/question/how-do-i-close-my-account",
+    "cat": "account",
+    "sub_cat": "closing",
+    "subsub_cat": "question",
+    "question": "How do I close my account?",
+    "answer": "To close your account, submit a signed request through the app or via email with a valid ID attached."
+  },
+  "7": {
+    "url": "https://www.onlinebank.com/help/card/settings/question/how-do-i-change-my-card-pin",
+    "cat": "card",
+    "sub_cat": "settings",
+    "subsub_cat": "question",
+    "question": "How do I change my card PIN?",
+    "answer": "You can change your card PIN via the app under 'Card Settings' or at supported ATMs."
+  },
+  "8": {
+    "url": "https://www.onlinebank.com/help/security/question/what-to-do-if-i-suspect-unauthorized-access",
+    "cat": "security",
+    "sub_cat": "fraud",
+    "subsub_cat": "question",
+    "question": "What should I do if I suspect unauthorized access to my account?",
+    "answer": "If you suspect unauthorized access, change your password immediately and contact customer support to secure your account."
+  },
+  "9": {
+    "url": "https://www.onlinebank.com/help/transfers/question/how-do-i-set-up-a-recurring-transfer",
+    "cat": "transfers",
+    "sub_cat": "setup",
+    "subsub_cat": "question",
+    "question": "How do I set up a recurring transfer?",
+    "answer": "Set up recurring transfers via the app by navigating to 'Transfers' > 'Recurring Transfers' and entering the required details."
+  },
+  "10": {
+    "url": "https://www.onlinebank.com/help/investments/question/what-investment-options-are-available",
+    "cat": "investments",
+    "sub_cat": "options",
+    "subsub_cat": "question",
+    "question": "What investment options are available?",
+    "answer": "We offer savings accounts, mutual funds, and other investment products. Details can be accessed under 'Investments' in the app."
+  },
+  "11": {
+    "url": "https://www.onlinebank.com/help/card/lost/question/what-to-do-if-i-lose-my-card",
+    "cat": "card",
+    "sub_cat": "lost",
+    "subsub_cat": "question",
+    "question": "What should I do if I lose my card?",
+    "answer": "Report your lost card via the app or by contacting support to block it immediately and request a replacement."
+  },
+  "12": {
+    "url": "https://www.onlinebank.com/help/account/documents/question/how-to-download-account-statements",
+    "cat": "account",
+    "sub_cat": "documents",
+    "subsub_cat": "question",
+    "question": "How can I download my account statements?",
+    "answer": "Download your statements from the app by navigating to 'Documents' > 'Account Statements.'"
+  },
+  "13": {
+    "url": "https://www.onlinebank.com/help/account/update/question/how-to-update-my-personal-information",
+    "cat": "account",
+    "sub_cat": "update",
+    "subsub_cat": "question",
+    "question": "How can I update my personal information?",
+    "answer": "Update your personal information via the app under 'Profile Settings.'"
+  },
+  "14": {
+    "url": "https://www.onlinebank.com/help/mobile-app/question/how-to-enable-biometric-login",
+    "cat": "mobile-app",
+    "sub_cat": "features",
+    "subsub_cat": "question",
+    "question": "How can I enable biometric login?",
+    "answer": "Enable biometric login by navigating to 'Settings' > 'Security' in the app and activating the option."
+  },
+  "15": {
+    "url": "https://www.onlinebank.com/help/account/fees/question/what-are-the-monthly-account-fees",
+    "cat": "account",
+    "sub_cat": "fees",
+    "subsub_cat": "question",
+    "question": "What are the monthly account fees?",
+    "answer": "Monthly fees vary by account type. Please refer to the 'Fees and Charges' section in the app for details."
+  },
+  "16": {
+    "url": "https://www.onlinebank.com/help/loans/question/how-to-apply-for-a-personal-loan",
+    "cat": "loans",
+    "sub_cat": "application",
+    "subsub_cat": "question",
+    "question": "How can I apply for a personal loan?",
+    "answer": "Apply for a personal loan through the app by going to 'Loans' > 'Apply Now' and filling out the application form."
+  },
+  "17": {
+    "url": "https://www.onlinebank.com/help/security/password-reset/question/how-to-reset-my-password",
+    "cat": "security",
+    "sub_cat": "password-reset",
+    "subsub_cat": "question",
+    "question": "How do I reset my password?",
+    "answer": "Reset your password using the 'Forgot Password' link on the login page or via the app's 'Security Settings.'"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "session_id": "12345678-1234-5678-9012-123456789abc",
+  "timestamp": "2024-10-10T15:30:00.123456",
+  "conversation": [
+    {
+      "turn": 1,
+      "user_input": "Bonjour, je voudrais ouvrir un compte bancaire. Pouvez-vous m'aider ?",
+      "agent_response": "Bonjour ! Je suis Elliott, votre assistant pour l'ouverture de compte bancaire. Je serais ravi de vous aider dans cette démarche. Pour commencer, pourriez-vous me dire si vous êtes majeur et si vous résidez en France ?",
+      "annotation": {
+        "quality": "good",
+        "explanation": "Réponse claire, professionnelle et demande les informations nécessaires"
+      }
+    },
+    {
+      "turn": 2,
+      "user_input": "Oui, j'ai 25 ans et je vis à Paris.",
+      "agent_response": "Parfait ! Maintenant, pour vérifier votre éligibilité, j'aurais besoin de quelques informations supplémentaires. Quelle est votre nationalité et avez-vous déjà un compte bancaire dans un pays de l'Union Européenne ?",
+      "annotation": {
+        "quality": "good",
+        "explanation": "Suite logique, demande les bonnes informations pour l'éligibilité"
+      }
+    },
+    {
+      "turn": 3,
+      "user_input": "Je suis français et j'ai un compte à la Société Générale.",
+      "agent_response": "Excellent ! Vous êtes éligible pour ouvrir un compte chez nous. Avez-vous des questions sur nos offres ou rencontrez-vous un problème particulier lors de votre inscription ?",
+      "annotation": {
+        "quality": "good",
+        "explanation": "Confirme l'éligibilité et oriente vers les prochaines étapes"
+      }
+    },
+    {
+      "turn": 4,
+      "user_input": "En fait, je n'arrive pas à recevoir l'email de confirmation sur l'application mobile.",
+      "agent_response": "Je comprends votre problème. Les emails de confirmation peuvent parfois être retardés ou finir dans les spams. Pouvez-vous vérifier votre dossier spam ? Aussi, quelle adresse email avez-vous utilisée lors de l'inscription ?",
+      "annotation": {
+        "quality": "good",
+        "explanation": "Identifie le problème et propose des solutions pratiques"
+      }
+    }
+  ]
+}
