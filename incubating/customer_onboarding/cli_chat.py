@@ -5,7 +5,8 @@ CLI Chat Interactif Minimal
 Un CLI simple pour tester des agents conversationnels et générer des datasets d'évaluation.
 
 Usage:
-    poetry run python experiments/customer_onboarding/run_cli_chat.py
+    cd incubating/customer_onboarding
+    uv run python run_cli_chat.py
 
 Le CLI prend uniquement une fonction callback qui accepte une conversation 
 au format [{"role": "user/assistant", "content": "..."}] et retourne une réponse.

@@ -150,7 +150,7 @@ if not faq_vector_store_id:
     )
     client.vector_stores.files.upload_and_poll(        # Upload file
         vector_store_id=faq_vector_store.id,
-        file=open("./experiments/customer_onboarding/faq.json", "rb")
+        file=open("./faq.json", "rb")
     )
 else:
     faq_vector_store = client.vector_stores.retrieve(faq_vector_store_id)
@@ -165,7 +165,7 @@ if not problem_vector_store_id:
 
     client.vector_stores.files.upload_and_poll(        # Upload file
         vector_store_id=problem_vector_store.id,
-        file=open("./experiments/customer_onboarding/error_db.json", "rb")
+        file=open("./error_db.json", "rb")
     )
 else:
     problem_vector_store = client.vector_stores.retrieve(problem_vector_store_id)

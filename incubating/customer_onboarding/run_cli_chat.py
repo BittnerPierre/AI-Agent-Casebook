@@ -4,7 +4,7 @@ Script principal pour lancer le CLI Chat avec l'agent Customer Onboarding.
 
 Usage:
     cd incubating/customer_onboarding
-    poetry run python run_cli_chat.py
+    uv run python run_cli_chat.py
 """
 
 from agents import gen_trace_id, trace

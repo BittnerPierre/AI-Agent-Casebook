@@ -8,14 +8,14 @@ CLI interactif pour tester l'agent customer onboarding et générer des datasets
 
 ```bash
 cd incubating/customer_onboarding
-poetry run python run_cli_chat.py
+uv run python run_cli_chat.py
 ```
 
 ### Tests unitaires
 
 ```bash
 cd incubating/customer_onboarding
-poetry run python test_cli.py
+uv run python test_cli.py
 ```
 
 ## Fonctionnalités
