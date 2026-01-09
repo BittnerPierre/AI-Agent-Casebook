@@ -40,7 +40,9 @@ A conversational agent that helps guide new customers through account setup and 
 |--------|--------|--------------|-----|---------|
 | `experiments/` | Experimental | 30-60% | None | Research, prototyping, trying ideas |
 | `incubating/` | Working | 60-80% | Basic CLI | Testing concepts, generating datasets |
-| `app/` | Production | 90%+ | Full Streamlit | Ready for deployment and use |
+| `app/` | Production | 90%+ | Full TypeScript UI | Ready for deployment and use |
+
+Typescript UI is available in a[separated repo](https://github.com/BittnerPierre/AI-Agent-Casebook-UI)
 
 ## Contributing
 
